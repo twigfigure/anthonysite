@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 42 25% 96%;
+    --foreground: 220 15% 20%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 20%;
+
+    --primary: 220 25% 35%;
+    --primary-foreground: 42 25% 96%;
+
+    --secondary: 150 20% 45%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 42 15% 90%;
+    --muted-foreground: 220 10% 50%;
+
+    --accent: 40 85% 60%;
+    --accent-foreground: 220 25% 15%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 88%;
+    --input: 220 15% 92%;
+    --ring: 220 25% 35%;
+
+    --radius: 0.75rem;
+
+    --sage: 150 20% 45%;
+    --dusk: 220 25% 35%;
+    --amber: 40 85% 60%;
+    --charcoal: 220 10% 15%;
+    
+    --glow-sage: 150 45% 65%;
+    --glow-dusk: 220 45% 55%;
+    --glow-amber: 40 95% 70%;
+  }
+
+  .dark {
+    --background: 220 15% 8%;
+    --foreground: 42 25% 94%;
+
+    --card: 220 12% 12%;
+    --card-foreground: 42 25% 94%;
+
+    --popover: 220 12% 10%;
+    --popover-foreground: 42 25% 94%;
+
+    --primary: 42 25% 94%;
+    --primary-foreground: 220 25% 15%;
+
+    --secondary: 150 20% 45%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 12% 18%;
+    --muted-foreground: 220 10% 60%;
+
+    --accent: 40 85% 60%;
+    --accent-foreground: 220 25% 10%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 12% 20%;
+    --input: 220 12% 18%;
+    --ring: 42 25% 94%;
+
+    --sage: 150 20% 50%;
+    --dusk: 220 25% 40%;
+    --amber: 40 85% 65%;
+    --charcoal: 220 10% 10%;
+    
+    --glow-sage: 150 50% 55%;
+    --glow-dusk: 220 50% 50%;
+    --glow-amber: 40 100% 70%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+
+  .font-mono {
+    font-family: 'Space Mono', monospace;
+  }
+}
+
+@layer utilities {
+  .glow-sage {
+    box-shadow: 0 0 20px hsl(var(--glow-sage) / 0.3);
+  }
+
+  .glow-dusk {
+    box-shadow: 0 0 20px hsl(var(--glow-dusk) / 0.3);
+  }
+
+  .glow-amber {
+    box-shadow: 0 0 20px hsl(var(--glow-amber) / 0.3);
+  }
+
+  .breathing-glow {
+    animation: breathing 4s ease-in-out infinite;
+  }
+
+  @keyframes breathing {
+    0%, 100% {
+      opacity: 0.6;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.02);
+    }
+  }
+
+  .fade-in {
+    animation: fadeIn 0.6s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .gradient-ambient {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--background)) 0%,
+      hsl(var(--muted)) 50%,
+      hsl(var(--background)) 100%
+    );
+  }
+}
