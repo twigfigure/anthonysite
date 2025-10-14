@@ -287,7 +287,7 @@ const Hero = () => {
                 {!showChat ? (
                   <>
                     {/* Schedule View */}
-                    <div className="space-y-4 h-[320px] flex flex-col">
+                    <div className="space-y-4 h-[309px] flex flex-col">
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 bg-sage rounded-full animate-pulse"></div>
                         <h3 className="text-lg font-bold">Upcoming Schedule</h3>
@@ -335,7 +335,7 @@ const Hero = () => {
                     {/* Chat View */}
                     <div className="space-y-4">
                       {/* Chat Messages Area */}
-                      <div className="h-[260px] overflow-y-auto overflow-x-hidden space-y-3 mb-4 pr-2 scrollbar-thin scrollbar-thumb-sage/30 scrollbar-track-transparent">
+                      <div className="h-[255px] overflow-y-auto overflow-x-hidden space-y-3 mb-4 pr-2 scrollbar-thin scrollbar-thumb-sage/30 scrollbar-track-transparent">
                         <div className="text-xs text-center text-muted-foreground/60 font-mono py-2">
                           Start a conversation
                         </div>

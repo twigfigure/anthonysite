@@ -11,6 +11,10 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+
+# OAuth credentials
+client_secret*.json
 
 # Editor directories and files
 .vscode/*
