@@ -57,6 +57,9 @@ const Kindred = () => {
   const { toast } = useToast();
   const { user, signOut } = useAuth();
 
+  // Check if current user is admin
+  const isAdmin = user?.email === import.meta.env.VITE_ADMIN_EMAIL;
+
   const handleMonClick = (mon: any) => {
     setSelectedMon(mon);
     setIsModalOpen(true);
@@ -66,41 +69,71 @@ const Kindred = () => {
   useEffect(() => {
     // Always fetch mons when component mounts or user changes
     fetchMons();
+    // Load Kindred Fables from database (same for everyone)
+    fetchKindredFables();
   }, [user]); // Re-fetch when user state changes (including when auth loads)
 
-  // Load kindred fables from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem('kindredFables');
-    if (saved) {
-      try {
-        setKindredFables(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to load kindred fables:', e);
-      }
-    }
-  }, []);
+  const fetchKindredFables = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('kindred_fables')
+        .select('kindred_ids')
+        .single();
 
-  // Save kindred fables to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('kindredFables', JSON.stringify(kindredFables));
-  }, [kindredFables]);
+      if (error) throw error;
+
+      if (data?.kindred_ids) {
+        setKindredFables(data.kindred_ids);
+      }
+    } catch (error) {
+      console.error('Error fetching kindred fables:', error);
+    }
+  };
+
+  const saveKindredFables = async (newFables: string[]) => {
+    if (!isAdmin) {
+      toast({
+        title: "Permission Denied",
+        description: "Only admins can edit Kindred Fables",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('kindred_fables')
+        .update({
+          kindred_ids: newFables,
+          updated_at: new Date().toISOString(),
+          updated_by: user?.id
+        })
+        .eq('id', (await supabase.from('kindred_fables').select('id').single()).data?.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Kindred Fables Updated",
+        description: "Featured Kindreds have been updated",
+      });
+    } catch (error) {
+      console.error('Error saving kindred fables:', error);
+      toast({
+        title: "Save Failed",
+        description: "Failed to update Kindred Fables",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchMons = async () => {
     try {
-      // If user is logged in, fetch only their mons for better performance
-      let query = supabase
+      // Fetch all mons for Kindred Fables display
+      // (since featured mons can be from any user)
+      const { data, error } = await supabase
         .from('emotion_mons')
         .select('*')
         .order('created_at', { ascending: false });
-
-      if (user) {
-        query = query.eq('user_id', user.id);
-      } else {
-        // If not logged in, fetch recent mons for showcase (limit to 20)
-        query = query.limit(20);
-      }
-
-      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -353,37 +386,58 @@ const Kindred = () => {
     setShowKindredSelector(true);
   };
 
-  const handleSelectKindredForSlot = (monId: string) => {
+  const handleSelectKindredForSlot = async (monId: string) => {
     if (selectedSlotIndex === null) return;
+    if (!isAdmin) {
+      toast({
+        title: "Permission Denied",
+        description: "Only admins can edit Kindred Fables",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    setKindredFables(prev => {
-      const newFables = [...prev];
-      // Remove the mon from any other slot first
-      const existingIndex = newFables.indexOf(monId);
-      if (existingIndex !== -1) {
-        newFables[existingIndex] = '';
-      }
-      newFables[selectedSlotIndex] = monId;
-      return newFables;
-    });
+    const newFables = [...kindredFables];
+    // Ensure array has 12 slots
+    while (newFables.length < 12) {
+      newFables.push('');
+    }
+    // Remove the mon from any other slot first
+    const existingIndex = newFables.indexOf(monId);
+    if (existingIndex !== -1) {
+      newFables[existingIndex] = '';
+    }
+    newFables[selectedSlotIndex] = monId;
+
+    setKindredFables(newFables);
+    await saveKindredFables(newFables);
 
     setShowKindredSelector(false);
     setSelectedSlotIndex(null);
   };
 
-  const handleRemoveFromSlot = (slotIndex: number) => {
-    setKindredFables(prev => {
-      const newFables = [...prev];
-      newFables[slotIndex] = '';
-      return newFables;
-    });
+  const handleRemoveFromSlot = async (slotIndex: number) => {
+    if (!isAdmin) {
+      toast({
+        title: "Permission Denied",
+        description: "Only admins can edit Kindred Fables",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newFables = [...kindredFables];
+    newFables[slotIndex] = '';
+    setKindredFables(newFables);
+    await saveKindredFables(newFables);
   };
 
   // Get mons for kindred fables (12 slots)
+  // Featured mons can be from any user, not just the logged-in user
   const kindredFableSlots = Array(12).fill(null).map((_, index) => {
     const monId = kindredFables[index];
     if (!monId) return null;
-    return myMons.find(mon => mon.id === monId) || null;
+    return allMons.find(mon => mon.id === monId) || null;
   });
 
   return (
@@ -454,7 +508,7 @@ const Kindred = () => {
             {!user ? (
               <div className="text-center py-8">
                 <p className="text-sm text-gray-400 mb-3">
-                  Sign in to curate your Kindred Fables
+                  Sign in to view Kindred Fables
                 </p>
                 <Button
                   variant="outline"
@@ -466,22 +520,34 @@ const Kindred = () => {
                 </Button>
               </div>
             ) : (
-              <div className="flex gap-3 overflow-x-auto pb-2">
-                {kindredFableSlots.map((mon, index) => (
-                  <div
-                    key={index}
-                    className="flex-shrink-0 w-48 h-48 bg-gray-900 border-2 border-dashed border-gray-700 rounded-lg hover:border-sage/50 transition-all cursor-pointer group relative overflow-hidden"
-                    onClick={() => mon ? handleMonClick({
-                      ...mon,
-                      stats: { health: mon.health, mood: mon.mood, energy: mon.energy, faith: mon.faith },
-                      color: mon.color_class,
-                      date: new Date(mon.created_at).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })
-                    }) : handleOpenKindredSelector(index)}
-                  >
+              <>
+                {isAdmin && (
+                  <p className="text-xs text-gray-400 mb-2">
+                    Admin: Click empty slots to curate featured Kindreds from all users
+                  </p>
+                )}
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {kindredFableSlots.map((mon, index) => (
+                    <div
+                      key={index}
+                      className={`flex-shrink-0 w-48 h-48 bg-gray-900 border-2 border-dashed border-gray-700 rounded-lg hover:border-sage/50 transition-all ${mon || isAdmin ? 'cursor-pointer' : 'cursor-default'} group relative overflow-hidden`}
+                      onClick={() => {
+                        if (mon) {
+                          handleMonClick({
+                            ...mon,
+                            stats: { health: mon.health, mood: mon.mood, energy: mon.energy, faith: mon.faith },
+                            color: mon.color_class,
+                            date: new Date(mon.created_at).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })
+                          });
+                        } else if (isAdmin) {
+                          handleOpenKindredSelector(index);
+                        }
+                      }}
+                    >
                     {mon ? (
                       <>
                         {mon.image_url ? (
@@ -493,15 +559,17 @@ const Kindred = () => {
                         ) : (
                           <div className={`w-full h-full bg-gradient-to-br ${mon.color_class}`} />
                         )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveFromSlot(index);
-                          }}
-                          className="absolute top-1 right-1 bg-destructive/90 hover:bg-destructive text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveFromSlot(index);
+                            }}
+                            className="absolute top-1 right-1 bg-destructive/90 hover:bg-destructive text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
                         {mon.rarity && (
                           <div className={`absolute bottom-1 left-1 px-1 py-0.5 rounded text-[8px] font-bold ${
                             mon.rarity === 'Normal' ? 'bg-gray-200 text-gray-700' :
@@ -1323,17 +1391,20 @@ const Kindred = () => {
             <DialogTitle className="text-xl font-bold">
               Select Kindred for Slot {selectedSlotIndex !== null ? selectedSlotIndex + 1 : ''}
             </DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Choose from all Kindreds created by any user
+            </p>
           </DialogHeader>
 
-          {myMons.length === 0 ? (
+          {allMons.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-sm text-muted-foreground">
-                You don't have any Kindreds yet. Generate your first one!
+                No Kindreds have been created yet.
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-3">
-              {myMons.map((mon) => (
+              {allMons.map((mon) => (
                 <div
                   key={mon.id}
                   onClick={() => handleSelectKindredForSlot(mon.id)}
