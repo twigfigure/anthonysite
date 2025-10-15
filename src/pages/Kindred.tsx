@@ -101,16 +101,26 @@ const Kindred = () => {
     }
 
     try {
-      const { error } = await supabase
+      // First, get the kindred_fables row
+      const { data: fablesRow, error: fetchError } = await supabase
+        .from('kindred_fables')
+        .select('id')
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!fablesRow?.id) throw new Error('Kindred Fables row not found');
+
+      // Now update using the fetched ID
+      const { error: updateError } = await supabase
         .from('kindred_fables')
         .update({
           kindred_ids: newFables,
           updated_at: new Date().toISOString(),
           updated_by: user?.id
         })
-        .eq('id', (await supabase.from('kindred_fables').select('id').single()).data?.id);
+        .eq('id', fablesRow.id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
       toast({
         title: "Kindred Fables Updated",
