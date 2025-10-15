@@ -591,6 +591,7 @@ const Kindred = () => {
                   </div>
                 ))}
               </div>
+              </>
             )}
           </Card>
         </div>
