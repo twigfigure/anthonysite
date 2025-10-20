@@ -16,6 +16,8 @@ interface LeagueSettings {
   statCategories: string[];
   teamCount?: number;
   budgetPerTeam?: number;
+  bidTime?: number;
+  nominationTime?: number;
 }
 
 interface PlayerData {
@@ -53,6 +55,8 @@ export default function FantasyBasketball() {
     statCategories: ['fg%', 'ft%', '3ptm', 'pts', 'reb', 'ast', 'st', 'blk', 'to'],
     teamCount: 12,
     budgetPerTeam: 200,
+    bidTime: 20,
+    nominationTime: 15,
   });
 
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
@@ -175,6 +179,33 @@ export default function FantasyBasketball() {
                     onChange={(e) => setLeagueSettings(prev => ({ ...prev, rosterPositions: e.target.value }))}
                     placeholder="e.g., G, G, F, F, C, Util, BN, IL"
                   />
+                </div>
+              </div>
+
+              {/* Draft Timing */}
+              <div className="grid md:grid-cols-2 gap-6 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="bid-time">Bid Time (seconds)</Label>
+                  <Input
+                    id="bid-time"
+                    type="number"
+                    value={leagueSettings.bidTime || ''}
+                    onChange={(e) => setLeagueSettings(prev => ({ ...prev, bidTime: parseInt(e.target.value) || 0 }))}
+                    placeholder="e.g., 20"
+                  />
+                  <p className="text-xs text-gray-500">Time allowed for each bid during auction</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="nomination-time">Nomination Time (seconds)</Label>
+                  <Input
+                    id="nomination-time"
+                    type="number"
+                    value={leagueSettings.nominationTime || ''}
+                    onChange={(e) => setLeagueSettings(prev => ({ ...prev, nominationTime: parseInt(e.target.value) || 0 }))}
+                    placeholder="e.g., 15"
+                  />
+                  <p className="text-xs text-gray-500">Time to nominate a player for auction</p>
                 </div>
               </div>
 
