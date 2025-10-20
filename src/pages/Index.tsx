@@ -141,6 +141,14 @@ const Index = () => {
               <div className="font-semibold mb-0.5">Kindred</div>
               <div className="text-xs opacity-75">Generate your emotional creature</div>
             </Link>
+            <Link
+              to="/fantasy-basketball"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-orange/10 transition-colors"
+            >
+              <div className="font-semibold mb-0.5">Fantasy Basketball Auction</div>
+              <div className="text-xs opacity-75">Dynamic auction draft tool</div>
+            </Link>
           </div>
 
           <a
@@ -218,10 +226,17 @@ const Index = () => {
                 </a>
                 <Link
                   to="/kindred"
-                  className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-amber/10 transition-colors"
+                  className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-amber/10 transition-colors border-b border-border"
                 >
                   <div className="font-semibold mb-0.5">Kindred</div>
                   <div className="text-xs opacity-75">Generate your emotional creature</div>
+                </Link>
+                <Link
+                  to="/fantasy-basketball"
+                  className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-orange/10 transition-colors"
+                >
+                  <div className="font-semibold mb-0.5">Fantasy Basketball Auction</div>
+                  <div className="text-xs opacity-75">Dynamic auction draft tool</div>
                 </Link>
               </div>
             )}
