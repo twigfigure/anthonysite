@@ -80,59 +80,47 @@ const Hero = () => {
       <div className="absolute bottom-1/4 right-1/3 w-64 h-64 bg-dusk/20 rounded-full blur-3xl breathing-glow" style={{ animationDelay: '2s' }} />
 
       {/* 3 Column Grid */}
-      <div className="relative z-10 w-full max-w-[1600px] mx-auto px-6 py-12">
+      <div className="relative z-10 w-full max-w-[1600px] mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <div className="grid lg:grid-cols-[450px,1fr,350px] gap-6">
           {/* First Column - Avatar & Speech Bubble */}
-          <div className="col-span-1 fade-in relative pl-8 lg:pl-12">
+          <div className="col-span-1 fade-in relative pl-2 sm:pl-8 lg:pl-12">
             {/* Comic Book Style Speech Bubble - Top Right */}
-            <div className="absolute -top-4 right-[4.25rem] lg:right-[5.25rem] z-10 w-60 lg:w-76" style={{ filter: 'drop-shadow(0 10px 25px rgba(0, 0, 0, 0.15))' }}>
+            <div className="absolute top-8 sm:-top-3 right-12 sm:left-auto sm:right-[4.25rem] lg:right-[5.25rem] z-10 w-44 sm:w-60 lg:w-76" style={{ filter: 'drop-shadow(0 10px 25px rgba(0, 0, 0, 0.15))' }}>
               {/* Speech bubble content with CSS tail */}
-              <div className="relative bg-card border-2 border-foreground/20 rounded-2xl p-4 transition-all duration-300 h-[240px] lg:h-[220px] flex flex-col
+              <div className="relative bg-card border-2 border-foreground/20 rounded-2xl p-2.5 sm:p-4 transition-all duration-300 h-auto min-h-[160px] sm:h-[240px] lg:h-[220px] flex flex-col
                 before:content-[''] before:absolute before:bottom-[-1.125rem] before:left-4 before:z-0
                 before:w-0 before:h-0 before:border-l-[0.75rem] before:border-l-transparent
                 before:border-r-[0.75rem] before:border-r-transparent before:border-t-[1.125rem] before:border-t-foreground/20
                 after:content-[''] after:absolute after:bottom-[-0.96rem] after:left-[1.025rem] after:z-10
                 after:w-0 after:h-0 after:border-l-[0.7rem] after:border-l-transparent
                 after:border-r-[0.7rem] after:border-r-transparent after:border-t-[1rem] after:border-t-card">
-                <div className="inline-block mb-2 px-2 py-1 bg-sage/10 border border-sage/20 rounded-full self-start">
-                  <p className="text-[0.65rem] font-mono text-sage truncate">
-                    {currentDialogue.badge}
-                  </p>
-                </div>
-
-                <h1 className="text-lg lg:text-xl font-bold mb-2 bg-gradient-to-r from-foreground via-sage to-foreground bg-clip-text text-transparent line-clamp-2">
+                <h1 className="text-sm sm:text-lg lg:text-xl font-bold mb-1.5 sm:mb-2 bg-gradient-to-r from-foreground via-sage to-foreground bg-clip-text text-transparent line-clamp-2">
                   {currentDialogue.title}
                 </h1>
 
-                <p className="text-xs text-muted-foreground mb-2 leading-relaxed line-clamp-1">
+                <p className="text-[0.65rem] sm:text-sm text-muted-foreground mb-1.5 sm:mb-2 leading-relaxed line-clamp-2">
                   {currentDialogue.subtitle}
                 </p>
 
-                <p className="text-[0.7rem] text-muted-foreground/80 leading-relaxed line-clamp-3 flex-1">
+                <p className="text-[0.6rem] sm:text-[0.7rem] text-muted-foreground/80 leading-relaxed line-clamp-3 sm:line-clamp-4 flex-1">
                   {currentDialogue.description}
                 </p>
               </div>
             </div>
 
             {/* Avatar - Free Standing */}
-            <div className="flex flex-col items-center lg:items-start gap-6 pt-48 lg:pt-52">
-              <div className="flex items-end gap-4 relative">
+            <div className="flex flex-col items-center lg:items-start gap-6 pt-52 sm:pt-48 lg:pt-52">
+              <div className="flex items-end gap-2 sm:gap-4 relative">
                 {/* Wife's Dialogue Box - Smaller, pointing right */}
-                <div className="absolute -top-20 -left-20 lg:-left-28 z-20 w-32 lg:w-40" style={{ filter: 'drop-shadow(0 5px 15px rgba(0, 0, 0, 0.15))' }}>
-                  <div className="relative bg-card border-2 border-foreground/20 rounded-xl p-3 h-[120px] lg:h-[110px] flex flex-col
+                <div className="absolute -top-16 sm:-top-20 -left-12 sm:-left-20 lg:-left-28 z-20 w-28 sm:w-36 lg:w-40" style={{ filter: 'drop-shadow(0 5px 15px rgba(0, 0, 0, 0.15))' }}>
+                  <div className="relative bg-card border-2 border-foreground/20 rounded-xl p-1.5 sm:p-3 h-auto min-h-[70px] sm:h-[90px] lg:h-[90px] flex flex-col
                     before:content-[''] before:absolute before:bottom-[-0.75rem] before:right-4 before:z-0
                     before:w-0 before:h-0 before:border-l-[0.5rem] before:border-l-transparent
                     before:border-r-[0.5rem] before:border-r-transparent before:border-t-[0.75rem] before:border-t-foreground/20
                     after:content-[''] after:absolute after:bottom-[-0.64rem] after:right-[1.025rem] after:z-10
                     after:w-0 after:h-0 after:border-l-[0.475rem] after:border-l-transparent
                     after:border-r-[0.475rem] after:border-r-transparent after:border-t-[0.66rem] after:border-t-card">
-                    <div className="inline-block mb-2 px-2 py-1 bg-dusk/10 border border-dusk/20 rounded-full self-start">
-                      <p className="text-[0.6rem] font-mono text-dusk truncate">
-                        Supporting from afar
-                      </p>
-                    </div>
-
-                    <p className="text-[0.65rem] text-muted-foreground leading-relaxed line-clamp-4 flex-1">
+                    <p className="text-[0.55rem] sm:text-[0.65rem] text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-3 flex-1">
                       Proud of you for creating this space. Keep building with intention.
                     </p>
                   </div>
@@ -142,10 +130,10 @@ const Hero = () => {
                   src={antAvatar}
                   alt="Avatar"
                   onClick={handleAvatarClick}
-                  className="w-48 h-auto lg:w-40 object-contain cursor-pointer hover:scale-105 transition-transform duration-300"
+                  className="w-32 sm:w-48 h-auto lg:w-40 object-contain cursor-pointer hover:scale-105 transition-transform duration-300"
                   style={{ transform: 'scaleY(0.9)' }}
                 />
-                <div className="relative w-16 lg:w-14 mb-6 -ml-4">
+                <div className="relative w-12 sm:w-16 lg:w-14 mb-4 sm:mb-6 -ml-2 sm:-ml-4">
                   <img
                     src={pixelGem}
                     alt="Pixel Gem"
@@ -154,57 +142,57 @@ const Hero = () => {
                   />
 
                   {/* Thought Bubble */}
-                  <div className="absolute -top-20 left-1/2 translate-x-0 z-20">
+                  <div className="absolute -top-16 sm:-top-20 left-1/2 translate-x-0 z-20">
                     {/* Main thought bubble */}
-                    <div className="w-12 h-12 bg-card border-2 border-foreground/20 rounded-full flex items-center justify-center shadow-lg">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-card border-2 border-foreground/20 rounded-full flex items-center justify-center shadow-lg">
                       {(() => {
                         const IconComponent = currentCatThought.icon;
-                        return <IconComponent className={`w-6 h-6 ${currentCatThought.color}`} />;
+                        return <IconComponent className={`w-5 h-5 sm:w-6 sm:h-6 ${currentCatThought.color}`} />;
                       })()}
                     </div>
 
                     {/* Small connecting circles */}
-                    <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-3 h-3 bg-card border-2 border-foreground/20 rounded-full"></div>
-                    <div className="absolute -bottom-5 left-1/2 -translate-x-3 w-2 h-2 bg-card border border-foreground/20 rounded-full"></div>
+                    <div className="absolute -bottom-2 sm:-bottom-3 left-1/2 -translate-x-1/2 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-card border-2 border-foreground/20 rounded-full"></div>
+                    <div className="absolute -bottom-4 sm:-bottom-5 left-1/2 -translate-x-2 sm:-translate-x-3 w-1.5 h-1.5 sm:w-2 sm:h-2 bg-card border border-foreground/20 rounded-full"></div>
                   </div>
                 </div>
 
                 {/* Health, Mood, Energy, Faith Dots and Contact Button */}
-                <div className="mb-8 flex flex-col items-center gap-2 ml-8">
-                  <span className="text-xs font-medium text-muted-foreground">Health</span>
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-destructive rounded-full"></div>
-                    <div className="w-2 h-2 bg-destructive rounded-full"></div>
-                    <div className="w-2 h-2 bg-destructive rounded-full"></div>
-                    <div className="w-2 h-2 bg-destructive rounded-full"></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                <div className="mb-6 sm:mb-8 flex flex-col items-center gap-1 sm:gap-1.5 ml-6 sm:ml-8">
+                  <span className="text-[0.65rem] sm:text-xs font-medium text-muted-foreground">Health</span>
+                  <div className="flex gap-0.5 sm:gap-1">
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-destructive rounded-full"></div>
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-destructive rounded-full"></div>
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-destructive rounded-full"></div>
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-destructive rounded-full"></div>
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-400 rounded-full"></div>
                   </div>
 
-                  <span className="text-xs font-medium text-muted-foreground mt-1">Mood</span>
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                  <span className="text-[0.65rem] sm:text-xs font-medium text-muted-foreground mt-0.5 sm:mt-1">Mood</span>
+                  <div className="flex gap-0.5 sm:gap-1">
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-400 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gray-400 rounded-full"></div>
                   </div>
 
-                  <span className="text-xs font-medium text-muted-foreground mt-1">Energy</span>
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                  <span className="text-[0.65rem] sm:text-xs font-medium text-muted-foreground mt-0.5 sm:mt-1">Energy</span>
+                  <div className="flex gap-0.5 sm:gap-1">
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-yellow-500 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-yellow-500 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-yellow-500 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-yellow-500 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-yellow-500 rounded-full"></div>
                   </div>
 
-                  <span className="text-xs font-medium text-muted-foreground mt-1">Faith</span>
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-[0.65rem] sm:text-xs font-medium text-muted-foreground mt-0.5 sm:mt-1">Faith</span>
+                  <div className="flex gap-0.5 sm:gap-1">
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full"></div>
+                    <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full"></div>
                   </div>
                 </div>
               </div>

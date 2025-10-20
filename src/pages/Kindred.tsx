@@ -32,20 +32,44 @@ import { AuthModal } from "@/components/AuthModal";
 import { supabase } from "@/lib/supabase";
 import { uploadImageToStorage, deleteImageFromStorage } from "@/lib/supabaseStorage";
 
+interface EmotionMon {
+  id: string;
+  name: string;
+  health: number;
+  mood: number;
+  energy: number;
+  faith: number;
+  description?: string;
+  image_url: string;
+  user_id: string;
+  created_at: string;
+  rarity?: string;
+  color_class?: string;
+  prompt?: string;
+  breeding_parent_id?: string | null;
+}
+
+interface GeneratedMon {
+  imageUrl: string;
+  prompt: string;
+  rarity: RarityLevel;
+  colorClass: string;
+}
+
 const Kindred = () => {
   const [health, setHealth] = useState(80);
   const [mood, setMood] = useState(60);
   const [energy, setEnergy] = useState(100);
   const [faith, setFaith] = useState(100);
   const [description, setDescription] = useState("");
-  const [generatedMon, setGeneratedMon] = useState<any>(null);
+  const [generatedMon, setGeneratedMon] = useState<GeneratedMon | null>(null);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [nickname, setNickname] = useState("");
-  const [selectedMon, setSelectedMon] = useState<any>(null);
+  const [selectedMon, setSelectedMon] = useState<EmotionMon | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [allMons, setAllMons] = useState<any[]>([]);
+  const [allMons, setAllMons] = useState<EmotionMon[]>([]);
   const [loading, setLoading] = useState(true);
   const [showPrompt, setShowPrompt] = useState(false);
   const [breedingParent, setBreedingParent] = useState<string>("");
@@ -60,7 +84,7 @@ const Kindred = () => {
   // Check if current user is admin
   const isAdmin = user?.email === import.meta.env.VITE_ADMIN_EMAIL;
 
-  const handleMonClick = (mon: any) => {
+  const handleMonClick = (mon: EmotionMon) => {
     setSelectedMon(mon);
     setIsModalOpen(true);
   };
@@ -454,35 +478,38 @@ const Kindred = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b border-border bg-card/30">
-        <div className="max-w-[1800px] mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 py-4 sm:py-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
               <Link
                 to="/"
                 className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Back Home
+                <span className="hidden sm:inline">Back Home</span>
+                <span className="sm:hidden">Back</span>
               </Link>
               <div className="w-px h-6 bg-border" />
-              <h1 className="text-2xl font-bold flex items-center gap-2">
-                <Sparkles className="w-6 h-6 text-amber" />
-                Kindred Spirit Den
+              <h1 className="text-lg sm:text-2xl font-bold flex items-center gap-2">
+                <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-amber" />
+                <span className="hidden sm:inline">Kindred Spirit Den</span>
+                <span className="sm:hidden">Kindred</span>
               </h1>
             </div>
 
             {/* Auth Button */}
-            <div>
+            <div className="w-full sm:w-auto">
               {user ? (
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 text-sm">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+                  <div className="flex items-center gap-2 text-sm order-2 sm:order-1">
                     <User className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">{user.email}</span>
+                    <span className="text-muted-foreground truncate max-w-[200px]">{user.email}</span>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={signOut}
+                    className="order-1 sm:order-2"
                   >
                     <LogOut className="w-4 h-4 mr-2" />
                     Sign Out
@@ -493,6 +520,7 @@ const Kindred = () => {
                   variant="default"
                   size="sm"
                   onClick={() => setAuthModalOpen(true)}
+                  className="w-full sm:w-auto"
                 >
                   <LogIn className="w-4 h-4 mr-2" />
                   Sign In
@@ -500,19 +528,19 @@ const Kindred = () => {
               )}
             </div>
           </div>
-          <p className="text-sm text-muted-foreground mt-2">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-2 sm:mt-2">
             Transform your emotional state into a unique pixel art creature
           </p>
         </div>
       </div>
 
-      <div className="max-w-[1800px] mx-auto px-6 py-4">
+      <div className="max-w-[1800px] mx-auto px-4 sm:px-6 py-3 sm:py-4">
         {/* Top Section - Kindred Fables */}
-        <div className="mb-6">
+        <div className="mb-4 sm:mb-6">
           {/* Kindred Fables - Single Row */}
-          <Card className="p-5 bg-black border-border">
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white">
-              <Trophy className="w-5 h-5 text-sage" />
+          <Card className="p-3 sm:p-5 bg-black border-border">
+            <h3 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 flex items-center gap-2 text-white">
+              <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-sage" />
               Kindred Fables
             </h3>
             {!user ? (
@@ -536,11 +564,11 @@ const Kindred = () => {
                     Admin: Click empty slots to curate featured Kindreds from all users
                   </p>
                 )}
-                <div className="flex gap-3 overflow-x-auto pb-2">
+                <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2">
                   {kindredFableSlots.map((mon, index) => (
                     <div
                       key={index}
-                      className={`flex-shrink-0 w-48 h-48 bg-gray-900 border-2 border-dashed border-gray-700 rounded-lg hover:border-sage/50 transition-all ${mon || isAdmin ? 'cursor-pointer' : 'cursor-default'} group relative overflow-hidden`}
+                      className={`flex-shrink-0 w-32 h-32 sm:w-48 sm:h-48 bg-gray-900 border-2 border-dashed border-gray-700 rounded-lg hover:border-sage/50 transition-all ${mon || isAdmin ? 'cursor-pointer' : 'cursor-default'} group relative overflow-hidden`}
                       onClick={() => {
                         if (mon) {
                           handleMonClick({
@@ -606,15 +634,16 @@ const Kindred = () => {
           </Card>
         </div>
 
-        <div className="grid lg:grid-cols-[1fr_1.2fr_0.8fr] gap-4">
+        <div className="grid lg:grid-cols-[1fr_1.2fr_0.8fr] gap-3 sm:gap-4">
           {/* Left Column - Create */}
-          <div className="space-y-4 h-full">
+          <div className="space-y-3 sm:space-y-4 h-full">
             {/* Input Form */}
-            <Card className="p-6 border-border h-full flex flex-col">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold flex items-center gap-2">
+            <Card className="p-4 sm:p-6 border-border h-full flex flex-col">
+              <div className="flex items-center justify-between mb-4 sm:mb-6">
+                <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2">
                   <span className="w-2 h-2 bg-sage rounded-full animate-pulse" />
-                  Hatch your Kindred Spirit
+                  <span className="hidden sm:inline">Hatch your Kindred Spirit</span>
+                  <span className="sm:hidden">Create Kindred</span>
                 </h2>
                 <Popover>
                   <PopoverTrigger asChild>
@@ -635,9 +664,9 @@ const Kindred = () => {
                 </Popover>
               </div>
 
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 {/* Left Column - Sliders */}
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                   {/* Health Slider */}
                   <div>
                     <div className="flex items-center justify-between mb-2">

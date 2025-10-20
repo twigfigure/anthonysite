@@ -14,13 +14,13 @@ const AvailabilityCalendar = () => {
 
   return (
     <div id="availability">
-      <div className="mb-6">
+      <div className="mb-4 sm:mb-6">
         <div className="inline-flex items-center gap-2 mb-3 px-3 py-1.5 bg-sage/10 border border-sage/20 rounded-full">
           <Calendar className="w-3.5 h-3.5 text-sage" />
           <span className="text-xs font-mono text-sage">Availability</span>
         </div>
 
-        <h2 className="text-2xl font-bold mb-2">
+        <h2 className="text-xl sm:text-2xl font-bold mb-2">
           Book a Call
         </h2>
         <p className="text-sm text-muted-foreground">
@@ -61,16 +61,14 @@ const AvailabilityCalendar = () => {
         </div>
         <div className="flex flex-col gap-2">
           <Button
-            size="sm"
-            className="bg-sage hover:bg-sage/90 text-white text-xs font-medium transition-all duration-300"
+            className="h-11 sm:h-9 bg-sage hover:bg-sage/90 text-white text-xs sm:text-xs font-medium transition-all duration-300"
           >
             <Calendar className="w-3.5 h-3.5 mr-1.5" />
             Google Meet
           </Button>
           <Button
-            size="sm"
             variant="outline"
-            className="border-dusk/30 hover:border-dusk/50 hover:bg-dusk/5 text-xs font-medium transition-all duration-300"
+            className="h-11 sm:h-9 border-dusk/30 hover:border-dusk/50 hover:bg-dusk/5 text-xs sm:text-xs font-medium transition-all duration-300"
           >
             <Video className="w-3.5 h-3.5 mr-1.5" />
             Zoom

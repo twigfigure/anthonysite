@@ -39,13 +39,13 @@ const ContactForm = () => {
 
   return (
     <div id="contact">
-      <div className="mb-6">
+      <div className="mb-4 sm:mb-6">
         <div className="inline-flex items-center gap-2 mb-3 px-3 py-1.5 bg-dusk/10 border border-dusk/20 rounded-full">
           <Mail className="w-3.5 h-3.5 text-dusk" />
           <span className="text-xs font-mono text-dusk">Contact</span>
         </div>
 
-        <h2 className="text-2xl font-bold mb-2">
+        <h2 className="text-xl sm:text-2xl font-bold mb-2">
           Send a Message
         </h2>
         <p className="text-sm text-muted-foreground">
@@ -66,7 +66,7 @@ const ContactForm = () => {
             value={formData.name}
             onChange={handleChange}
             placeholder="How should I address you?"
-            className="bg-card border-border focus:border-sage focus:ring-sage/20 transition-all duration-300 text-sm h-9"
+            className="bg-card border-border focus:border-sage focus:ring-sage/20 transition-all duration-300 text-sm h-11 sm:h-10"
           />
         </div>
 
@@ -82,7 +82,7 @@ const ContactForm = () => {
             value={formData.email}
             onChange={handleChange}
             placeholder="your@email.com"
-            className="bg-card border-border focus:border-sage focus:ring-sage/20 transition-all duration-300 text-sm h-9"
+            className="bg-card border-border focus:border-sage focus:ring-sage/20 transition-all duration-300 text-sm h-11 sm:h-10"
           />
         </div>
 
@@ -105,8 +105,7 @@ const ContactForm = () => {
         <Button
           type="submit"
           disabled={isSubmitting}
-          size="sm"
-          className="w-full bg-dusk hover:bg-dusk/90 text-white text-sm font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full h-11 sm:h-10 bg-dusk hover:bg-dusk/90 text-white text-sm font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting ? (
             <>

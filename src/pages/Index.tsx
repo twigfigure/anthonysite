@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Menu, X, MessageCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Hero from "@/components/Hero";
 import AvailabilityCalendar from "@/components/AvailabilityCalendar";
 import ContactForm from "@/components/ContactForm";
@@ -12,6 +13,9 @@ import Footer from "@/components/Footer";
 
 const Index = () => {
   const [showProjectsMenu, setShowProjectsMenu] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [chatModalOpen, setChatModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'availability' | 'feed' | 'connect'>('feed');
   const closeTimeoutRef = useRef<number | null>(null);
 
   const handleMouseEnter = () => {
@@ -32,8 +36,125 @@ const Index = () => {
 
   return (
     <div className="min-h-screen">
-      {/* Floating Menu */}
-      <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
+      {/* Mobile Action Buttons - Menu & Chat */}
+      <div className="lg:hidden fixed top-4 right-4 z-50 flex gap-2">
+        <button
+          onClick={() => setChatModalOpen(true)}
+          className="p-3 bg-sage/90 hover:bg-sage backdrop-blur-md border border-sage rounded-full shadow-lg transition-colors"
+        >
+          <MessageCircle className="w-5 h-5 text-white" />
+        </button>
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-3 bg-card/80 backdrop-blur-md border border-border rounded-full shadow-lg"
+        >
+          {mobileMenuOpen ? (
+            <X className="w-5 h-5" />
+          ) : (
+            <Menu className="w-5 h-5" />
+          )}
+        </button>
+      </div>
+
+      {/* Chat Modal */}
+      <Dialog open={chatModalOpen} onOpenChange={setChatModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-sage" />
+              Send a Message
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            <ContactForm />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Mobile Menu Dropdown */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden fixed top-16 right-4 z-50 w-64 bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl overflow-hidden">
+          <a
+            href="#upray4me"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-sage/10 transition-colors border-b border-border"
+          >
+            UPray4Me
+          </a>
+          <a
+            href="#ipray4u"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-sage/10 transition-colors border-b border-border"
+          >
+            IPray4U
+          </a>
+          <a
+            href="#testimony"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-sage/10 transition-colors border-b border-border"
+          >
+            Testimony
+          </a>
+
+          {/* Projects Submenu - Always expanded on mobile */}
+          <div className="border-b border-border">
+            <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase bg-muted/30">
+              Projects
+            </div>
+            <a
+              href="#short-novels"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-sage/10 transition-colors"
+            >
+              <div className="font-semibold mb-0.5">Short Novel Collection</div>
+              <div className="text-xs opacity-75">Fiction & stories</div>
+            </a>
+            <a
+              href="#bible-abridge"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-dusk/10 transition-colors"
+            >
+              <div className="font-semibold mb-0.5">Bible Abridge Project</div>
+              <div className="text-xs opacity-75">Faith & theology</div>
+            </a>
+            <a
+              href="#digital-sanctuary"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-amber/10 transition-colors"
+            >
+              <div className="font-semibold mb-0.5">Digital Sanctuary</div>
+              <div className="text-xs opacity-75">This website</div>
+            </a>
+            <a
+              href="#soundscape"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-sage/10 transition-colors"
+            >
+              <div className="font-semibold mb-0.5">Ambient Soundscape</div>
+              <div className="text-xs opacity-75">Generative audio</div>
+            </a>
+            <Link
+              to="/kindred"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-amber/10 transition-colors"
+            >
+              <div className="font-semibold mb-0.5">Kindred</div>
+              <div className="text-xs opacity-75">Generate your emotional creature</div>
+            </Link>
+          </div>
+
+          <a
+            href="#boba"
+            onClick={() => setMobileMenuOpen(false)}
+            className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-sage/10 transition-colors"
+          >
+            Buy Me Boba
+          </a>
+        </div>
+      )}
+
+      {/* Desktop Floating Menu */}
+      <nav className="hidden lg:block fixed top-6 left-1/2 -translate-x-1/2 z-50">
         <div className="flex items-center gap-6 px-6 py-3 bg-card/80 backdrop-blur-md border border-border rounded-full shadow-lg">
           <a
             href="#upray4me"
@@ -116,22 +237,83 @@ const Index = () => {
       </nav>
 
       <Hero />
-      
+
+      {/* Mobile Tab Navigation */}
+      <div className="lg:hidden sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
+        <div className="max-w-[1600px] mx-auto px-4 py-3">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveTab('availability')}
+              className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${
+                activeTab === 'availability'
+                  ? 'bg-sage text-white'
+                  : 'bg-card text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Availability
+            </button>
+            <button
+              onClick={() => setActiveTab('feed')}
+              className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${
+                activeTab === 'feed'
+                  ? 'bg-sage text-white'
+                  : 'bg-card text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Feed
+            </button>
+            <button
+              onClick={() => setActiveTab('connect')}
+              className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${
+                activeTab === 'connect'
+                  ? 'bg-sage text-white'
+                  : 'bg-card text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Connect
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Three-column layout */}
-      <div className="max-w-[1600px] mx-auto px-6 py-8 pb-16">
-        <div className="grid lg:grid-cols-[450px,1fr,350px] gap-6">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-12 sm:pb-16">
+        {/* Mobile Tabbed View */}
+        <div className="lg:hidden">
+          {activeTab === 'availability' && (
+            <div className="space-y-6">
+              <AvailabilityCalendar />
+            </div>
+          )}
+          {activeTab === 'feed' && (
+            <div className="space-y-6">
+              <CreativeFeed />
+            </div>
+          )}
+          {activeTab === 'connect' && (
+            <div className="space-y-6">
+              <Gallery />
+              <NowPlaying />
+              <ContactForm />
+              <LivestreamSchedule />
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Three-column Grid */}
+        <div className="hidden lg:grid lg:grid-cols-[450px,1fr,350px] gap-4 sm:gap-6">
           {/* Left Column - Sticky */}
-          <aside className="space-y-8 lg:sticky lg:top-8 lg:self-start lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
+          <aside className="space-y-6 sm:space-y-8 lg:sticky lg:top-8 lg:self-start lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto">
             <AvailabilityCalendar />
           </aside>
 
           {/* Center Content Area */}
-          <main className="space-y-8">
+          <main className="space-y-6 sm:space-y-8">
             <CreativeFeed />
           </main>
 
           {/* Right Column - Sticky */}
-          <aside className="space-y-8 lg:sticky lg:top-8 lg:self-start">
+          <aside className="space-y-6 sm:space-y-8 lg:sticky lg:top-8 lg:self-start">
             <Gallery />
             <NowPlaying />
             <ContactForm />

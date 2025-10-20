@@ -107,25 +107,27 @@ export async function generateImageWithBanana(
     console.error('Unexpected API response structure:', JSON.stringify(response.data, null, 2));
 
     throw new Error('No image returned from Google Gemini');
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as { response?: { status?: number; statusText?: string; data?: unknown }; message?: string };
     console.error('Google Gemini API error:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      message: error.message,
+      status: err.response?.status,
+      statusText: err.response?.statusText,
+      data: err.response?.data,
+      message: err.message,
       fullError: error
     });
 
-    if (error.response?.status === 400) {
-      const errorMsg = error.response?.data?.error?.message || 'Invalid request';
+    if (err.response?.status === 400) {
+      const errorData = err.response?.data as { error?: { message?: string } } | undefined;
+      const errorMsg = errorData?.error?.message || 'Invalid request';
       throw new Error(`API Error: ${errorMsg}`);
-    } else if (error.response?.status === 403) {
+    } else if (err.response?.status === 403) {
       throw new Error('API key invalid or Imagen API not enabled.');
-    } else if (error.response?.status === 429) {
+    } else if (err.response?.status === 429) {
       throw new Error('Rate limit exceeded. Please wait a moment and try again.');
-    } else if (error.response?.status === 503) {
+    } else if (err.response?.status === 503) {
       throw new Error('Google Imagen API is temporarily unavailable. Please try again in a few moments.');
-    } else if (error.response?.status >= 500) {
+    } else if (err.response?.status && err.response.status >= 500) {
       throw new Error('Google Imagen API is experiencing issues. Please try again later.');
     }
 
