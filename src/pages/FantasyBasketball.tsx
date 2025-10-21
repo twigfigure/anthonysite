@@ -62,7 +62,13 @@ interface DraftedPlayer {
   position: string;
   projectedValue: number;
   actualPrice: number;
-  draftedBy: string; // 'me' or 'opponent'
+  draftedBy: string; // 'me' or opponent team name
+}
+
+interface OpponentTeam {
+  name: string;
+  budget: number;
+  players: DraftedPlayer[];
 }
 
 interface PositionInflation {
@@ -244,6 +250,82 @@ function calculatePuntAdjustedValue(
   return score;
 }
 
+// Analyze team's category strengths
+function analyzeTeamCategories(
+  players: DraftedPlayer[],
+  playerDatabase: PlayerData[]
+): { coverage: Record<string, number>; strength: Record<string, 'strong' | 'average' | 'weak'> } | null {
+  if (players.length === 0) return null;
+
+  const playerData = players
+    .map(p => playerDatabase.find(pd => pd.name.toLowerCase() === p.name.toLowerCase()))
+    .filter((p): p is PlayerData => p !== undefined);
+
+  if (playerData.length === 0) return null;
+
+  const coverage = {
+    pts: playerData.reduce((sum, p) => sum + p.pointsPerGame, 0) / playerData.length,
+    reb: playerData.reduce((sum, p) => sum + p.reboundsPerGame, 0) / playerData.length,
+    ast: playerData.reduce((sum, p) => sum + p.assistsPerGame, 0) / playerData.length,
+    st: playerData.reduce((sum, p) => sum + p.stealsPerGame, 0) / playerData.length,
+    blk: playerData.reduce((sum, p) => sum + p.blocksPerGame, 0) / playerData.length,
+    '3ptm': playerData.reduce((sum, p) => sum + p.threePointersPerGame, 0) / playerData.length,
+    'fg%': playerData.reduce((sum, p) => sum + p.fgPercentage, 0) / playerData.length,
+    'ft%': playerData.reduce((sum, p) => sum + p.ftPercentage, 0) / playerData.length,
+    to: playerData.reduce((sum, p) => sum + p.turnoversPerGame, 0) / playerData.length,
+  };
+
+  const leagueAvg = {
+    pts: 15, reb: 5, ast: 4, st: 1.0, blk: 0.8, '3ptm': 1.5, 'fg%': 0.45, 'ft%': 0.78, to: 2.0
+  };
+
+  const strength: Record<string, 'strong' | 'average' | 'weak'> = {};
+  Object.entries(coverage).forEach(([cat, val]) => {
+    const avg = leagueAvg[cat as keyof typeof leagueAvg];
+    if (cat === 'to') {
+      strength[cat] = val < avg * 0.9 ? 'strong' : val > avg * 1.1 ? 'weak' : 'average';
+    } else {
+      strength[cat] = val > avg * 1.1 ? 'strong' : val < avg * 0.9 ? 'weak' : 'average';
+    }
+  });
+
+  return { coverage, strength };
+}
+
+// Calculate head-to-head matchup projection
+function calculateH2HMatchup(
+  myStrength: Record<string, 'strong' | 'average' | 'weak'>,
+  opponentStrength: Record<string, 'strong' | 'average' | 'weak'>,
+  puntCategories: string[]
+): { wins: number; losses: number; categoryResults: Record<string, 'win' | 'loss' | 'toss-up'> } {
+  const categoryResults: Record<string, 'win' | 'loss' | 'toss-up'> = {};
+  let wins = 0;
+  let losses = 0;
+
+  Object.keys(myStrength).forEach(cat => {
+    if (puntCategories.includes(cat)) {
+      categoryResults[cat] = 'loss'; // Assume loss if punting
+      losses++;
+      return;
+    }
+
+    const myS = myStrength[cat];
+    const oppS = opponentStrength[cat];
+
+    if (myS === 'strong' && oppS !== 'strong') {
+      categoryResults[cat] = 'win';
+      wins++;
+    } else if (myS !== 'strong' && oppS === 'strong') {
+      categoryResults[cat] = 'loss';
+      losses++;
+    } else {
+      categoryResults[cat] = 'toss-up';
+    }
+  });
+
+  return { wins, losses, categoryResults };
+}
+
 // Bid Calculator Component
 function BidCalculator({
   maxBid,
@@ -390,12 +472,18 @@ export default function FantasyBasketball() {
   const [showPuntStrategy, setShowPuntStrategy] = useState(false);
   const [showCategoryCoverage, setShowCategoryCoverage] = useState(false);
 
+  // Opponent tracking state
+  const [opponentTeams, setOpponentTeams] = useState<OpponentTeam[]>([]);
+  const [showOpponentAnalysis, setShowOpponentAnalysis] = useState(false);
+  const [showCompetitiveLandscape, setShowCompetitiveLandscape] = useState(false);
+
   // Draft entry form state
   const [playerName, setPlayerName] = useState('');
   const [playerPosition, setPlayerPosition] = useState('');
   const [projectedValue, setProjectedValue] = useState('');
   const [actualPrice, setActualPrice] = useState('');
   const [draftedByMe, setDraftedByMe] = useState(false);
+  const [selectedOpponent, setSelectedOpponent] = useState<string>('');
 
   // Get drafted player names for lookup
   const draftedPlayerNames = useMemo(() =>
@@ -697,12 +785,14 @@ export default function FantasyBasketball() {
   const handleAddDraftedPlayer = () => {
     if (!playerName || !playerPosition || !projectedValue || !actualPrice) return;
 
+    const draftedBy = draftedByMe ? 'me' : (selectedOpponent || 'opponent');
+
     const newPlayer: DraftedPlayer = {
       name: playerName,
       position: playerPosition,
       projectedValue: parseFloat(projectedValue),
       actualPrice: parseFloat(actualPrice),
-      draftedBy: draftedByMe ? 'me' : 'opponent',
+      draftedBy,
     };
 
     setDraftedPlayers(prev => [...prev, newPlayer]);
@@ -710,6 +800,18 @@ export default function FantasyBasketball() {
     if (draftedByMe) {
       setMyPlayers(prev => [...prev, newPlayer]);
       setBudgetRemaining(prev => prev - parseFloat(actualPrice));
+    } else if (selectedOpponent) {
+      // Update opponent team
+      setOpponentTeams(prev => prev.map(team => {
+        if (team.name === selectedOpponent) {
+          return {
+            ...team,
+            budget: team.budget - parseFloat(actualPrice),
+            players: [...team.players, newPlayer]
+          };
+        }
+        return team;
+      }));
     }
 
     // Reset form
@@ -718,6 +820,7 @@ export default function FantasyBasketball() {
     setProjectedValue('');
     setActualPrice('');
     setDraftedByMe(false);
+    setSelectedOpponent('');
   };
 
   const startDraft = () => {
@@ -725,6 +828,21 @@ export default function FantasyBasketball() {
     setBudgetRemaining(leagueSettings.budgetPerTeam || 200);
     setDraftedPlayers([]);
     setMyPlayers([]);
+
+    // Initialize opponent teams
+    const numTeams = (leagueSettings.teamCount || 10) - 1; // Exclude my team
+    const initialBudget = leagueSettings.budgetPerTeam || 200;
+    const opponents: OpponentTeam[] = [];
+
+    for (let i = 1; i <= numTeams; i++) {
+      opponents.push({
+        name: `Team ${i}`,
+        budget: initialBudget,
+        players: []
+      });
+    }
+
+    setOpponentTeams(opponents);
   };
 
   // Calculate recommended max bid with 15% constraint
@@ -1368,17 +1486,48 @@ export default function FantasyBasketball() {
                           onChange={(e) => setActualPrice(e.target.value)}
                         />
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="drafted-by-me"
-                          checked={draftedByMe}
-                          onCheckedChange={(checked) => setDraftedByMe(checked === true)}
-                        />
-                        <Label htmlFor="drafted-by-me" className="font-normal cursor-pointer">
-                          I drafted this player
-                        </Label>
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="drafted-by-me"
+                            checked={draftedByMe}
+                            onCheckedChange={(checked) => {
+                              setDraftedByMe(checked === true);
+                              if (checked) setSelectedOpponent('');
+                            }}
+                          />
+                          <Label htmlFor="drafted-by-me" className="font-normal cursor-pointer">
+                            I drafted this player
+                          </Label>
+                        </div>
+
+                        {!draftedByMe && opponentTeams.length > 0 && (
+                          <div className="space-y-2">
+                            <Label htmlFor="opponent-select" className="text-sm">Or select opponent:</Label>
+                            <Select
+                              value={selectedOpponent}
+                              onValueChange={setSelectedOpponent}
+                            >
+                              <SelectTrigger id="opponent-select">
+                                <SelectValue placeholder="Select opponent team..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {opponentTeams.map((team) => (
+                                  <SelectItem key={team.name} value={team.name}>
+                                    {team.name} (${team.budget} left, {team.players.length} players)
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
                       </div>
-                      <Button onClick={handleAddDraftedPlayer} className="w-full">
+
+                      <Button
+                        onClick={handleAddDraftedPlayer}
+                        className="w-full"
+                        disabled={!draftedByMe && !selectedOpponent}
+                      >
                         Add Player
                       </Button>
                     </div>
@@ -1657,6 +1806,204 @@ export default function FantasyBasketball() {
                 </Alert>
               </div>
             </CardContent>
+          </Card>
+        )}
+
+        {/* Opponent Analysis & Competitive Landscape */}
+        {draftInProgress && myPlayers.length > 0 && opponentTeams.some(t => t.players.length > 0) && (
+          <Card className="mb-8 border-rose-200">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-rose-600" />
+                    Competitive Analysis
+                  </CardTitle>
+                  <CardDescription>
+                    Head-to-head matchup projections vs each opponent
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowCompetitiveLandscape(!showCompetitiveLandscape)}
+                >
+                  {showCompetitiveLandscape ? 'Hide' : 'Show'}
+                </Button>
+              </div>
+            </CardHeader>
+            {showCompetitiveLandscape && (
+              <CardContent>
+                <div className="space-y-6">
+                  {/* My team analysis */}
+                  {categoryCoverage && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h3 className="font-semibold text-sm text-blue-900 mb-2">Your Team's Projected Strengths</h3>
+                      <div className="flex gap-2 flex-wrap">
+                        {Object.entries(categoryCoverage.strength)
+                          .filter(([cat]) => !puntCategories.includes(cat))
+                          .map(([cat, strength]) => (
+                            <Badge
+                              key={cat}
+                              className={
+                                strength === 'strong'
+                                  ? 'bg-green-500'
+                                  : strength === 'weak'
+                                  ? 'bg-red-500'
+                                  : 'bg-gray-400'
+                              }
+                            >
+                              {cat.toUpperCase()}: {strength}
+                            </Badge>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Opponent matchups */}
+                  {opponentTeams
+                    .filter(team => team.players.length > 0)
+                    .map(opponent => {
+                      const opponentAnalysis = analyzeTeamCategories(opponent.players, playerDatabase);
+                      if (!opponentAnalysis || !categoryCoverage) return null;
+
+                      const matchup = calculateH2HMatchup(
+                        categoryCoverage.strength,
+                        opponentAnalysis.strength,
+                        puntCategories
+                      );
+
+                      return (
+                        <div key={opponent.name} className="border border-rose-200 rounded-lg p-4 bg-white">
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <h3 className="font-semibold text-rose-900">{opponent.name}</h3>
+                              <p className="text-xs text-gray-600">
+                                {opponent.players.length} players · ${opponent.budget} remaining
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className={`text-2xl font-bold ${
+                                matchup.wins > matchup.losses ? 'text-green-600' :
+                                matchup.wins < matchup.losses ? 'text-red-600' : 'text-gray-600'
+                              }`}>
+                                {matchup.wins}-{matchup.losses}
+                              </p>
+                              <p className="text-xs text-gray-500">Projected cats</p>
+                            </div>
+                          </div>
+
+                          {/* Category by category breakdown */}
+                          <div className="grid grid-cols-3 gap-2">
+                            {Object.entries(matchup.categoryResults).map(([cat, result]) => (
+                              <div
+                                key={cat}
+                                className={`text-center p-2 rounded text-xs font-medium ${
+                                  result === 'win' ? 'bg-green-100 text-green-800' :
+                                  result === 'loss' ? 'bg-red-100 text-red-800' :
+                                  'bg-gray-100 text-gray-600'
+                                }`}
+                              >
+                                {cat.toUpperCase()}
+                                <div className="text-xs font-normal mt-0.5">
+                                  {result === 'win' ? '✓' : result === 'loss' ? '✗' : '~'}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Opponent's strong categories */}
+                          <div className="mt-3 pt-3 border-t">
+                            <p className="text-xs font-semibold text-gray-700 mb-1">Their strengths:</p>
+                            <div className="flex gap-1 flex-wrap">
+                              {Object.entries(opponentAnalysis.strength)
+                                .filter(([, strength]) => strength === 'strong')
+                                .map(([cat]) => (
+                                  <Badge key={cat} className="text-xs bg-rose-100 text-rose-700">
+                                    {cat.toUpperCase()}
+                                  </Badge>
+                                ))}
+                            </div>
+                          </div>
+
+                          {/* Strategic recommendations */}
+                          {matchup.wins <= matchup.losses && (
+                            <Alert className="mt-3 border-orange-300 bg-orange-50">
+                              <AlertTriangle className="h-4 w-4 text-orange-600" />
+                              <AlertDescription className="text-xs text-orange-800">
+                                <strong>Behind in matchup:</strong> Focus on toss-up categories and shore up weak areas.
+                                Target players strong in {
+                                  Object.entries(matchup.categoryResults)
+                                    .filter(([, result]) => result === 'toss-up')
+                                    .map(([cat]) => cat.toUpperCase())
+                                    .slice(0, 3)
+                                    .join(', ')
+                                }
+                              </AlertDescription>
+                            </Alert>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                  {/* Strategic recommendations based on league landscape */}
+                  <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-4">
+                    <h3 className="font-semibold text-sm text-purple-900 mb-2">Draft Strategy Recommendations</h3>
+                    {(() => {
+                      // Find most contested categories (many teams strong)
+                      const categoryContests: Record<string, number> = {};
+                      opponentTeams.forEach(team => {
+                        const analysis = analyzeTeamCategories(team.players, playerDatabase);
+                        if (analysis) {
+                          Object.entries(analysis.strength).forEach(([cat, strength]) => {
+                            if (strength === 'strong') {
+                              categoryContests[cat] = (categoryContests[cat] || 0) + 1;
+                            }
+                          });
+                        }
+                      });
+
+                      const contested = Object.entries(categoryContests)
+                        .filter(([cat]) => !puntCategories.includes(cat))
+                        .sort(([, a], [, b]) => b - a)
+                        .slice(0, 3);
+
+                      const uncontested = STAT_CATEGORIES
+                        .filter(c => !puntCategories.includes(c.id))
+                        .filter(c => (categoryContests[c.id] || 0) <= 1)
+                        .slice(0, 3);
+
+                      return (
+                        <div className="space-y-2 text-sm text-purple-800">
+                          {contested.length > 0 && (
+                            <p>
+                              <strong>Most Contested:</strong> {contested.map(([cat]) => cat.toUpperCase()).join(', ')} -
+                              Consider pivoting unless you can dominate
+                            </p>
+                          )}
+                          {uncontested.length > 0 && (
+                            <p>
+                              <strong>Opportunity Categories:</strong> {uncontested.map(c => c.id.toUpperCase()).join(', ')} -
+                              Few teams investing here, easy wins available
+                            </p>
+                          )}
+                          {categoryCoverage && (
+                            <p>
+                              <strong>Your weak spots:</strong> {
+                                Object.entries(categoryCoverage.strength)
+                                  .filter(([cat, s]) => s === 'weak' && !puntCategories.includes(cat))
+                                  .map(([cat]) => cat.toUpperCase())
+                                  .join(', ') || 'None identified'
+                              } - Prioritize these in remaining picks
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </CardContent>
+            )}
           </Card>
         )}
 
