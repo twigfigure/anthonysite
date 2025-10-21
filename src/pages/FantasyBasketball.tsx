@@ -81,16 +81,168 @@ interface DraftTrend {
 }
 
 const STAT_CATEGORIES = [
-  { id: 'fg%', label: 'Field Goal Percentage (FG%)' },
-  { id: 'ft%', label: 'Free Throw Percentage (FT%)' },
-  { id: '3ptm', label: '3-point Shots Made (3PTM)' },
-  { id: 'pts', label: 'Points Scored (PTS)' },
-  { id: 'reb', label: 'Total Rebounds (REB)' },
-  { id: 'ast', label: 'Assists (AST)' },
-  { id: 'st', label: 'Steals (ST)' },
-  { id: 'blk', label: 'Blocked Shots (BLK)' },
-  { id: 'to', label: 'Turnovers (TO)' },
+  { id: 'fg%', label: 'Field Goal Percentage (FG%)', scarcity: 'medium' },
+  { id: 'ft%', label: 'Free Throw Percentage (FT%)', scarcity: 'medium' },
+  { id: '3ptm', label: '3-point Shots Made (3PTM)', scarcity: 'low' },
+  { id: 'pts', label: 'Points Scored (PTS)', scarcity: 'low' },
+  { id: 'reb', label: 'Total Rebounds (REB)', scarcity: 'low' },
+  { id: 'ast', label: 'Assists (AST)', scarcity: 'high' },
+  { id: 'st', label: 'Steals (ST)', scarcity: 'medium' },
+  { id: 'blk', label: 'Blocked Shots (BLK)', scarcity: 'high' },
+  { id: 'to', label: 'Turnovers (TO)', scarcity: 'low' },
 ];
+
+// Category scarcity weights for scoring (higher = more valuable)
+const SCARCITY_WEIGHTS: Record<string, number> = {
+  'blk': 2.5,  // Rarest stat
+  'ast': 2.0,  // Very scarce
+  'st': 1.5,   // Somewhat scarce
+  'fg%': 1.3,
+  'ft%': 1.3,
+  '3ptm': 1.0,
+  'reb': 0.8,
+  'pts': 0.5,  // Most abundant stat
+  'to': 1.0,
+};
+
+// Player tier definitions based on BBM value
+interface PlayerTier {
+  name: string;
+  minValue: number;
+  maxValue: number;
+  priceRange: string;
+  description: string;
+}
+
+const PLAYER_TIERS: PlayerTier[] = [
+  { name: 'Tier 1', minValue: 4.0, maxValue: 100, priceRange: '$45-60', description: 'Elite MVP-level anchors' },
+  { name: 'Tier 2', minValue: 2.0, maxValue: 3.99, priceRange: '$25-40', description: 'All-Star caliber players' },
+  { name: 'Tier 3', minValue: 0.5, maxValue: 1.99, priceRange: '$10-20', description: 'Solid mid-round starters' },
+  { name: 'Tier 4', minValue: -10, maxValue: 0.49, priceRange: '$1-5', description: 'Role players & specialists' },
+];
+
+// Player archetype definitions
+type PlayerArchetype =
+  | 'Assist Anchor'
+  | 'Rebound/Blocks Anchor'
+  | 'Efficient Scorer'
+  | '3PT Specialist'
+  | 'Steals Specialist'
+  | 'Low-TO Glue Guy'
+  | 'Multi-Cat Contributor'
+  | 'FG% Anchor'
+  | 'FT% Anchor';
+
+// Helper functions for player classification
+function getPlayerTier(player: PlayerData): PlayerTier {
+  for (const tier of PLAYER_TIERS) {
+    if (player.value >= tier.minValue && player.value <= tier.maxValue) {
+      return tier;
+    }
+  }
+  return PLAYER_TIERS[PLAYER_TIERS.length - 1]; // Default to lowest tier
+}
+
+function getPlayerArchetypes(player: PlayerData): PlayerArchetype[] {
+  const archetypes: PlayerArchetype[] = [];
+
+  // Assist Anchor (8+ assists)
+  if (player.assistsPerGame >= 8.0) {
+    archetypes.push('Assist Anchor');
+  }
+
+  // Rebound/Blocks Anchor (10+ reb OR 2+ blk)
+  if (player.reboundsPerGame >= 10.0 || player.blocksPerGame >= 2.0) {
+    archetypes.push('Rebound/Blocks Anchor');
+  }
+
+  // Efficient Scorer (20+ pts with 50%+ FG and 85%+ FT)
+  if (player.pointsPerGame >= 20.0 && player.fgPercentage >= 0.50 && player.ftPercentage >= 0.85) {
+    archetypes.push('Efficient Scorer');
+  }
+
+  // FT% Anchor (high volume FT at high %)
+  if (player.ftPercentage >= 0.88 && player.pointsPerGame >= 15) {
+    archetypes.push('FT% Anchor');
+  }
+
+  // FG% Anchor (high FG% with volume)
+  if (player.fgPercentage >= 0.58 && player.pointsPerGame >= 10) {
+    archetypes.push('FG% Anchor');
+  }
+
+  // 3PT Specialist (2.5+ threes per game)
+  if (player.threePointersPerGame >= 2.5) {
+    archetypes.push('3PT Specialist');
+  }
+
+  // Steals Specialist (1.5+ steals)
+  if (player.stealsPerGame >= 1.5) {
+    archetypes.push('Steals Specialist');
+  }
+
+  // Low-TO Glue Guy (low TO with multi-cat contributions)
+  if (player.turnoversPerGame <= 1.5 && player.pointsPerGame >= 10) {
+    archetypes.push('Low-TO Glue Guy');
+  }
+
+  // Multi-Cat Contributor (contributes to 5+ categories at decent levels)
+  const catCount = [
+    player.pointsPerGame >= 12,
+    player.reboundsPerGame >= 4,
+    player.assistsPerGame >= 3,
+    player.stealsPerGame >= 0.8,
+    player.blocksPerGame >= 0.5,
+    player.threePointersPerGame >= 1.0,
+    player.fgPercentage >= 0.45,
+    player.ftPercentage >= 0.75,
+  ].filter(Boolean).length;
+
+  if (catCount >= 5 && archetypes.length === 0) {
+    archetypes.push('Multi-Cat Contributor');
+  }
+
+  return archetypes.length > 0 ? archetypes : ['Multi-Cat Contributor'];
+}
+
+// Calculate player value based on punt strategy
+function calculatePuntAdjustedValue(
+  player: PlayerData,
+  puntCategories: string[]
+): number {
+  let score = 0;
+
+  // Weight each category by scarcity, skip punted categories
+  if (!puntCategories.includes('pts')) {
+    score += player.pointsValue * SCARCITY_WEIGHTS['pts'];
+  }
+  if (!puntCategories.includes('reb')) {
+    score += player.reboundsValue * SCARCITY_WEIGHTS['reb'];
+  }
+  if (!puntCategories.includes('ast')) {
+    score += player.assistsValue * SCARCITY_WEIGHTS['ast'];
+  }
+  if (!puntCategories.includes('st')) {
+    score += player.stealsValue * SCARCITY_WEIGHTS['st'];
+  }
+  if (!puntCategories.includes('blk')) {
+    score += player.blocksValue * SCARCITY_WEIGHTS['blk'];
+  }
+  if (!puntCategories.includes('3ptm')) {
+    score += player.threeValue * SCARCITY_WEIGHTS['3ptm'];
+  }
+  if (!puntCategories.includes('fg%')) {
+    score += player.fgPercentageValue * SCARCITY_WEIGHTS['fg%'];
+  }
+  if (!puntCategories.includes('ft%')) {
+    score += player.ftPercentageValue * SCARCITY_WEIGHTS['ft%'];
+  }
+  if (!puntCategories.includes('to')) {
+    score += player.turnoversValue * SCARCITY_WEIGHTS['to'];
+  }
+
+  return score;
+}
 
 // Bid Calculator Component
 function BidCalculator({
@@ -233,6 +385,11 @@ export default function FantasyBasketball() {
   const [tableFilter, setTableFilter] = useState<'all' | 'available' | 'drafted'>('available');
   const [positionFilter, setPositionFilter] = useState<string>('all');
 
+  // Punt strategy state
+  const [puntCategories, setPuntCategories] = useState<string[]>([]);
+  const [showPuntStrategy, setShowPuntStrategy] = useState(false);
+  const [showCategoryCoverage, setShowCategoryCoverage] = useState(false);
+
   // Draft entry form state
   const [playerName, setPlayerName] = useState('');
   const [playerPosition, setPlayerPosition] = useState('');
@@ -335,32 +492,179 @@ export default function FantasyBasketball() {
     return needs;
   }, [myPlayers]);
 
-  // Top recommendations
+  // Calculate category coverage for my team
+  const categoryCoverage = useMemo(() => {
+    if (myPlayers.length === 0) return null;
+
+    // Find corresponding PlayerData for my players
+    const myPlayerData = myPlayers
+      .map(p => playerDatabase.find(pd => pd.name.toLowerCase() === p.name.toLowerCase()))
+      .filter((p): p is PlayerData => p !== undefined);
+
+    if (myPlayerData.length === 0) return null;
+
+    // Calculate averages for each category
+    const coverage = {
+      pts: myPlayerData.reduce((sum, p) => sum + p.pointsPerGame, 0) / myPlayerData.length,
+      reb: myPlayerData.reduce((sum, p) => sum + p.reboundsPerGame, 0) / myPlayerData.length,
+      ast: myPlayerData.reduce((sum, p) => sum + p.assistsPerGame, 0) / myPlayerData.length,
+      st: myPlayerData.reduce((sum, p) => sum + p.stealsPerGame, 0) / myPlayerData.length,
+      blk: myPlayerData.reduce((sum, p) => sum + p.blocksPerGame, 0) / myPlayerData.length,
+      '3ptm': myPlayerData.reduce((sum, p) => sum + p.threePointersPerGame, 0) / myPlayerData.length,
+      'fg%': myPlayerData.reduce((sum, p) => sum + p.fgPercentage, 0) / myPlayerData.length,
+      'ft%': myPlayerData.reduce((sum, p) => sum + p.ftPercentage, 0) / myPlayerData.length,
+      to: myPlayerData.reduce((sum, p) => sum + p.turnoversPerGame, 0) / myPlayerData.length,
+    };
+
+    // Determine strength (compared to league averages - simplified)
+    const leagueAvg = {
+      pts: 15, reb: 5, ast: 4, st: 1.0, blk: 0.8, '3ptm': 1.5, 'fg%': 0.45, 'ft%': 0.78, to: 2.0
+    };
+
+    const strength: Record<string, 'strong' | 'average' | 'weak'> = {};
+    Object.entries(coverage).forEach(([cat, val]) => {
+      const avg = leagueAvg[cat as keyof typeof leagueAvg];
+      if (cat === 'to') {
+        // Lower is better for turnovers
+        strength[cat] = val < avg * 0.9 ? 'strong' : val > avg * 1.1 ? 'weak' : 'average';
+      } else {
+        strength[cat] = val > avg * 1.1 ? 'strong' : val < avg * 0.9 ? 'weak' : 'average';
+      }
+    });
+
+    return { coverage, strength };
+  }, [myPlayers, playerDatabase]);
+
+  // Budget spending by tier
+  const budgetByTier = useMemo(() => {
+    const spending = {
+      'Tier 1': 0,
+      'Tier 2': 0,
+      'Tier 3': 0,
+      'Tier 4': 0,
+    };
+
+    myPlayers.forEach(player => {
+      const playerData = playerDatabase.find(p => p.name.toLowerCase() === player.name.toLowerCase());
+      if (playerData) {
+        const tier = getPlayerTier(playerData);
+        spending[tier.name as keyof typeof spending] += player.actualPrice;
+      }
+    });
+
+    return spending;
+  }, [myPlayers, playerDatabase]);
+
+  // Draft phase detection
+  const draftPhase = useMemo((): 'early' | 'middle' | 'late' => {
+    const totalTeams = leagueSettings.teamCount || 10;
+    const totalPlayers = totalSlots * totalTeams;
+    const draftedCount = draftedPlayers.length;
+    const percentDrafted = draftedCount / totalPlayers;
+
+    if (percentDrafted < 0.25) return 'early';
+    if (percentDrafted < 0.75) return 'middle';
+    return 'late';
+  }, [draftedPlayers.length, totalSlots, leagueSettings.teamCount]);
+
+  // Top recommendations with enhanced algorithm
   const topRecommendations = useMemo(() => {
     if (availablePlayers.length === 0) return [];
 
-    // Score each available player
+    // Score each available player using punt-adjusted values
     const scoredPlayers = availablePlayers.map(player => {
-      let score = player.value; // BBM value metric
+      // Base score from punt-adjusted value
+      let score = calculatePuntAdjustedValue(player, puntCategories);
 
       // Bonus for filling position needs
       const positions = player.position.split('/');
-      const positionNeedBonus = Math.max(...positions.map(pos => positionNeeds[pos] || 0)) * 0.1;
+      const positionNeedBonus = Math.max(...positions.map(pos => positionNeeds[pos] || 0)) * 2.0;
 
       // Penalty for inflated positions
       const posInflation = positionInflation.find(pi => player.position.includes(pi.position));
-      const inflationPenalty = posInflation ? (posInflation.averageInflation / 100) : 0;
+      const inflationPenalty = posInflation ? (posInflation.averageInflation / 20) : 0;
+
+      // Bonus for filling missing archetypes
+      const archetypes = getPlayerArchetypes(player);
+      const tier = getPlayerTier(player);
+
+      // In late phase, prioritize specialists and value
+      if (draftPhase === 'late' && tier.name === 'Tier 4') {
+        score *= 1.5; // Boost specialists in late rounds
+      }
+
+      // Boost high-tier players in early phase
+      if (draftPhase === 'early' && (tier.name === 'Tier 1' || tier.name === 'Tier 2')) {
+        score *= 1.2;
+      }
 
       score = score + positionNeedBonus - inflationPenalty;
 
-      return { ...player, score };
+      return { ...player, score, archetypes, tier };
     });
 
     // Sort by score and return top 10
     return scoredPlayers
       .sort((a, b) => b.score - a.score)
       .slice(0, 10);
-  }, [availablePlayers, positionNeeds, positionInflation]);
+  }, [availablePlayers, positionNeeds, positionInflation, puntCategories, draftPhase]);
+
+  // Nomination suggestions based on draft phase
+  const nominationSuggestions = useMemo(() => {
+    if (availablePlayers.length === 0 || !draftInProgress) return [];
+
+    const suggestions: { player: PlayerData; reason: string }[] = [];
+
+    if (draftPhase === 'early') {
+      // Nominate expensive players you don't need
+      const expensivePlayers = availablePlayers
+        .filter(p => getPlayerTier(p).name === 'Tier 1')
+        .filter(p => {
+          // Players that conflict with your punt strategy
+          const archetypes = getPlayerArchetypes(p);
+          if (puntCategories.includes('ft%') && archetypes.includes('FT% Anchor')) return true;
+          if (puntCategories.includes('fg%') && archetypes.includes('FG% Anchor')) return true;
+          if (puntCategories.includes('ast') && archetypes.includes('Assist Anchor')) return true;
+          return false;
+        })
+        .slice(0, 3);
+
+      expensivePlayers.forEach(p => {
+        suggestions.push({
+          player: p,
+          reason: 'Nominate to drain opponents\' budgets - doesn\'t fit your punt strategy'
+        });
+      });
+    } else if (draftPhase === 'middle') {
+      // Nominate targets you want before they're gone
+      const targets = topRecommendations.slice(0, 3).map(r => ({
+        player: r,
+        reason: 'High-value target that fills your needs - nominate before scarcity hits'
+      }));
+
+      suggestions.push(...targets);
+    } else {
+      // Late phase: nominate sleepers/specialists
+      const specialists = availablePlayers
+        .filter(p => getPlayerTier(p).name === 'Tier 4')
+        .filter(p => {
+          const archetypes = getPlayerArchetypes(p);
+          return archetypes.some(a =>
+            a.includes('Specialist') || a === 'Low-TO Glue Guy'
+          );
+        })
+        .slice(0, 5);
+
+      specialists.forEach(p => {
+        suggestions.push({
+          player: p,
+          reason: 'Late-round specialist to fill category gaps'
+        });
+      });
+    }
+
+    return suggestions.slice(0, 5);
+  }, [availablePlayers, draftPhase, puntCategories, topRecommendations, draftInProgress]);
 
   // Filtered table data
   const tableData = useMemo(() => {
@@ -785,6 +1089,92 @@ export default function FantasyBasketball() {
           )}
         </Card>
 
+        {/* Punt Strategy Section */}
+        <Card className="mb-8 border-purple-200">
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-purple-600" />
+                  Punt Strategy
+                </CardTitle>
+                <CardDescription>
+                  Select which category to de-emphasize for optimized draft recommendations
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPuntStrategy(!showPuntStrategy)}
+              >
+                {showPuntStrategy ? 'Hide' : 'Show'}
+              </Button>
+            </div>
+          </CardHeader>
+          {showPuntStrategy && (
+            <CardContent>
+              <div className="space-y-4">
+                <Alert className="border-purple-300 bg-purple-50">
+                  <AlertTriangle className="h-4 w-4 text-purple-600" />
+                  <AlertDescription className="text-sm text-purple-800">
+                    <strong>Punt Strategy:</strong> In 9-cat H2H, you only need to win 5-4. By intentionally ignoring one category,
+                    you can dominate 7-8 others. Popular punts: FT% (unlocks big men), FG% (guards/shooters), or TO (high-usage stars).
+                  </AlertDescription>
+                </Alert>
+
+                <div className="grid md:grid-cols-3 gap-3">
+                  {STAT_CATEGORIES.map((category) => {
+                    const isPunted = puntCategories.includes(category.id);
+                    return (
+                      <div
+                        key={category.id}
+                        className={`border-2 rounded-lg p-3 cursor-pointer transition-all ${
+                          isPunted
+                            ? 'border-red-500 bg-red-50'
+                            : 'border-gray-200 hover:border-purple-300'
+                        }`}
+                        onClick={() => {
+                          setPuntCategories(prev =>
+                            prev.includes(category.id)
+                              ? prev.filter(c => c !== category.id)
+                              : [...prev, category.id]
+                          );
+                        }}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-semibold text-sm">{category.id.toUpperCase()}</p>
+                            <p className="text-xs text-gray-600 mt-1">
+                              {category.scarcity === 'high' && '⭐ High scarcity'}
+                              {category.scarcity === 'medium' && '◆ Medium scarcity'}
+                              {category.scarcity === 'low' && '○ Common'}
+                            </p>
+                          </div>
+                          {isPunted && (
+                            <Badge className="bg-red-500">Punted</Badge>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {puntCategories.length > 0 && (
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                    <p className="text-sm font-semibold text-purple-900 mb-2">
+                      Active Punt Strategy: {puntCategories.map(c => c.toUpperCase()).join(', ')}
+                    </p>
+                    <p className="text-xs text-purple-700">
+                      Recommendations are now optimized to ignore {puntCategories.map(c => c.toUpperCase()).join(', ')} and
+                      maximize value in remaining categories. Players weak in punted categories will rank higher.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          )}
+        </Card>
+
         <div className="grid md:grid-cols-2 gap-6 mb-8">
           {/* Excel Upload Section */}
           <Card className="border-blue-200">
@@ -1017,6 +1407,171 @@ export default function FantasyBasketball() {
           </Card>
         </div>
 
+        {/* Category Coverage & Budget Allocation */}
+        {draftInProgress && myPlayers.length > 0 && (
+          <div className="grid md:grid-cols-2 gap-6 mb-8">
+            {/* Category Coverage Dashboard */}
+            {categoryCoverage && (
+              <Card className="border-teal-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-teal-600" />
+                    Category Coverage
+                  </CardTitle>
+                  <CardDescription>
+                    Your team's strength in each category
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {Object.entries(categoryCoverage.strength)
+                      .filter(([cat]) => !puntCategories.includes(cat))
+                      .map(([cat, strength]) => (
+                        <div key={cat} className="flex justify-between items-center">
+                          <span className="text-sm font-medium">{cat.toUpperCase()}</span>
+                          <Badge
+                            className={
+                              strength === 'strong'
+                                ? 'bg-green-500'
+                                : strength === 'weak'
+                                ? 'bg-red-500'
+                                : 'bg-gray-400'
+                            }
+                          >
+                            {strength}
+                          </Badge>
+                        </div>
+                      ))}
+                    {puntCategories.length > 0 && (
+                      <>
+                        <div className="border-t pt-2 mt-2">
+                          <p className="text-xs text-gray-500 mb-2">Punted Categories:</p>
+                          {puntCategories.map(cat => (
+                            <div key={cat} className="flex justify-between items-center mb-1">
+                              <span className="text-sm font-medium text-gray-400">{cat.toUpperCase()}</span>
+                              <Badge variant="outline" className="border-gray-300 text-gray-400">
+                                Ignored
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Budget Allocation by Tier */}
+            <Card className="border-amber-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Wallet className="w-5 h-5 text-amber-600" />
+                  Budget by Tier
+                </CardTitle>
+                <CardDescription>
+                  Track balanced spending strategy
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {PLAYER_TIERS.map(tier => {
+                    const spent = budgetByTier[tier.name as keyof typeof budgetByTier];
+                    return (
+                      <div key={tier.name} className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <span className="text-sm font-semibold">{tier.name}</span>
+                            <span className="text-xs text-gray-500 ml-2">{tier.priceRange}</span>
+                          </div>
+                          <span className="font-bold text-amber-700">${spent}</span>
+                        </div>
+                        <p className="text-xs text-gray-600">{tier.description}</p>
+                      </div>
+                    );
+                  })}
+                  <div className="border-t pt-3">
+                    <div className="flex justify-between items-center font-bold">
+                      <span>Total Spent</span>
+                      <span className="text-amber-700">
+                        ${(leagueSettings.budgetPerTeam || 200) - budgetRemaining}
+                      </span>
+                    </div>
+                    <Alert className="mt-3 border-amber-300 bg-amber-50">
+                      <AlertDescription className="text-xs text-amber-800">
+                        <strong>Balanced Strategy:</strong> Aim for 1 Tier-1 (~$50), 2-3 Tier-2 (~$25-40 each),
+                        3-5 Tier-3 (~$10-20), rest in Tier-4.
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Draft Phase & Nomination Suggestions */}
+        {draftInProgress && nominationSuggestions.length > 0 && (
+          <Card className="mb-8 border-indigo-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-indigo-600" />
+                Nomination Suggestions ({draftPhase.charAt(0).toUpperCase() + draftPhase.slice(1)} Phase)
+              </CardTitle>
+              <CardDescription>
+                Strategic nomination recommendations based on current draft phase
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <Alert className="border-indigo-300 bg-indigo-50">
+                  <AlertDescription className="text-sm text-indigo-800">
+                    {draftPhase === 'early' && (
+                      <><strong>Early Phase:</strong> Nominate expensive players you don't need to drain opponents' budgets.</>
+                    )}
+                    {draftPhase === 'middle' && (
+                      <><strong>Middle Phase:</strong> Nominate your targets before scarcity drives up prices.</>
+                    )}
+                    {draftPhase === 'late' && (
+                      <><strong>Late Phase:</strong> Nominate specialists and sleepers to fill category gaps.</>
+                    )}
+                  </AlertDescription>
+                </Alert>
+
+                <div className="space-y-2">
+                  {nominationSuggestions.map((suggestion, idx) => {
+                    const tier = getPlayerTier(suggestion.player);
+                    const archetypes = getPlayerArchetypes(suggestion.player);
+                    return (
+                      <div key={idx} className="border border-indigo-200 rounded-lg p-3 bg-white">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="font-semibold">{suggestion.player.name}</p>
+                            <p className="text-xs text-gray-600">
+                              {suggestion.player.position} · {tier.name}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="border-indigo-500 text-indigo-700">
+                            Rank #{suggestion.player.rank}
+                          </Badge>
+                        </div>
+                        <div className="flex gap-1 flex-wrap mb-2">
+                          {archetypes.slice(0, 2).map((arch, i) => (
+                            <Badge key={i} className="text-xs bg-indigo-100 text-indigo-700">
+                              {arch}
+                            </Badge>
+                          ))}
+                        </div>
+                        <p className="text-xs text-indigo-700 italic">{suggestion.reason}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Bid Calculator & Constraint Checker */}
         {draftInProgress && (
           <Card className="mb-8 border-blue-200">
@@ -1160,12 +1715,15 @@ export default function FantasyBasketball() {
                             isDrafted ? 'bg-gray-100 border-gray-300' : 'bg-white border-emerald-200'
                           }`}
                         >
-                          <div className="flex justify-between items-start">
+                          <div className="flex justify-between items-start mb-2">
                             <div className="flex-1">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-xs font-bold text-gray-500">#{idx + 1}</span>
                                 <span className="font-semibold">{player.name}</span>
                                 {isDrafted && <Badge variant="secondary">Drafted</Badge>}
+                                <Badge variant="outline" className="text-xs">
+                                  {player.tier?.name || 'N/A'}
+                                </Badge>
                               </div>
                               <div className="flex gap-2 mt-1 text-xs text-gray-600">
                                 <span>{player.position}</span>
@@ -1174,11 +1732,24 @@ export default function FantasyBasketball() {
                                 <span>·</span>
                                 <span>Rank #{player.rank}</span>
                               </div>
+                              {/* Archetypes */}
+                              <div className="flex gap-1 flex-wrap mt-2">
+                                {player.archetypes?.slice(0, 3).map((arch: string, i: number) => (
+                                  <Badge key={i} className="text-xs bg-emerald-100 text-emerald-700">
+                                    {arch}
+                                  </Badge>
+                                ))}
+                              </div>
                             </div>
                             <div className="text-right">
-                              <p className="text-sm font-bold text-emerald-600">Value: {player.value.toFixed(2)}</p>
+                              <p className="text-sm font-bold text-emerald-600">
+                                Score: {player.score?.toFixed(1) || player.value.toFixed(2)}
+                              </p>
                               <p className="text-xs text-gray-500">
                                 {player.pointsPerGame.toFixed(1)} pts · {player.assistsPerGame.toFixed(1)} ast
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {player.reboundsPerGame.toFixed(1)} reb · {player.blocksPerGame.toFixed(1)} blk
                               </p>
                               {draftedInfo && (
                                 <p className="text-xs font-semibold text-red-600">
@@ -1190,8 +1761,9 @@ export default function FantasyBasketball() {
                           {/* Why recommended */}
                           <div className="mt-2 text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded">
                             {player.position.split('/').some(pos => positionNeeds[pos] > 0) && 'Fills position need · '}
-                            {player.value > 0.5 && 'High BBM value · '}
-                            {!positionInflation.find(pi => player.position.includes(pi.position) && pi.averageInflation > 10) && 'Low inflation position'}
+                            {player.score && player.score > 5 && 'Excellent punt-adjusted value · '}
+                            {!positionInflation.find(pi => player.position.includes(pi.position) && pi.averageInflation > 10) && 'Low inflation position · '}
+                            {player.tier?.name === 'Tier 4' && draftPhase === 'late' && 'Late-round specialist'}
                           </div>
                         </div>
                       );
@@ -1262,16 +1834,16 @@ export default function FantasyBasketball() {
                           <tr className="border-b">
                             <th className="text-left p-2 font-semibold">Rank</th>
                             <th className="text-left p-2 font-semibold">Player</th>
+                            <th className="text-left p-2 font-semibold">Tier</th>
+                            <th className="text-left p-2 font-semibold">Archetypes</th>
                             <th className="text-left p-2 font-semibold">Pos</th>
                             <th className="text-right p-2 font-semibold">PTS</th>
-                            <th className="text-right p-2 font-semibold">3PM</th>
                             <th className="text-right p-2 font-semibold">REB</th>
                             <th className="text-right p-2 font-semibold">AST</th>
                             <th className="text-right p-2 font-semibold">STL</th>
                             <th className="text-right p-2 font-semibold">BLK</th>
                             <th className="text-right p-2 font-semibold">FG%</th>
                             <th className="text-right p-2 font-semibold">FT%</th>
-                            <th className="text-right p-2 font-semibold">TO</th>
                             <th className="text-center p-2 font-semibold">Status</th>
                             <th className="text-right p-2 font-semibold">Auction $</th>
                           </tr>
@@ -1282,6 +1854,8 @@ export default function FantasyBasketball() {
                             const draftedInfo = isDrafted
                               ? draftedPlayers.find(p => p.name.toLowerCase() === player.name.toLowerCase())
                               : null;
+                            const tier = getPlayerTier(player);
+                            const archetypes = getPlayerArchetypes(player);
 
                             return (
                               <tr
@@ -1296,19 +1870,42 @@ export default function FantasyBasketball() {
                                   {player.injury && <span className="ml-1 text-red-500 text-xs">({player.injury})</span>}
                                 </td>
                                 <td className="p-2">
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-xs ${
+                                      tier.name === 'Tier 1' ? 'border-purple-500 text-purple-700 bg-purple-50' :
+                                      tier.name === 'Tier 2' ? 'border-blue-500 text-blue-700 bg-blue-50' :
+                                      tier.name === 'Tier 3' ? 'border-green-500 text-green-700 bg-green-50' :
+                                      'border-gray-400 text-gray-600'
+                                    }`}
+                                  >
+                                    {tier.name}
+                                  </Badge>
+                                </td>
+                                <td className="p-2 max-w-[200px]">
+                                  <div className="flex gap-1 flex-wrap">
+                                    {archetypes.slice(0, 2).map((arch, i) => (
+                                      <Badge key={i} className="text-xs bg-slate-100 text-slate-700">
+                                        {arch.includes('Anchor') ? arch.replace(' Anchor', '') :
+                                         arch.includes('Specialist') ? arch.replace(' Specialist', '') :
+                                         arch === 'Multi-Cat Contributor' ? 'Multi-Cat' :
+                                         arch}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </td>
+                                <td className="p-2">
                                   <Badge variant="outline" className="text-xs">
                                     {player.position}
                                   </Badge>
                                 </td>
                                 <td className="p-2 text-right">{player.pointsPerGame.toFixed(1)}</td>
-                                <td className="p-2 text-right">{player.threePointersPerGame.toFixed(1)}</td>
                                 <td className="p-2 text-right">{player.reboundsPerGame.toFixed(1)}</td>
                                 <td className="p-2 text-right">{player.assistsPerGame.toFixed(1)}</td>
                                 <td className="p-2 text-right">{player.stealsPerGame.toFixed(1)}</td>
                                 <td className="p-2 text-right">{player.blocksPerGame.toFixed(1)}</td>
                                 <td className="p-2 text-right">{(player.fgPercentage * 100).toFixed(1)}%</td>
                                 <td className="p-2 text-right">{(player.ftPercentage * 100).toFixed(1)}%</td>
-                                <td className="p-2 text-right">{player.turnoversPerGame.toFixed(1)}</td>
                                 <td className="p-2 text-center">
                                   {isDrafted ? (
                                     <Badge variant="secondary">Drafted</Badge>
