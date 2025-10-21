@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import * as XLSX from 'xlsx';
 
 interface LeagueSettings {
@@ -525,14 +526,17 @@ export default function FantasyBasketball() {
       );
 
       if (posPlayers.length > 0) {
-        const totalInflation = posPlayers.reduce((sum, p) => {
+        const playersWithValue = posPlayers.filter(p => p.projectedValue > 0);
+        if (playersWithValue.length === 0) return; // Skip if no players have projected values
+
+        const totalInflation = playersWithValue.reduce((sum, p) => {
           const inflation = ((p.actualPrice - p.projectedValue) / p.projectedValue) * 100;
           return sum + inflation;
         }, 0);
 
         inflationData.push({
           position: pos,
-          averageInflation: totalInflation / posPlayers.length,
+          averageInflation: totalInflation / playersWithValue.length,
           count: posPlayers.length,
         });
       }
@@ -544,11 +548,14 @@ export default function FantasyBasketball() {
   // Calculate global inflation
   const globalInflation = useMemo(() => {
     if (draftedPlayers.length === 0) return 0;
-    const totalInflation = draftedPlayers.reduce((sum, p) => {
+    const playersWithValue = draftedPlayers.filter(p => p.projectedValue > 0);
+    if (playersWithValue.length === 0) return 0;
+
+    const totalInflation = playersWithValue.reduce((sum, p) => {
       const inflation = ((p.actualPrice - p.projectedValue) / p.projectedValue) * 100;
       return sum + inflation;
     }, 0);
-    return totalInflation / draftedPlayers.length;
+    return totalInflation / playersWithValue.length;
   }, [draftedPlayers]);
 
   // Position needs analysis
@@ -1384,65 +1391,163 @@ export default function FantasyBasketball() {
                     </Button>
                   </>
                 ) : (
-                  <>
-                    {/* Budget & Max Bid Display */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-300 rounded-lg p-4">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Wallet className="w-4 h-4 text-green-700" />
-                          <p className="text-xs font-semibold text-green-700 uppercase">Budget Left</p>
+                  <Tabs defaultValue="overview" className="w-full">
+                    <TabsList className="grid w-full grid-cols-3">
+                      <TabsTrigger value="overview">Overview</TabsTrigger>
+                      <TabsTrigger value="category">Category Coverage</TabsTrigger>
+                      <TabsTrigger value="budget">Budget by Tier</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="overview" className="space-y-4">
+                      {/* Budget & Max Bid Display */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-300 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Wallet className="w-4 h-4 text-green-700" />
+                            <p className="text-xs font-semibold text-green-700 uppercase">Budget Left</p>
+                          </div>
+                          <p className="text-3xl font-bold text-green-900">${budgetRemaining}</p>
+                          <p className="text-xs text-green-600 mt-1">{slotsRemaining} slots remaining</p>
                         </div>
-                        <p className="text-3xl font-bold text-green-900">${budgetRemaining}</p>
-                        <p className="text-xs text-green-600 mt-1">{slotsRemaining} slots remaining</p>
-                      </div>
-                      <div className="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-300 rounded-lg p-4">
-                        <div className="flex items-center gap-2 mb-1">
-                          <AlertTriangle className="w-4 h-4 text-orange-700" />
-                          <p className="text-xs font-semibold text-orange-700 uppercase">Max Bid</p>
+                        <div className="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-300 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-1">
+                            <AlertTriangle className="w-4 h-4 text-orange-700" />
+                            <p className="text-xs font-semibold text-orange-700 uppercase">Max Bid</p>
+                          </div>
+                          <p className="text-3xl font-bold text-orange-900">${maxBid}</p>
+                          <p className="text-xs text-orange-600 mt-1">Slot-aware limit</p>
                         </div>
-                        <p className="text-3xl font-bold text-orange-900">${maxBid}</p>
-                        <p className="text-xs text-orange-600 mt-1">Slot-aware limit</p>
                       </div>
-                    </div>
 
-                    {/* Max Bid Warning */}
-                    {maxBid < 10 && slotsRemaining > 3 && (
-                      <Alert className="border-red-300 bg-red-50">
-                        <AlertTriangle className="h-4 w-4 text-red-600" />
-                        <AlertDescription className="text-sm text-red-800">
-                          <strong>Low budget alert!</strong> You have {slotsRemaining} slots but only ${budgetRemaining} left. Max bid is ${maxBid}.
-                        </AlertDescription>
-                      </Alert>
-                    )}
+                      {/* Max Bid Warning */}
+                      {maxBid < 10 && slotsRemaining > 3 && (
+                        <Alert className="border-red-300 bg-red-50">
+                          <AlertTriangle className="h-4 w-4 text-red-600" />
+                          <AlertDescription className="text-sm text-red-800">
+                            <strong>Low budget alert!</strong> You have {slotsRemaining} slots but only ${budgetRemaining} left. Max bid is ${maxBid}.
+                          </AlertDescription>
+                        </Alert>
+                      )}
 
-                    {/* Draft Instructions */}
-                    <div className="border-t pt-4">
-                      <Alert className="border-blue-300 bg-blue-50">
-                        <AlertDescription className="text-sm text-blue-800">
-                          <strong>How to draft:</strong> Use the Player Database table below to search and nominate players.
-                          Click "Nominate" on any player row to record auction results.
-                        </AlertDescription>
-                      </Alert>
-                    </div>
-
-                    {/* My Players List */}
-                    {myPlayers.length > 0 && (
+                      {/* Draft Instructions */}
                       <div className="border-t pt-4">
-                        <h3 className="font-semibold text-sm mb-2">My Team ({myPlayers.length}/{totalSlots})</h3>
-                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                          {myPlayers.map((player, idx) => (
-                            <div key={idx} className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded">
-                              <span className="font-medium">{player.name}</span>
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline">{player.position}</Badge>
-                                <span className="text-gray-600">${player.actualPrice}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                        <Alert className="border-blue-300 bg-blue-50">
+                          <AlertDescription className="text-sm text-blue-800">
+                            <strong>How to draft:</strong> Use the Player Database table below to search and nominate players.
+                            Click "Nominate" on any player row to record auction results.
+                          </AlertDescription>
+                        </Alert>
                       </div>
-                    )}
-                  </>
+
+                      {/* My Players List */}
+                      {myPlayers.length > 0 && (
+                        <div className="border-t pt-4">
+                          <h3 className="font-semibold text-sm mb-2">My Team ({myPlayers.length}/{totalSlots})</h3>
+                          <div className="space-y-2 max-h-48 overflow-y-auto">
+                            {myPlayers.map((player, idx) => (
+                              <div key={idx} className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded">
+                                <span className="font-medium">{player.name}</span>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline">{player.position}</Badge>
+                                  <span className="text-gray-600">${player.actualPrice}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="category" className="space-y-4">
+                      {/* Category Coverage Content */}
+                      {categoryCoverage && myPlayers.length > 0 ? (
+                        <div className="space-y-2">
+                          {Object.entries(categoryCoverage.strength)
+                            .filter(([cat]) => !puntCategories.includes(cat))
+                            .map(([cat, strength]) => (
+                              <div key={cat} className="flex justify-between items-center">
+                                <span className="text-sm font-medium">{cat.toUpperCase()}</span>
+                                <Badge
+                                  className={
+                                    strength === 'strong'
+                                      ? 'bg-green-500'
+                                      : strength === 'weak'
+                                      ? 'bg-red-500'
+                                      : 'bg-gray-400'
+                                  }
+                                >
+                                  {strength}
+                                </Badge>
+                              </div>
+                            ))}
+                          {puntCategories.length > 0 && (
+                            <>
+                              <div className="border-t pt-2 mt-2">
+                                <p className="text-xs text-gray-500 mb-2">Punted Categories:</p>
+                                {puntCategories.map(cat => (
+                                  <div key={cat} className="flex justify-between items-center mb-1">
+                                    <span className="text-sm font-medium text-gray-400">{cat.toUpperCase()}</span>
+                                    <Badge variant="outline" className="border-gray-300 text-gray-400">
+                                      Ignored
+                                    </Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <Alert className="border-teal-300 bg-teal-50">
+                          <AlertDescription className="text-sm text-teal-800">
+                            Draft players to see your team's category coverage
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                    </TabsContent>
+
+                    <TabsContent value="budget" className="space-y-3">
+                      {/* Budget by Tier Content */}
+                      {myPlayers.length > 0 ? (
+                        <>
+                          {PLAYER_TIERS.map(tier => {
+                            const spent = budgetByTier[tier.name as keyof typeof budgetByTier];
+                            return (
+                              <div key={tier.name} className="space-y-1">
+                                <div className="flex justify-between items-center">
+                                  <div>
+                                    <span className="text-sm font-semibold">{tier.name}</span>
+                                    <span className="text-xs text-gray-500 ml-2">{tier.priceRange}</span>
+                                  </div>
+                                  <span className="font-bold text-amber-700">${spent}</span>
+                                </div>
+                                <p className="text-xs text-gray-600">{tier.description}</p>
+                              </div>
+                            );
+                          })}
+                          <div className="border-t pt-3">
+                            <div className="flex justify-between items-center font-bold">
+                              <span>Total Spent</span>
+                              <span className="text-amber-700">
+                                ${(leagueSettings.budgetPerTeam || 200) - budgetRemaining}
+                              </span>
+                            </div>
+                            <Alert className="mt-3 border-amber-300 bg-amber-50">
+                              <AlertDescription className="text-xs text-amber-800">
+                                <strong>Balanced Strategy:</strong> Aim for 1 Tier-1 (~$50), 2-3 Tier-2 (~$25-40 each),
+                                3-5 Tier-3 (~$10-20), rest in Tier-4.
+                              </AlertDescription>
+                            </Alert>
+                          </div>
+                        </>
+                      ) : (
+                        <Alert className="border-amber-300 bg-amber-50">
+                          <AlertDescription className="text-sm text-amber-800">
+                            Draft players to see budget allocation by tier
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                    </TabsContent>
+                  </Tabs>
                 )}
               </div>
             </CardContent>
@@ -1460,109 +1565,6 @@ export default function FantasyBasketball() {
               </div>
             </CardContent>
           </Card>
-        )}
-
-        {/* Category Coverage & Budget Allocation */}
-        {draftInProgress && myPlayers.length > 0 && (
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
-            {/* Category Coverage Dashboard */}
-            {categoryCoverage && (
-              <Card className="border-teal-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-teal-600" />
-                    Category Coverage
-                  </CardTitle>
-                  <CardDescription>
-                    Your team's strength in each category
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {Object.entries(categoryCoverage.strength)
-                      .filter(([cat]) => !puntCategories.includes(cat))
-                      .map(([cat, strength]) => (
-                        <div key={cat} className="flex justify-between items-center">
-                          <span className="text-sm font-medium">{cat.toUpperCase()}</span>
-                          <Badge
-                            className={
-                              strength === 'strong'
-                                ? 'bg-green-500'
-                                : strength === 'weak'
-                                ? 'bg-red-500'
-                                : 'bg-gray-400'
-                            }
-                          >
-                            {strength}
-                          </Badge>
-                        </div>
-                      ))}
-                    {puntCategories.length > 0 && (
-                      <>
-                        <div className="border-t pt-2 mt-2">
-                          <p className="text-xs text-gray-500 mb-2">Punted Categories:</p>
-                          {puntCategories.map(cat => (
-                            <div key={cat} className="flex justify-between items-center mb-1">
-                              <span className="text-sm font-medium text-gray-400">{cat.toUpperCase()}</span>
-                              <Badge variant="outline" className="border-gray-300 text-gray-400">
-                                Ignored
-                              </Badge>
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Budget Allocation by Tier */}
-            <Card className="border-amber-200">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Wallet className="w-5 h-5 text-amber-600" />
-                  Budget by Tier
-                </CardTitle>
-                <CardDescription>
-                  Track balanced spending strategy
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {PLAYER_TIERS.map(tier => {
-                    const spent = budgetByTier[tier.name as keyof typeof budgetByTier];
-                    return (
-                      <div key={tier.name} className="space-y-1">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <span className="text-sm font-semibold">{tier.name}</span>
-                            <span className="text-xs text-gray-500 ml-2">{tier.priceRange}</span>
-                          </div>
-                          <span className="font-bold text-amber-700">${spent}</span>
-                        </div>
-                        <p className="text-xs text-gray-600">{tier.description}</p>
-                      </div>
-                    );
-                  })}
-                  <div className="border-t pt-3">
-                    <div className="flex justify-between items-center font-bold">
-                      <span>Total Spent</span>
-                      <span className="text-amber-700">
-                        ${(leagueSettings.budgetPerTeam || 200) - budgetRemaining}
-                      </span>
-                    </div>
-                    <Alert className="mt-3 border-amber-300 bg-amber-50">
-                      <AlertDescription className="text-xs text-amber-800">
-                        <strong>Balanced Strategy:</strong> Aim for 1 Tier-1 (~$50), 2-3 Tier-2 (~$25-40 each),
-                        3-5 Tier-3 (~$10-20), rest in Tier-4.
-                      </AlertDescription>
-                    </Alert>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         )}
 
         {/* Draft Phase & Nomination Suggestions */}
@@ -1636,260 +1638,240 @@ export default function FantasyBasketball() {
                 Live Position Inflation Tracker
               </CardTitle>
               <CardDescription>
-                Real-time inflation by position - see which positions are overvalued
+                Real-time market analysis and competitive intelligence
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {/* Global Inflation */}
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-semibold text-gray-700">Global Inflation</span>
-                    <Badge className={globalInflation > 10 ? 'bg-red-500' : globalInflation > 0 ? 'bg-orange-500' : 'bg-green-500'}>
-                      {globalInflation > 0 ? '+' : ''}{globalInflation.toFixed(1)}%
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">{draftedPlayers.length} players drafted</p>
-                </div>
+              <Tabs defaultValue="inflation" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="inflation">Position Inflation</TabsTrigger>
+                  <TabsTrigger value="competitive">Competitive Analysis</TabsTrigger>
+                </TabsList>
 
-                {/* Position-Specific Inflation */}
-                <div className="grid md:grid-cols-2 gap-3">
-                  {positionInflation.map((pos) => (
-                    <div key={pos.position} className="border border-gray-200 rounded-lg p-3">
-                      <div className="flex justify-between items-start mb-1">
-                        <span className="font-semibold text-sm">{pos.position}</span>
-                        <Badge
-                          variant="outline"
-                          className={
-                            pos.averageInflation > 15
-                              ? 'border-red-500 text-red-700 bg-red-50'
-                              : pos.averageInflation > 5
-                              ? 'border-orange-500 text-orange-700 bg-orange-50'
-                              : 'border-green-500 text-green-700 bg-green-50'
-                          }
-                        >
-                          {pos.averageInflation > 0 ? '+' : ''}{pos.averageInflation.toFixed(1)}%
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-gray-500">{pos.count} drafted</p>
-                      {pos.averageInflation > 20 && (
-                        <p className="text-xs text-red-600 mt-1 font-medium">
-                          ⚠️ Highly inflated - consider other positions
-                        </p>
-                      )}
+                <TabsContent value="inflation" className="space-y-4">
+                  {/* Global Inflation */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-semibold text-gray-700">Global Inflation</span>
+                      <Badge className={globalInflation > 10 ? 'bg-red-500' : globalInflation > 0 ? 'bg-orange-500' : 'bg-green-500'}>
+                        {globalInflation > 0 ? '+' : ''}{globalInflation.toFixed(1)}%
+                      </Badge>
                     </div>
-                  ))}
-                </div>
+                    <p className="text-xs text-gray-500 mt-1">{draftedPlayers.length} players drafted</p>
+                  </div>
 
-                <Alert className="border-purple-300 bg-purple-50">
-                  <TrendingUp className="h-4 w-4 text-purple-600" />
-                  <AlertDescription className="text-sm text-purple-800">
-                    <strong>Strategy Tip:</strong> Target positions with negative or low inflation for value plays.
-                    Positions with 15%+ inflation are significantly overpriced.
-                  </AlertDescription>
-                </Alert>
-              </div>
+                  {/* Position-Specific Inflation */}
+                  <div className="grid md:grid-cols-2 gap-3">
+                    {positionInflation.map((pos) => (
+                      <div key={pos.position} className="border border-gray-200 rounded-lg p-3">
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="font-semibold text-sm">{pos.position}</span>
+                          <Badge
+                            variant="outline"
+                            className={
+                              pos.averageInflation > 15
+                                ? 'border-red-500 text-red-700 bg-red-50'
+                                : pos.averageInflation > 5
+                                ? 'border-orange-500 text-orange-700 bg-orange-50'
+                                : 'border-green-500 text-green-700 bg-green-50'
+                            }
+                          >
+                            {pos.averageInflation > 0 ? '+' : ''}{pos.averageInflation.toFixed(1)}%
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-gray-500">{pos.count} drafted</p>
+                        {pos.averageInflation > 20 && (
+                          <p className="text-xs text-red-600 mt-1 font-medium">
+                            ⚠️ Highly inflated - consider other positions
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <Alert className="border-purple-300 bg-purple-50">
+                    <TrendingUp className="h-4 w-4 text-purple-600" />
+                    <AlertDescription className="text-sm text-purple-800">
+                      <strong>Strategy Tip:</strong> Target positions with negative or low inflation for value plays.
+                      Positions with 15%+ inflation are significantly overpriced.
+                    </AlertDescription>
+                  </Alert>
+                </TabsContent>
+
+                <TabsContent value="competitive" className="space-y-4">
+                  {/* Competitive Analysis Content */}
+                  {myPlayers.length > 0 && opponentTeams.some(t => t.players.length > 0) ? (
+                    <div className="space-y-6">
+                      {/* My team analysis */}
+                      {categoryCoverage && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <h3 className="font-semibold text-sm text-blue-900 mb-2">Your Team's Projected Strengths</h3>
+                          <div className="flex gap-2 flex-wrap">
+                            {Object.entries(categoryCoverage.strength)
+                              .filter(([cat]) => !puntCategories.includes(cat))
+                              .map(([cat, strength]) => (
+                                <Badge
+                                  key={cat}
+                                  className={
+                                    strength === 'strong'
+                                      ? 'bg-green-500'
+                                      : strength === 'weak'
+                                      ? 'bg-red-500'
+                                      : 'bg-gray-400'
+                                  }
+                                >
+                                  {cat.toUpperCase()}: {strength}
+                                </Badge>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Opponent matchups */}
+                      {opponentTeams
+                        .filter(team => team.players.length > 0)
+                        .map(opponent => {
+                          const opponentAnalysis = analyzeTeamCategories(opponent.players, playerDatabase);
+                          if (!opponentAnalysis || !categoryCoverage) return null;
+
+                          const matchup = calculateH2HMatchup(
+                            categoryCoverage.strength,
+                            opponentAnalysis.strength,
+                            puntCategories
+                          );
+
+                          return (
+                            <div key={opponent.name} className="border border-rose-200 rounded-lg p-4 bg-white">
+                              <div className="flex justify-between items-start mb-3">
+                                <div>
+                                  <h3 className="font-semibold text-rose-900">{opponent.name}</h3>
+                                  <p className="text-xs text-gray-600">
+                                    {opponent.players.length} players · ${opponent.budget} remaining
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className={`text-2xl font-bold ${
+                                    matchup.wins > matchup.losses ? 'text-green-600' :
+                                    matchup.wins < matchup.losses ? 'text-red-600' : 'text-gray-600'
+                                  }`}>
+                                    {matchup.wins}-{matchup.losses}
+                                  </p>
+                                  <p className="text-xs text-gray-500">Projected cats</p>
+                                </div>
+                              </div>
+
+                              {/* Category by category breakdown */}
+                              <div className="grid grid-cols-3 gap-2">
+                                {Object.entries(matchup.categoryResults).map(([cat, result]) => (
+                                  <div
+                                    key={cat}
+                                    className={`text-center p-2 rounded text-xs font-medium ${
+                                      result === 'win' ? 'bg-green-100 text-green-800' :
+                                      result === 'loss' ? 'bg-red-100 text-red-800' :
+                                      'bg-gray-100 text-gray-600'
+                                    }`}
+                                  >
+                                    {cat.toUpperCase()}
+                                    <div className="text-xs font-normal mt-0.5">
+                                      {result === 'win' ? '✓' : result === 'loss' ? '✗' : '~'}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+
+                              {/* Opponent's strong categories */}
+                              <div className="mt-3 pt-3 border-t">
+                                <p className="text-xs font-semibold text-gray-700 mb-1">Their strengths:</p>
+                                <div className="flex gap-1 flex-wrap">
+                                  {Object.entries(opponentAnalysis.strength)
+                                    .filter(([, strength]) => strength === 'strong')
+                                    .map(([cat]) => (
+                                      <Badge key={cat} className="text-xs bg-rose-100 text-rose-700">
+                                        {cat.toUpperCase()}
+                                      </Badge>
+                                    ))}
+                                </div>
+                              </div>
+
+                              {/* Strategic recommendations */}
+                              {matchup.wins <= matchup.losses && (
+                                <Alert className="mt-3 border-orange-300 bg-orange-50">
+                                  <AlertTriangle className="h-4 w-4 text-orange-600" />
+                                  <AlertDescription className="text-xs text-orange-800">
+                                    <strong>Behind in matchup:</strong> Focus on toss-up categories and shore up weak areas.
+                                    Target players strong in {
+                                      Object.entries(matchup.categoryResults)
+                                        .filter(([, result]) => result === 'toss-up')
+                                        .map(([cat]) => cat.toUpperCase())
+                                        .slice(0, 3)
+                                        .join(', ')
+                                    }
+                                  </AlertDescription>
+                                </Alert>
+                              )}
+                            </div>
+                          );
+                        })}
+
+                      {/* Strategic recommendations based on league landscape */}
+                      <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-4">
+                        <h3 className="font-semibold text-sm text-purple-900 mb-2">Draft Strategy Recommendations</h3>
+                        {(() => {
+                          const strongCategories = opponentTeams
+                            .filter(t => t.players.length > 0)
+                            .flatMap(t => {
+                              const analysis = analyzeTeamCategories(t.players, playerDatabase);
+                              if (!analysis) return [];
+                              return Object.entries(analysis.strength)
+                                .filter(([, s]) => s === 'strong')
+                                .map(([cat]) => cat);
+                            });
+
+                          const categoryCounts = strongCategories.reduce((acc, cat) => {
+                            acc[cat] = (acc[cat] || 0) + 1;
+                            return acc;
+                          }, {} as Record<string, number>);
+
+                          const contested = Object.entries(categoryCounts)
+                            .filter(([, count]) => count >= 2)
+                            .map(([cat]) => cat.toUpperCase());
+
+                          return (
+                            <div className="space-y-2 text-sm text-purple-900">
+                              {contested.length > 0 && (
+                                <p>
+                                  <strong>Highly contested categories:</strong> {contested.join(', ')} -
+                                  Multiple teams competing, consider punting if you're behind
+                                </p>
+                              )}
+                              {categoryCoverage && (
+                                <p>
+                                  <strong>Your weak spots:</strong> {
+                                    Object.entries(categoryCoverage.strength)
+                                      .filter(([cat, s]) => s === 'weak' && !puntCategories.includes(cat))
+                                      .map(([cat]) => cat.toUpperCase())
+                                      .join(', ') || 'None identified'
+                                  } - Prioritize these in remaining picks
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  ) : (
+                    <Alert className="border-rose-300 bg-rose-50">
+                      <AlertDescription className="text-sm text-rose-800">
+                        Track opponent teams to see competitive analysis and head-to-head projections
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         )}
 
-        {/* Opponent Analysis & Competitive Landscape */}
-        {draftInProgress && myPlayers.length > 0 && opponentTeams.some(t => t.players.length > 0) && (
-          <Card className="mb-8 border-rose-200">
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="w-5 h-5 text-rose-600" />
-                    Competitive Analysis
-                  </CardTitle>
-                  <CardDescription>
-                    Head-to-head matchup projections vs each opponent
-                  </CardDescription>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowCompetitiveLandscape(!showCompetitiveLandscape)}
-                >
-                  {showCompetitiveLandscape ? 'Hide' : 'Show'}
-                </Button>
-              </div>
-            </CardHeader>
-            {showCompetitiveLandscape && (
-              <CardContent>
-                <div className="space-y-6">
-                  {/* My team analysis */}
-                  {categoryCoverage && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <h3 className="font-semibold text-sm text-blue-900 mb-2">Your Team's Projected Strengths</h3>
-                      <div className="flex gap-2 flex-wrap">
-                        {Object.entries(categoryCoverage.strength)
-                          .filter(([cat]) => !puntCategories.includes(cat))
-                          .map(([cat, strength]) => (
-                            <Badge
-                              key={cat}
-                              className={
-                                strength === 'strong'
-                                  ? 'bg-green-500'
-                                  : strength === 'weak'
-                                  ? 'bg-red-500'
-                                  : 'bg-gray-400'
-                              }
-                            >
-                              {cat.toUpperCase()}: {strength}
-                            </Badge>
-                          ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Opponent matchups */}
-                  {opponentTeams
-                    .filter(team => team.players.length > 0)
-                    .map(opponent => {
-                      const opponentAnalysis = analyzeTeamCategories(opponent.players, playerDatabase);
-                      if (!opponentAnalysis || !categoryCoverage) return null;
-
-                      const matchup = calculateH2HMatchup(
-                        categoryCoverage.strength,
-                        opponentAnalysis.strength,
-                        puntCategories
-                      );
-
-                      return (
-                        <div key={opponent.name} className="border border-rose-200 rounded-lg p-4 bg-white">
-                          <div className="flex justify-between items-start mb-3">
-                            <div>
-                              <h3 className="font-semibold text-rose-900">{opponent.name}</h3>
-                              <p className="text-xs text-gray-600">
-                                {opponent.players.length} players · ${opponent.budget} remaining
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className={`text-2xl font-bold ${
-                                matchup.wins > matchup.losses ? 'text-green-600' :
-                                matchup.wins < matchup.losses ? 'text-red-600' : 'text-gray-600'
-                              }`}>
-                                {matchup.wins}-{matchup.losses}
-                              </p>
-                              <p className="text-xs text-gray-500">Projected cats</p>
-                            </div>
-                          </div>
-
-                          {/* Category by category breakdown */}
-                          <div className="grid grid-cols-3 gap-2">
-                            {Object.entries(matchup.categoryResults).map(([cat, result]) => (
-                              <div
-                                key={cat}
-                                className={`text-center p-2 rounded text-xs font-medium ${
-                                  result === 'win' ? 'bg-green-100 text-green-800' :
-                                  result === 'loss' ? 'bg-red-100 text-red-800' :
-                                  'bg-gray-100 text-gray-600'
-                                }`}
-                              >
-                                {cat.toUpperCase()}
-                                <div className="text-xs font-normal mt-0.5">
-                                  {result === 'win' ? '✓' : result === 'loss' ? '✗' : '~'}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Opponent's strong categories */}
-                          <div className="mt-3 pt-3 border-t">
-                            <p className="text-xs font-semibold text-gray-700 mb-1">Their strengths:</p>
-                            <div className="flex gap-1 flex-wrap">
-                              {Object.entries(opponentAnalysis.strength)
-                                .filter(([, strength]) => strength === 'strong')
-                                .map(([cat]) => (
-                                  <Badge key={cat} className="text-xs bg-rose-100 text-rose-700">
-                                    {cat.toUpperCase()}
-                                  </Badge>
-                                ))}
-                            </div>
-                          </div>
-
-                          {/* Strategic recommendations */}
-                          {matchup.wins <= matchup.losses && (
-                            <Alert className="mt-3 border-orange-300 bg-orange-50">
-                              <AlertTriangle className="h-4 w-4 text-orange-600" />
-                              <AlertDescription className="text-xs text-orange-800">
-                                <strong>Behind in matchup:</strong> Focus on toss-up categories and shore up weak areas.
-                                Target players strong in {
-                                  Object.entries(matchup.categoryResults)
-                                    .filter(([, result]) => result === 'toss-up')
-                                    .map(([cat]) => cat.toUpperCase())
-                                    .slice(0, 3)
-                                    .join(', ')
-                                }
-                              </AlertDescription>
-                            </Alert>
-                          )}
-                        </div>
-                      );
-                    })}
-
-                  {/* Strategic recommendations based on league landscape */}
-                  <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-4">
-                    <h3 className="font-semibold text-sm text-purple-900 mb-2">Draft Strategy Recommendations</h3>
-                    {(() => {
-                      // Find most contested categories (many teams strong)
-                      const categoryContests: Record<string, number> = {};
-                      opponentTeams.forEach(team => {
-                        const analysis = analyzeTeamCategories(team.players, playerDatabase);
-                        if (analysis) {
-                          Object.entries(analysis.strength).forEach(([cat, strength]) => {
-                            if (strength === 'strong') {
-                              categoryContests[cat] = (categoryContests[cat] || 0) + 1;
-                            }
-                          });
-                        }
-                      });
-
-                      const contested = Object.entries(categoryContests)
-                        .filter(([cat]) => !puntCategories.includes(cat))
-                        .sort(([, a], [, b]) => b - a)
-                        .slice(0, 3);
-
-                      const uncontested = STAT_CATEGORIES
-                        .filter(c => !puntCategories.includes(c.id))
-                        .filter(c => (categoryContests[c.id] || 0) <= 1)
-                        .slice(0, 3);
-
-                      return (
-                        <div className="space-y-2 text-sm text-purple-800">
-                          {contested.length > 0 && (
-                            <p>
-                              <strong>Most Contested:</strong> {contested.map(([cat]) => cat.toUpperCase()).join(', ')} -
-                              Consider pivoting unless you can dominate
-                            </p>
-                          )}
-                          {uncontested.length > 0 && (
-                            <p>
-                              <strong>Opportunity Categories:</strong> {uncontested.map(c => c.id.toUpperCase()).join(', ')} -
-                              Few teams investing here, easy wins available
-                            </p>
-                          )}
-                          {categoryCoverage && (
-                            <p>
-                              <strong>Your weak spots:</strong> {
-                                Object.entries(categoryCoverage.strength)
-                                  .filter(([cat, s]) => s === 'weak' && !puntCategories.includes(cat))
-                                  .map(([cat]) => cat.toUpperCase())
-                                  .join(', ') || 'None identified'
-                              } - Prioritize these in remaining picks
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-              </CardContent>
-            )}
-          </Card>
-        )}
 
         {/* Player Table & Draft Recommendations - Side by Side */}
         {draftInProgress && playerDatabase.length > 0 && (
