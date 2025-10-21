@@ -1902,7 +1902,7 @@ export default function FantasyBasketball() {
 
         {/* Player Table & Draft Recommendations - Side by Side */}
         {draftInProgress && playerDatabase.length > 0 && (
-          <div className="grid lg:grid-cols-3 gap-6 mb-8">
+          <div className="grid lg:grid-cols-4 gap-6 mb-8">
             {/* Draft Recommendations - Right (1 column) */}
             <div className="lg:col-span-1 lg:order-2">
               <Card className="border-emerald-200 h-full sticky top-4">
@@ -1991,8 +1991,8 @@ export default function FantasyBasketball() {
           </Card>
         </div>
 
-        {/* Player Database Table - Left/Center (2 columns) */}
-        <div className="lg:col-span-2 lg:order-1">
+        {/* Player Database Table - Left/Center (3 columns) */}
+        <div className="lg:col-span-3 lg:order-1">
           <Card className="border-slate-200 h-full">
             <CardHeader>
               <div className="flex justify-between items-center">
@@ -2065,23 +2065,22 @@ export default function FantasyBasketball() {
                       <table className="w-full text-xs">
                         <thead className="bg-slate-100 sticky top-0">
                           <tr className="border-b">
-                            <th className="text-left px-1.5 py-2 font-semibold">Rank</th>
-                            <th className="text-left px-1.5 py-2 font-semibold">Player</th>
-                            <th className="text-left px-1.5 py-2 font-semibold">Tier</th>
-                            <th className="text-left px-1.5 py-2 font-semibold">Archetypes</th>
-                            <th className="text-left px-1.5 py-2 font-semibold">Pos</th>
-                            <th className="text-right px-1.5 py-2 font-semibold">PTS</th>
-                            <th className="text-right px-1.5 py-2 font-semibold">3PM</th>
-                            <th className="text-right px-1.5 py-2 font-semibold">REB</th>
-                            <th className="text-right px-1.5 py-2 font-semibold">AST</th>
-                            <th className="text-right px-1.5 py-2 font-semibold">STL</th>
-                            <th className="text-right px-1.5 py-2 font-semibold">BLK</th>
-                            <th className="text-right px-1.5 py-2 font-semibold">FG%</th>
-                            <th className="text-right px-1.5 py-2 font-semibold">FT%</th>
-                            <th className="text-right px-1.5 py-2 font-semibold">TO</th>
-                            <th className="text-center px-1.5 py-2 font-semibold">Status</th>
-                            <th className="text-right px-1.5 py-2 font-semibold">Auction $</th>
-                            {draftInProgress && <th className="text-center px-1.5 py-2 font-semibold">Action</th>}
+                            <th className="text-left px-1 py-1.5 font-semibold">Rank</th>
+                            <th className="text-left px-1 py-1.5 font-semibold">Player</th>
+                            <th className="text-left px-1 py-1.5 font-semibold">Tier</th>
+                            <th className="text-left px-1 py-1.5 font-semibold">Pos</th>
+                            <th className="text-right px-1 py-1.5 font-semibold">PTS</th>
+                            <th className="text-right px-1 py-1.5 font-semibold">3PM</th>
+                            <th className="text-right px-1 py-1.5 font-semibold">REB</th>
+                            <th className="text-right px-1 py-1.5 font-semibold">AST</th>
+                            <th className="text-right px-1 py-1.5 font-semibold">STL</th>
+                            <th className="text-right px-1 py-1.5 font-semibold">BLK</th>
+                            <th className="text-right px-1 py-1.5 font-semibold">FG%</th>
+                            <th className="text-right px-1 py-1.5 font-semibold">FT%</th>
+                            <th className="text-right px-1 py-1.5 font-semibold">TO</th>
+                            <th className="text-center px-1 py-1.5 font-semibold">Status</th>
+                            <th className="text-right px-1 py-1.5 font-semibold">Auction $</th>
+                            {draftInProgress && <th className="text-center px-1 py-1.5 font-semibold">Action</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -2100,12 +2099,12 @@ export default function FantasyBasketball() {
                                   isDrafted ? 'bg-gray-50' : ''
                                 }`}
                               >
-                                <td className="p-2 text-gray-600">{player.rank}</td>
-                                <td className="p-2 font-medium">
+                                <td className="px-1 py-1.5 text-gray-600">{player.rank}</td>
+                                <td className="px-1 py-1.5 font-medium">
                                   {player.name}
                                   {player.injury && <span className="ml-1 text-red-500 text-xs">({player.injury})</span>}
                                 </td>
-                                <td className="p-2">
+                                <td className="px-1 py-1.5">
                                   <Badge
                                     variant="outline"
                                     className={`text-xs ${
@@ -2118,33 +2117,21 @@ export default function FantasyBasketball() {
                                     {tier.name}
                                   </Badge>
                                 </td>
-                                <td className="p-2 max-w-[200px]">
-                                  <div className="flex gap-1 flex-wrap">
-                                    {archetypes.slice(0, 2).map((arch, i) => (
-                                      <Badge key={i} className="text-xs bg-slate-100 text-slate-700">
-                                        {arch.includes('Anchor') ? arch.replace(' Anchor', '') :
-                                         arch.includes('Specialist') ? arch.replace(' Specialist', '') :
-                                         arch === 'Multi-Cat Contributor' ? 'Multi-Cat' :
-                                         arch}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                </td>
-                                <td className="p-2">
+                                <td className="px-1 py-1.5">
                                   <Badge variant="outline" className="text-xs">
                                     {player.position}
                                   </Badge>
                                 </td>
-                                <td className="p-2 text-right">{player.pointsPerGame.toFixed(1)}</td>
-                                <td className="p-2 text-right">{player.threePointersPerGame.toFixed(1)}</td>
-                                <td className="p-2 text-right">{player.reboundsPerGame.toFixed(1)}</td>
-                                <td className="p-2 text-right">{player.assistsPerGame.toFixed(1)}</td>
-                                <td className="p-2 text-right">{player.stealsPerGame.toFixed(1)}</td>
-                                <td className="p-2 text-right">{player.blocksPerGame.toFixed(1)}</td>
-                                <td className="p-2 text-right">{(player.fgPercentage * 100).toFixed(1)}%</td>
-                                <td className="p-2 text-right">{(player.ftPercentage * 100).toFixed(1)}%</td>
-                                <td className="p-2 text-right">{player.turnoversPerGame.toFixed(1)}</td>
-                                <td className="p-2 text-center">
+                                <td className="px-1 py-1.5 text-right">{player.pointsPerGame.toFixed(1)}</td>
+                                <td className="px-1 py-1.5 text-right">{player.threePointersPerGame.toFixed(1)}</td>
+                                <td className="px-1 py-1.5 text-right">{player.reboundsPerGame.toFixed(1)}</td>
+                                <td className="px-1 py-1.5 text-right">{player.assistsPerGame.toFixed(1)}</td>
+                                <td className="px-1 py-1.5 text-right">{player.stealsPerGame.toFixed(1)}</td>
+                                <td className="px-1 py-1.5 text-right">{player.blocksPerGame.toFixed(1)}</td>
+                                <td className="px-1 py-1.5 text-right">{(player.fgPercentage * 100).toFixed(1)}%</td>
+                                <td className="px-1 py-1.5 text-right">{(player.ftPercentage * 100).toFixed(1)}%</td>
+                                <td className="px-1 py-1.5 text-right">{player.turnoversPerGame.toFixed(1)}</td>
+                                <td className="px-1 py-1.5 text-center">
                                   {isDrafted ? (
                                     <Badge variant="secondary">Drafted</Badge>
                                   ) : (
@@ -2153,7 +2140,7 @@ export default function FantasyBasketball() {
                                     </Badge>
                                   )}
                                 </td>
-                                <td className="p-2 text-right">
+                                <td className="px-1 py-1.5 text-right">
                                   {draftedInfo ? (
                                     <span className="font-semibold">${draftedInfo.actualPrice}</span>
                                   ) : (
@@ -2161,7 +2148,7 @@ export default function FantasyBasketball() {
                                   )}
                                 </td>
                                 {draftInProgress && (
-                                  <td className="p-2 text-center">
+                                  <td className="px-1 py-1.5 text-center">
                                     {!isDrafted ? (
                                       <Button
                                         size="sm"
