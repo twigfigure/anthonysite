@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Upload, TrendingUp, DollarSign, Users, BarChart3, Settings, AlertTriangle, Wallet } from 'lucide-react';
+import { Upload, TrendingUp, DollarSign, Users, BarChart3, Settings, AlertTriangle, Wallet, Search, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import * as XLSX from 'xlsx';
 
 interface LeagueSettings {
   scoringType: string;
@@ -23,12 +24,17 @@ interface LeagueSettings {
 }
 
 interface PlayerData {
+  rank: number;
   name: string;
   position: string;
-  preAuctionValue: number;
-  actualValue?: number;
-  category?: string;
-  tier?: number;
+  team: string;
+  gp: number;
+  mpg: number;
+  total: number;
+  valuedAt: number; // Primary auction value
+  yahooAvg: number;
+  espnAvg: number;
+  blendAvg: number;
 }
 
 interface DraftedPlayer {
@@ -196,10 +202,12 @@ export default function FantasyBasketball() {
   });
 
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [playerDatabase, setPlayerDatabase] = useState<PlayerData[]>([]);
   const [draftedPlayers, setDraftedPlayers] = useState<DraftedPlayer[]>([]);
   const [myPlayers, setMyPlayers] = useState<DraftedPlayer[]>([]);
   const [budgetRemaining, setBudgetRemaining] = useState(leagueSettings.budgetPerTeam || 200);
   const [draftInProgress, setDraftInProgress] = useState(false);
+  const [playerSearch, setPlayerSearch] = useState('');
 
   // Draft entry form state
   const [playerName, setPlayerName] = useState('');
@@ -359,14 +367,77 @@ export default function FantasyBasketball() {
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (files) {
-      const fileNames = Array.from(files).map(f => f.name);
-      setUploadedFiles(prev => [...prev, ...fileNames]);
+    if (!files || files.length === 0) return;
 
-      // TODO: Parse CSV files and process player data
-      // This will be implemented once you upload the actual CSVs
-    }
+    const file = files[0];
+    setUploadedFiles([file.name]);
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+        // Parse player data from Excel
+        const players: PlayerData[] = jsonData.map((row) => {
+          // Helper function to parse dollar values like "$79.30 " to numbers
+          const parseDollar = (val: any): number => {
+            if (typeof val === 'number') return val;
+            if (typeof val === 'string') {
+              const cleaned = val.replace(/[$,\s]/g, '');
+              return parseFloat(cleaned) || 0;
+            }
+            return 0;
+          };
+
+          return {
+            rank: row['R#'] || 0,
+            name: row['PLAYER'] || '',
+            position: row['POS'] || '',
+            team: row['TEAM'] || '',
+            gp: row['GP'] || 0,
+            mpg: row['MPG'] || 0,
+            total: row['TOTAL'] || 0,
+            valuedAt: parseDollar(row['VALUED AT']),
+            yahooAvg: parseDollar(row['Y! AVG']),
+            espnAvg: parseDollar(row['ESPN AVG']),
+            blendAvg: parseDollar(row['BLEND AVG']),
+          };
+        });
+
+        setPlayerDatabase(players);
+        console.log(`Loaded ${players.length} players from Excel file`);
+      } catch (error) {
+        console.error('Error parsing Excel file:', error);
+        alert('Error parsing Excel file. Please check the format.');
+      }
+    };
+
+    reader.readAsBinaryString(file);
   };
+
+  // Auto-fill player data when name is selected
+  const handlePlayerSelect = (selectedPlayer: PlayerData) => {
+    setPlayerName(selectedPlayer.name);
+    setPlayerPosition(selectedPlayer.position);
+    setProjectedValue(selectedPlayer.valuedAt.toString());
+  };
+
+  // Filter players based on search
+  const filteredPlayers = useMemo(() => {
+    if (!playerSearch || playerSearch.length < 2) return [];
+    const search = playerSearch.toLowerCase();
+    return playerDatabase
+      .filter(p =>
+        p.name.toLowerCase().includes(search) ||
+        p.position.toLowerCase().includes(search) ||
+        p.team.toLowerCase().includes(search)
+      )
+      .slice(0, 10); // Limit to 10 results
+  }, [playerSearch, playerDatabase]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50">
@@ -558,15 +629,15 @@ export default function FantasyBasketball() {
         </Card>
 
         <div className="grid md:grid-cols-2 gap-6 mb-8">
-          {/* CSV Upload Section */}
+          {/* Excel Upload Section */}
           <Card className="border-blue-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Upload className="w-5 h-5 text-blue-600" />
+                <FileSpreadsheet className="w-5 h-5 text-blue-600" />
                 Upload Draft Data
               </CardTitle>
               <CardDescription>
-                Upload your pre-draft rankings, projections, and baseline auction values
+                Upload your Excel file with player rankings, projections, and auction values
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -574,31 +645,43 @@ export default function FantasyBasketball() {
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
                   <input
                     type="file"
-                    multiple
-                    accept=".csv"
+                    accept=".xlsx,.xls"
                     onChange={handleFileUpload}
                     className="hidden"
-                    id="csv-upload"
+                    id="excel-upload"
                   />
-                  <label htmlFor="csv-upload" className="cursor-pointer">
-                    <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                  <label htmlFor="excel-upload" className="cursor-pointer">
+                    <FileSpreadsheet className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                     <p className="text-sm text-gray-600 mb-2">
-                      Click to upload CSV files
+                      Click to upload Excel file
                     </p>
                     <p className="text-xs text-gray-500">
-                      Player rankings, projections, auction values
+                      Supports .xlsx and .xls formats
                     </p>
                   </label>
                 </div>
 
                 {uploadedFiles.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-sm font-medium">Uploaded Files:</p>
-                    {uploadedFiles.map((file, idx) => (
-                      <div key={idx} className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
-                        {file}
+                    <div className="flex items-center justify-between bg-green-50 border border-green-200 p-3 rounded-lg">
+                      <div>
+                        <p className="text-sm font-medium text-green-800">
+                          {uploadedFiles[0]}
+                        </p>
+                        <p className="text-xs text-green-600">
+                          {playerDatabase.length} players loaded
+                        </p>
                       </div>
-                    ))}
+                      <Badge className="bg-green-600">✓ Loaded</Badge>
+                    </div>
+                  </div>
+                )}
+
+                {playerDatabase.length === 0 && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-xs text-blue-800">
+                      <strong>Expected format:</strong> Columns should include PLAYER, POS, TEAM, VALUED AT, Y! AVG, ESPN AVG, BLEND AVG
+                    </p>
                   </div>
                 )}
               </div>
@@ -671,6 +754,49 @@ export default function FantasyBasketball() {
                     {/* Draft Entry Form */}
                     <div className="border-t pt-4 space-y-3">
                       <h3 className="font-semibold text-sm">Record Drafted Player</h3>
+
+                      {/* Player Search */}
+                      {playerDatabase.length > 0 && (
+                        <div className="relative">
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <Input
+                              placeholder="Search players..."
+                              value={playerSearch}
+                              onChange={(e) => setPlayerSearch(e.target.value)}
+                              className="pl-9"
+                            />
+                          </div>
+                          {filteredPlayers.length > 0 && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                              {filteredPlayers.map((player) => (
+                                <button
+                                  key={player.rank}
+                                  onClick={() => {
+                                    handlePlayerSelect(player);
+                                    setPlayerSearch('');
+                                  }}
+                                  className="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors border-b border-gray-100 last:border-0"
+                                >
+                                  <div className="flex justify-between items-center">
+                                    <div>
+                                      <p className="font-medium text-sm">{player.name}</p>
+                                      <p className="text-xs text-gray-500">
+                                        {player.position} · {player.team}
+                                      </p>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-sm font-semibold text-blue-600">${player.valuedAt}</p>
+                                      <p className="text-xs text-gray-500">Projected</p>
+                                    </div>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-2 gap-3">
                         <Input
                           placeholder="Player Name"
