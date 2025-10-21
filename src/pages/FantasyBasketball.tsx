@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Upload, TrendingUp, DollarSign, Users, BarChart3, Settings } from 'lucide-react';
+import { Upload, TrendingUp, DollarSign, Users, BarChart3, Settings, AlertTriangle, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface LeagueSettings {
   scoringType: string;
@@ -26,6 +28,24 @@ interface PlayerData {
   preAuctionValue: number;
   actualValue?: number;
   category?: string;
+  tier?: number;
+}
+
+interface DraftedPlayer {
+  name: string;
+  position: string;
+  projectedValue: number;
+  actualPrice: number;
+  draftedBy: string; // 'me' or 'opponent'
+}
+
+interface PositionInflation {
+  position: string;
+  averageInflation: number; // percentage
+  count: number;
+  tier1Inflation?: number;
+  tier2Inflation?: number;
+  tier3Inflation?: number;
 }
 
 interface DraftTrend {
@@ -46,6 +66,122 @@ const STAT_CATEGORIES = [
   { id: 'to', label: 'Turnovers (TO)' },
 ];
 
+// Bid Calculator Component
+function BidCalculator({
+  maxBid,
+  getBidRecommendation,
+  calculateRecommendedMaxBid,
+}: {
+  maxBid: number;
+  getBidRecommendation: (currentBid: number, projectedValue: number) => {
+    shouldBid: boolean;
+    message: string;
+    color: 'green' | 'orange' | 'red';
+  };
+  calculateRecommendedMaxBid: (projectedValue: number, fillsTwoNeeds?: boolean) => number;
+}) {
+  const [testProjectedValue, setTestProjectedValue] = useState('');
+  const [testCurrentBid, setTestCurrentBid] = useState('');
+  const [fillsTwoNeeds, setFillsTwoNeeds] = useState(false);
+
+  const recommendation = testProjectedValue && testCurrentBid
+    ? getBidRecommendation(parseFloat(testCurrentBid), parseFloat(testProjectedValue))
+    : null;
+
+  const recommendedMax = testProjectedValue
+    ? calculateRecommendedMaxBid(parseFloat(testProjectedValue), fillsTwoNeeds)
+    : 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="test-projected">Player's Projected Value ($)</Label>
+          <Input
+            id="test-projected"
+            type="number"
+            placeholder="e.g., 45"
+            value={testProjectedValue}
+            onChange={(e) => setTestProjectedValue(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="test-bid">Current Bid ($)</Label>
+          <Input
+            id="test-bid"
+            type="number"
+            placeholder="e.g., 50"
+            value={testCurrentBid}
+            onChange={(e) => setTestCurrentBid(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="fills-two-needs"
+          checked={fillsTwoNeeds}
+          onCheckedChange={(checked) => setFillsTwoNeeds(checked === true)}
+        />
+        <Label htmlFor="fills-two-needs" className="font-normal cursor-pointer text-sm">
+          This player fills 2+ categorical needs (allows 25% overpay)
+        </Label>
+      </div>
+
+      {recommendation && (
+        <div className="space-y-3">
+          <Alert
+            className={
+              recommendation.color === 'green'
+                ? 'border-green-300 bg-green-50'
+                : recommendation.color === 'orange'
+                ? 'border-orange-300 bg-orange-50'
+                : 'border-red-300 bg-red-50'
+            }
+          >
+            <AlertTriangle
+              className={`h-4 w-4 ${
+                recommendation.color === 'green'
+                  ? 'text-green-600'
+                  : recommendation.color === 'orange'
+                  ? 'text-orange-600'
+                  : 'text-red-600'
+              }`}
+            />
+            <AlertDescription
+              className={`text-sm font-medium ${
+                recommendation.color === 'green'
+                  ? 'text-green-800'
+                  : recommendation.color === 'orange'
+                  ? 'text-orange-800'
+                  : 'text-red-800'
+              }`}
+            >
+              {recommendation.message}
+            </AlertDescription>
+          </Alert>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-gray-600 text-xs">Your Max Bid (Slot-Aware)</p>
+                <p className="text-xl font-bold text-blue-900">${maxBid}</p>
+              </div>
+              <div>
+                <p className="text-gray-600 text-xs">Recommended Max (15% Rule)</p>
+                <p className="text-xl font-bold text-blue-900">${recommendedMax.toFixed(0)}</p>
+              </div>
+            </div>
+            <p className="text-xs text-gray-600 mt-3">
+              <strong>Strategy:</strong> Never exceed the lower of these two values unless the player fills multiple critical needs.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function FantasyBasketball() {
   const [leagueSettings, setLeagueSettings] = useState<LeagueSettings>({
     scoringType: 'Head-to-Head - Categories',
@@ -60,8 +196,70 @@ export default function FantasyBasketball() {
   });
 
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
-  const [draftedPlayers, setDraftedPlayers] = useState<PlayerData[]>([]);
-  const [trends, setTrends] = useState<DraftTrend[]>([]);
+  const [draftedPlayers, setDraftedPlayers] = useState<DraftedPlayer[]>([]);
+  const [myPlayers, setMyPlayers] = useState<DraftedPlayer[]>([]);
+  const [budgetRemaining, setBudgetRemaining] = useState(leagueSettings.budgetPerTeam || 200);
+  const [draftInProgress, setDraftInProgress] = useState(false);
+
+  // Draft entry form state
+  const [playerName, setPlayerName] = useState('');
+  const [playerPosition, setPlayerPosition] = useState('');
+  const [projectedValue, setProjectedValue] = useState('');
+  const [actualPrice, setActualPrice] = useState('');
+  const [draftedByMe, setDraftedByMe] = useState(false);
+
+  // Calculate roster slots from settings
+  const totalSlots = useMemo(() => {
+    const positions = leagueSettings.rosterPositions.split(',').map(p => p.trim());
+    // Count non-bench, non-IL slots
+    return positions.filter(p => !p.startsWith('BN') && !p.startsWith('IL')).length;
+  }, [leagueSettings.rosterPositions]);
+
+  const slotsRemaining = totalSlots - myPlayers.length;
+
+  // Calculate slot-aware max bid
+  const maxBid = useMemo(() => {
+    if (slotsRemaining <= 0) return 0;
+    return budgetRemaining - (slotsRemaining - 1);
+  }, [budgetRemaining, slotsRemaining]);
+
+  // Calculate inflation by position
+  const positionInflation = useMemo(() => {
+    const positions = ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F'];
+    const inflationData: PositionInflation[] = [];
+
+    positions.forEach(pos => {
+      const posPlayers = draftedPlayers.filter(p =>
+        p.position.includes(pos) || (pos === 'G' && (p.position.includes('PG') || p.position.includes('SG'))) ||
+        (pos === 'F' && (p.position.includes('SF') || p.position.includes('PF')))
+      );
+
+      if (posPlayers.length > 0) {
+        const totalInflation = posPlayers.reduce((sum, p) => {
+          const inflation = ((p.actualPrice - p.projectedValue) / p.projectedValue) * 100;
+          return sum + inflation;
+        }, 0);
+
+        inflationData.push({
+          position: pos,
+          averageInflation: totalInflation / posPlayers.length,
+          count: posPlayers.length,
+        });
+      }
+    });
+
+    return inflationData;
+  }, [draftedPlayers]);
+
+  // Calculate global inflation
+  const globalInflation = useMemo(() => {
+    if (draftedPlayers.length === 0) return 0;
+    const totalInflation = draftedPlayers.reduce((sum, p) => {
+      const inflation = ((p.actualPrice - p.projectedValue) / p.projectedValue) * 100;
+      return sum + inflation;
+    }, 0);
+    return totalInflation / draftedPlayers.length;
+  }, [draftedPlayers]);
 
   const handleStatCategoryToggle = (categoryId: string) => {
     setLeagueSettings(prev => ({
@@ -70,6 +268,93 @@ export default function FantasyBasketball() {
         ? prev.statCategories.filter(c => c !== categoryId)
         : [...prev.statCategories, categoryId]
     }));
+  };
+
+  const handleAddDraftedPlayer = () => {
+    if (!playerName || !playerPosition || !projectedValue || !actualPrice) return;
+
+    const newPlayer: DraftedPlayer = {
+      name: playerName,
+      position: playerPosition,
+      projectedValue: parseFloat(projectedValue),
+      actualPrice: parseFloat(actualPrice),
+      draftedBy: draftedByMe ? 'me' : 'opponent',
+    };
+
+    setDraftedPlayers(prev => [...prev, newPlayer]);
+
+    if (draftedByMe) {
+      setMyPlayers(prev => [...prev, newPlayer]);
+      setBudgetRemaining(prev => prev - parseFloat(actualPrice));
+    }
+
+    // Reset form
+    setPlayerName('');
+    setPlayerPosition('');
+    setProjectedValue('');
+    setActualPrice('');
+    setDraftedByMe(false);
+  };
+
+  const startDraft = () => {
+    setDraftInProgress(true);
+    setBudgetRemaining(leagueSettings.budgetPerTeam || 200);
+    setDraftedPlayers([]);
+    setMyPlayers([]);
+  };
+
+  // Calculate recommended max bid with 15% constraint
+  const calculateRecommendedMaxBid = (projectedValue: number, fillsTwoNeeds: boolean = false): number => {
+    const maxOverpayPercent = fillsTwoNeeds ? 25 : 15;
+    const valueBasedMax = projectedValue * (1 + maxOverpayPercent / 100);
+    return Math.min(valueBasedMax, maxBid);
+  };
+
+  // Get bid recommendation
+  const getBidRecommendation = (currentBid: number, projectedValue: number): {
+    shouldBid: boolean;
+    message: string;
+    color: 'green' | 'orange' | 'red';
+  } => {
+    const overpayPercent = ((currentBid - projectedValue) / projectedValue) * 100;
+
+    if (currentBid > maxBid) {
+      return {
+        shouldBid: false,
+        message: `STOP! Exceeds your max bid of $${maxBid}`,
+        color: 'red'
+      };
+    }
+
+    if (overpayPercent > 25) {
+      return {
+        shouldBid: false,
+        message: `Do not chase! ${overpayPercent.toFixed(0)}% over value`,
+        color: 'red'
+      };
+    }
+
+    if (overpayPercent > 15) {
+      return {
+        shouldBid: false,
+        message: `Caution: ${overpayPercent.toFixed(0)}% over value. Only if fills 2+ needs`,
+        color: 'orange'
+      };
+    }
+
+    if (overpayPercent > 5) {
+      return {
+        shouldBid: true,
+        message: `Slight overpay (${overpayPercent.toFixed(0)}%)`,
+        color: 'orange'
+      };
+    }
+
+    return {
+      shouldBid: true,
+      message: `Good value! ${overpayPercent > 0 ? 'Only ' + overpayPercent.toFixed(0) + '% over' : Math.abs(overpayPercent).toFixed(0) + '% under'} projected value`,
+      color: 'green'
+    };
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -333,49 +618,209 @@ export default function FantasyBasketball() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <p className="text-sm text-green-800 mb-2">
-                    Record each player's actual auction price to identify:
-                  </p>
-                  <ul className="text-sm text-green-700 space-y-1 list-disc list-inside">
-                    <li>Position/category inflation trends</li>
-                    <li>Over/under valued players</li>
-                    <li>Remaining budget opportunities</li>
-                    <li>Dynamic value adjustments</li>
-                  </ul>
-                </div>
+                {!draftInProgress ? (
+                  <>
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                      <p className="text-sm text-green-800 mb-2">
+                        Record each player's actual auction price to identify:
+                      </p>
+                      <ul className="text-sm text-green-700 space-y-1 list-disc list-inside">
+                        <li>Position/category inflation trends</li>
+                        <li>Over/under valued players</li>
+                        <li>Remaining budget opportunities</li>
+                        <li>Dynamic value adjustments</li>
+                      </ul>
+                    </div>
+                    <Button onClick={startDraft} className="w-full" variant="outline">
+                      <Users className="w-4 h-4 mr-2" />
+                      Start Draft Session
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    {/* Budget & Max Bid Display */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-300 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Wallet className="w-4 h-4 text-green-700" />
+                          <p className="text-xs font-semibold text-green-700 uppercase">Budget Left</p>
+                        </div>
+                        <p className="text-3xl font-bold text-green-900">${budgetRemaining}</p>
+                        <p className="text-xs text-green-600 mt-1">{slotsRemaining} slots remaining</p>
+                      </div>
+                      <div className="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-300 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <AlertTriangle className="w-4 h-4 text-orange-700" />
+                          <p className="text-xs font-semibold text-orange-700 uppercase">Max Bid</p>
+                        </div>
+                        <p className="text-3xl font-bold text-orange-900">${maxBid}</p>
+                        <p className="text-xs text-orange-600 mt-1">Slot-aware limit</p>
+                      </div>
+                    </div>
 
-                <Button className="w-full" variant="outline">
-                  <Users className="w-4 h-4 mr-2" />
-                  Start Draft Session
-                </Button>
+                    {/* Max Bid Warning */}
+                    {maxBid < 10 && slotsRemaining > 3 && (
+                      <Alert className="border-red-300 bg-red-50">
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                        <AlertDescription className="text-sm text-red-800">
+                          <strong>Low budget alert!</strong> You have {slotsRemaining} slots but only ${budgetRemaining} left. Max bid is ${maxBid}.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    {/* Draft Entry Form */}
+                    <div className="border-t pt-4 space-y-3">
+                      <h3 className="font-semibold text-sm">Record Drafted Player</h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Input
+                          placeholder="Player Name"
+                          value={playerName}
+                          onChange={(e) => setPlayerName(e.target.value)}
+                        />
+                        <Input
+                          placeholder="Position (e.g., PG)"
+                          value={playerPosition}
+                          onChange={(e) => setPlayerPosition(e.target.value)}
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Projected $"
+                          value={projectedValue}
+                          onChange={(e) => setProjectedValue(e.target.value)}
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Actual $"
+                          value={actualPrice}
+                          onChange={(e) => setActualPrice(e.target.value)}
+                        />
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="drafted-by-me"
+                          checked={draftedByMe}
+                          onCheckedChange={(checked) => setDraftedByMe(checked === true)}
+                        />
+                        <Label htmlFor="drafted-by-me" className="font-normal cursor-pointer">
+                          I drafted this player
+                        </Label>
+                      </div>
+                      <Button onClick={handleAddDraftedPlayer} className="w-full">
+                        Add Player
+                      </Button>
+                    </div>
+
+                    {/* My Players List */}
+                    {myPlayers.length > 0 && (
+                      <div className="border-t pt-4">
+                        <h3 className="font-semibold text-sm mb-2">My Team ({myPlayers.length}/{totalSlots})</h3>
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {myPlayers.map((player, idx) => (
+                            <div key={idx} className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded">
+                              <span className="font-medium">{player.name}</span>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline">{player.position}</Badge>
+                                <span className="text-gray-600">${player.actualPrice}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Trend Analysis Section */}
-        <Card className="border-purple-200">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-purple-600" />
-              Market Trend Analysis
-            </CardTitle>
-            <CardDescription>
-              Real-time insights into how your draft is trending vs. projections
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-6 text-center">
-              <p className="text-sm text-purple-800">
-                Upload your CSV data and start tracking draft picks to see trend analysis here.
-              </p>
-              <p className="text-xs text-purple-600 mt-2">
-                Example: If point guards are going 20% over value, you'll see recommendations to target undervalued positions.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Bid Calculator & Constraint Checker */}
+        {draftInProgress && (
+          <Card className="mb-8 border-blue-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-blue-600" />
+                Bid Recommendation Calculator
+              </CardTitle>
+              <CardDescription>
+                Check if you should bid on a player based on value and constraints
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <BidCalculator
+                maxBid={maxBid}
+                getBidRecommendation={getBidRecommendation}
+                calculateRecommendedMaxBid={calculateRecommendedMaxBid}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Position Inflation Tracker */}
+        {draftInProgress && draftedPlayers.length > 0 && (
+          <Card className="mb-8 border-purple-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-purple-600" />
+                Live Position Inflation Tracker
+              </CardTitle>
+              <CardDescription>
+                Real-time inflation by position - see which positions are overvalued
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Global Inflation */}
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold text-gray-700">Global Inflation</span>
+                    <Badge className={globalInflation > 10 ? 'bg-red-500' : globalInflation > 0 ? 'bg-orange-500' : 'bg-green-500'}>
+                      {globalInflation > 0 ? '+' : ''}{globalInflation.toFixed(1)}%
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">{draftedPlayers.length} players drafted</p>
+                </div>
+
+                {/* Position-Specific Inflation */}
+                <div className="grid md:grid-cols-2 gap-3">
+                  {positionInflation.map((pos) => (
+                    <div key={pos.position} className="border border-gray-200 rounded-lg p-3">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-semibold text-sm">{pos.position}</span>
+                        <Badge
+                          variant="outline"
+                          className={
+                            pos.averageInflation > 15
+                              ? 'border-red-500 text-red-700 bg-red-50'
+                              : pos.averageInflation > 5
+                              ? 'border-orange-500 text-orange-700 bg-orange-50'
+                              : 'border-green-500 text-green-700 bg-green-50'
+                          }
+                        >
+                          {pos.averageInflation > 0 ? '+' : ''}{pos.averageInflation.toFixed(1)}%
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-gray-500">{pos.count} drafted</p>
+                      {pos.averageInflation > 20 && (
+                        <p className="text-xs text-red-600 mt-1 font-medium">
+                          ⚠️ Highly inflated - consider other positions
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <Alert className="border-purple-300 bg-purple-50">
+                  <TrendingUp className="h-4 w-4 text-purple-600" />
+                  <AlertDescription className="text-sm text-purple-800">
+                    <strong>Strategy Tip:</strong> Target positions with negative or low inflation for value plays.
+                    Positions with 15%+ inflation are significantly overpriced.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* How It Works Section */}
         <Card className="mt-8 border-gray-200">
