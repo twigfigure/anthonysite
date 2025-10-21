@@ -2,14 +2,14 @@ import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { ChevronDown, Menu, X, MessageCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import Hero from "@/components/Hero";
-import AvailabilityCalendar from "@/components/AvailabilityCalendar";
-import ContactForm from "@/components/ContactForm";
-import NowPlaying from "@/components/NowPlaying";
-import CreativeFeed from "@/components/CreativeFeed";
-import LivestreamSchedule from "@/components/LivestreamSchedule";
-import Gallery from "@/components/Gallery";
-import Footer from "@/components/Footer";
+import Hero from "../components/Hero";
+import AvailabilityCalendar from "../components/AvailabilityCalendar";
+import ContactForm from "../components/ContactForm";
+import NowPlaying from "../components/NowPlaying";
+import CreativeFeed from "../components/CreativeFeed";
+import LivestreamSchedule from "../components/LivestreamSchedule";
+import Gallery from "../components/Gallery";
+import Footer from "../components/Footer";
 
 const Index = () => {
   const [showProjectsMenu, setShowProjectsMenu] = useState(false);

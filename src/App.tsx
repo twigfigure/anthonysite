@@ -4,9 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import Index from "./pages/Index";
-import Kindred from "./pages/Kindred";
-import FantasyBasketball from "./pages/FantasyBasketball";
+import Index from "./features/homepage/pages/Index";
+import Kindred from "./features/kindred/pages/Kindred";
+import FantasyBasketball from "./features/fantasy-basketball/pages/FantasyBasketball";
 import MigrateImages from "./pages/MigrateImages";
 import NotFound from "./pages/NotFound";
 

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Upload, TrendingUp, DollarSign, Users, BarChart3, Settings, AlertTriangle, Wallet, Search, FileSpreadsheet, X } from 'lucide-react';
+import { TrendingUp, DollarSign, Users, BarChart3, Settings, AlertTriangle, Wallet, Search, FileSpreadsheet, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -79,12 +79,6 @@ interface PositionInflation {
   tier1Inflation?: number;
   tier2Inflation?: number;
   tier3Inflation?: number;
-}
-
-interface DraftTrend {
-  category: string;
-  averageInflation: number;
-  count: number;
 }
 
 const STAT_CATEGORIES = [
@@ -462,8 +456,7 @@ export default function FantasyBasketball() {
   const [myPlayers, setMyPlayers] = useState<DraftedPlayer[]>([]);
   const [budgetRemaining, setBudgetRemaining] = useState(leagueSettings.budgetPerTeam || 200);
   const [draftInProgress, setDraftInProgress] = useState(false);
-  const [playerSearch, setPlayerSearch] = useState('');
-  const [showPlayerTable, setShowPlayerTable] = useState(false);
+  const [playerSearch] = useState('');
   const [showLeagueSettings, setShowLeagueSettings] = useState(false);
   const [tableFilter, setTableFilter] = useState<'all' | 'available' | 'drafted'>('available');
   const [positionFilter, setPositionFilter] = useState<string>('all');
@@ -471,11 +464,9 @@ export default function FantasyBasketball() {
   // Punt strategy state
   const [puntCategories, setPuntCategories] = useState<string[]>([]);
   const [showPuntStrategy, setShowPuntStrategy] = useState(false);
-  const [showCategoryCoverage, setShowCategoryCoverage] = useState(false);
 
   // Opponent tracking state
   const [opponentTeams, setOpponentTeams] = useState<OpponentTeam[]>([]);
-  const [showOpponentAnalysis, setShowOpponentAnalysis] = useState(false);
   const [showCompetitiveLandscape, setShowCompetitiveLandscape] = useState(false);
 
   // Draft entry form state
@@ -967,7 +958,7 @@ export default function FantasyBasketball() {
   };
 
   // Parse BBM Player Rankings format
-  const parseBBMData = (jsonData: any[]): PlayerData[] => {
+  const parseBBMData = (jsonData: Record<string, unknown>[]): PlayerData[] => {
     return jsonData.map((row) => ({
       round: row['Round'] || 0,
       rank: row['Rank'] || 0,
@@ -1010,7 +1001,7 @@ export default function FantasyBasketball() {
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
+        const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
 
         const players = parseBBMData(jsonData);
         setPlayerDatabase(players);
@@ -1038,7 +1029,7 @@ export default function FantasyBasketball() {
         const workbook = XLSX.read(data, { type: 'binary' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
+        const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
 
         const players = parseBBMData(jsonData);
         setPlayerDatabase(players);
@@ -2029,7 +2020,7 @@ export default function FantasyBasketball() {
                       )}
                     </div>
 
-                    <Select value={tableFilter} onValueChange={(v: any) => setTableFilter(v)}>
+                    <Select value={tableFilter} onValueChange={(v: string) => setTableFilter(v)}>
                       <SelectTrigger className="w-40">
                         <SelectValue />
                       </SelectTrigger>
