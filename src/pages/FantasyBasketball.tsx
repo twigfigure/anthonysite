@@ -209,6 +209,7 @@ export default function FantasyBasketball() {
   const [draftInProgress, setDraftInProgress] = useState(false);
   const [playerSearch, setPlayerSearch] = useState('');
   const [showPlayerTable, setShowPlayerTable] = useState(false);
+  const [showLeagueSettings, setShowLeagueSettings] = useState(false);
   const [tableFilter, setTableFilter] = useState<'all' | 'available' | 'drafted'>('available');
   const [positionFilter, setPositionFilter] = useState<string>('all');
 
@@ -570,15 +571,27 @@ export default function FantasyBasketball() {
         {/* League Settings Section */}
         <Card className="mb-8 border-indigo-200">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="w-5 h-5 text-indigo-600" />
-              League Settings
-            </CardTitle>
-            <CardDescription>
-              Configure your league settings to ensure accurate player valuations
-            </CardDescription>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-indigo-600" />
+                  League Settings
+                </CardTitle>
+                <CardDescription>
+                  Configure your league settings to ensure accurate player valuations
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowLeagueSettings(!showLeagueSettings)}
+              >
+                {showLeagueSettings ? 'Hide' : 'Show'}
+              </Button>
+            </div>
           </CardHeader>
-          <CardContent>
+          {showLeagueSettings && (
+            <CardContent>
             <div className="space-y-6">
               {/* Basic League Info */}
               <div className="grid md:grid-cols-2 gap-6">
@@ -720,7 +733,8 @@ export default function FantasyBasketball() {
                 </p>
               </div>
             </div>
-          </CardContent>
+            </CardContent>
+          )}
         </Card>
 
         <div className="grid md:grid-cols-2 gap-6 mb-8">
