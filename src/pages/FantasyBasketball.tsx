@@ -208,6 +208,9 @@ export default function FantasyBasketball() {
   const [budgetRemaining, setBudgetRemaining] = useState(leagueSettings.budgetPerTeam || 200);
   const [draftInProgress, setDraftInProgress] = useState(false);
   const [playerSearch, setPlayerSearch] = useState('');
+  const [showPlayerTable, setShowPlayerTable] = useState(false);
+  const [tableFilter, setTableFilter] = useState<'all' | 'available' | 'drafted'>('available');
+  const [positionFilter, setPositionFilter] = useState<string>('all');
 
   // Draft entry form state
   const [playerName, setPlayerName] = useState('');
@@ -215,6 +218,98 @@ export default function FantasyBasketball() {
   const [projectedValue, setProjectedValue] = useState('');
   const [actualPrice, setActualPrice] = useState('');
   const [draftedByMe, setDraftedByMe] = useState(false);
+
+  // Get drafted player names for lookup
+  const draftedPlayerNames = useMemo(() =>
+    new Set(draftedPlayers.map(p => p.name.toLowerCase())),
+    [draftedPlayers]
+  );
+
+  // Get available players
+  const availablePlayers = useMemo(() =>
+    playerDatabase.filter(p => !draftedPlayerNames.has(p.name.toLowerCase())),
+    [playerDatabase, draftedPlayerNames]
+  );
+
+  // Position needs analysis
+  const positionNeeds = useMemo(() => {
+    const needs: Record<string, number> = {
+      PG: 0, SG: 0, SF: 0, PF: 0, C: 0
+    };
+
+    // Count how many of each position I have
+    const positionCounts: Record<string, number> = {
+      PG: 0, SG: 0, SF: 0, PF: 0, C: 0
+    };
+
+    myPlayers.forEach(player => {
+      const positions = player.position.split('/');
+      positions.forEach(pos => {
+        if (positionCounts[pos] !== undefined) {
+          positionCounts[pos]++;
+        }
+      });
+    });
+
+    // Calculate needs (higher score = more needed)
+    // Simple heuristic: positions with fewer players are more needed
+    const maxCount = Math.max(...Object.values(positionCounts), 1);
+    Object.keys(needs).forEach(pos => {
+      needs[pos] = maxCount - positionCounts[pos];
+    });
+
+    return needs;
+  }, [myPlayers]);
+
+  // Top recommendations
+  const topRecommendations = useMemo(() => {
+    if (availablePlayers.length === 0) return [];
+
+    // Score each available player
+    const scoredPlayers = availablePlayers.map(player => {
+      let score = player.valuedAt; // Base score is value
+
+      // Bonus for filling position needs
+      const positions = player.position.split('/');
+      const positionNeedBonus = Math.max(...positions.map(pos => positionNeeds[pos] || 0)) * 5;
+
+      // Penalty for inflated positions
+      const posInflation = positionInflation.find(pi => player.position.includes(pi.position));
+      const inflationPenalty = posInflation ? (posInflation.averageInflation / 10) : 0;
+
+      // Bonus for value (blend avg vs valued at)
+      const valueDiff = player.blendAvg - player.valuedAt;
+      const valueBonus = valueDiff > 0 ? valueDiff * 0.5 : 0;
+
+      score = score + positionNeedBonus - inflationPenalty + valueBonus;
+
+      return { ...player, score };
+    });
+
+    // Sort by score and return top 10
+    return scoredPlayers
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+  }, [availablePlayers, positionNeeds, positionInflation]);
+
+  // Filtered table data
+  const tableData = useMemo(() => {
+    let filtered = playerDatabase;
+
+    // Filter by availability
+    if (tableFilter === 'available') {
+      filtered = availablePlayers;
+    } else if (tableFilter === 'drafted') {
+      filtered = filtered.filter(p => draftedPlayerNames.has(p.name.toLowerCase()));
+    }
+
+    // Filter by position
+    if (positionFilter !== 'all') {
+      filtered = filtered.filter(p => p.position.includes(positionFilter));
+    }
+
+    return filtered;
+  }, [playerDatabase, availablePlayers, draftedPlayerNames, tableFilter, positionFilter]);
 
   // Calculate roster slots from settings
   const totalSlots = useMemo(() => {
@@ -945,6 +1040,246 @@ export default function FantasyBasketball() {
                 </Alert>
               </div>
             </CardContent>
+          </Card>
+        )}
+
+        {/* Draft Recommendations */}
+        {draftInProgress && playerDatabase.length > 0 && (
+          <Card className="mb-8 border-emerald-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-emerald-600" />
+                Draft Recommendations
+              </CardTitle>
+              <CardDescription>
+                AI-powered suggestions based on team needs, position scarcity, and value
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Position Needs Summary */}
+                {myPlayers.length > 0 && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                    <h3 className="font-semibold text-sm text-emerald-900 mb-2">Position Needs</h3>
+                    <div className="flex gap-2 flex-wrap">
+                      {Object.entries(positionNeeds)
+                        .sort(([, a], [, b]) => b - a)
+                        .map(([pos, need]) => (
+                          <Badge
+                            key={pos}
+                            variant="outline"
+                            className={
+                              need > 0
+                                ? 'border-emerald-600 text-emerald-700 bg-emerald-100'
+                                : 'border-gray-300 text-gray-600'
+                            }
+                          >
+                            {pos} {need > 0 && `(+${need})`}
+                          </Badge>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Top Recommended Players */}
+                <div>
+                  <h3 className="font-semibold text-sm mb-3">Top 10 Recommended Targets</h3>
+                  <div className="space-y-2">
+                    {topRecommendations.map((player, idx) => {
+                      const isDrafted = draftedPlayerNames.has(player.name.toLowerCase());
+                      const draftedInfo = isDrafted
+                        ? draftedPlayers.find(p => p.name.toLowerCase() === player.name.toLowerCase())
+                        : null;
+
+                      return (
+                        <div
+                          key={player.rank}
+                          className={`border rounded-lg p-3 ${
+                            isDrafted ? 'bg-gray-100 border-gray-300' : 'bg-white border-emerald-200'
+                          }`}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-gray-500">#{idx + 1}</span>
+                                <span className="font-semibold">{player.name}</span>
+                                {isDrafted && <Badge variant="secondary">Drafted</Badge>}
+                              </div>
+                              <div className="flex gap-2 mt-1 text-xs text-gray-600">
+                                <span>{player.position}</span>
+                                <span>·</span>
+                                <span>{player.team}</span>
+                                <span>·</span>
+                                <span>Rank #{player.rank}</span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-bold text-emerald-600">${player.valuedAt}</p>
+                              <p className="text-xs text-gray-500">
+                                Expert: ${player.blendAvg.toFixed(0)}
+                              </p>
+                              {draftedInfo && (
+                                <p className="text-xs font-semibold text-red-600">
+                                  Sold: ${draftedInfo.actualPrice}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          {/* Why recommended */}
+                          <div className="mt-2 text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded">
+                            {player.position.split('/').some(pos => positionNeeds[pos] > 0) && 'Fills position need · '}
+                            {player.blendAvg > player.valuedAt && 'Expert consensus higher · '}
+                            {!positionInflation.find(pi => player.position.includes(pi.position) && pi.averageInflation > 10) && 'Low inflation position'}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Player Table View */}
+        {playerDatabase.length > 0 && (
+          <Card className="mb-8 border-slate-200">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileSpreadsheet className="w-5 h-5 text-slate-600" />
+                    Player Database
+                  </CardTitle>
+                  <CardDescription>
+                    View all players, their values, and draft status
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPlayerTable(!showPlayerTable)}
+                >
+                  {showPlayerTable ? 'Hide Table' : 'Show Table'}
+                </Button>
+              </div>
+            </CardHeader>
+            {showPlayerTable && (
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Filters */}
+                  <div className="flex gap-3 flex-wrap">
+                    <Select value={tableFilter} onValueChange={(v: any) => setTableFilter(v)}>
+                      <SelectTrigger className="w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Players</SelectItem>
+                        <SelectItem value="available">Available Only</SelectItem>
+                        <SelectItem value="drafted">Drafted Only</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={positionFilter} onValueChange={setPositionFilter}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Positions</SelectItem>
+                        <SelectItem value="PG">PG</SelectItem>
+                        <SelectItem value="SG">SG</SelectItem>
+                        <SelectItem value="SF">SF</SelectItem>
+                        <SelectItem value="PF">PF</SelectItem>
+                        <SelectItem value="C">C</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    <Badge variant="outline" className="self-center">
+                      {tableData.length} players
+                    </Badge>
+                  </div>
+
+                  {/* Table */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="overflow-x-auto max-h-96">
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-100 sticky top-0">
+                          <tr className="border-b">
+                            <th className="text-left p-2 font-semibold">Rank</th>
+                            <th className="text-left p-2 font-semibold">Player</th>
+                            <th className="text-left p-2 font-semibold">Pos</th>
+                            <th className="text-left p-2 font-semibold">Team</th>
+                            <th className="text-right p-2 font-semibold">Value</th>
+                            <th className="text-right p-2 font-semibold">Expert Avg</th>
+                            <th className="text-center p-2 font-semibold">Status</th>
+                            <th className="text-right p-2 font-semibold">Actual $</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {tableData.map((player) => {
+                            const isDrafted = draftedPlayerNames.has(player.name.toLowerCase());
+                            const draftedInfo = isDrafted
+                              ? draftedPlayers.find(p => p.name.toLowerCase() === player.name.toLowerCase())
+                              : null;
+                            const valueDiff = draftedInfo
+                              ? draftedInfo.actualPrice - player.valuedAt
+                              : 0;
+
+                            return (
+                              <tr
+                                key={player.rank}
+                                className={`border-b hover:bg-slate-50 ${
+                                  isDrafted ? 'bg-gray-50' : ''
+                                }`}
+                              >
+                                <td className="p-2 text-gray-600">{player.rank}</td>
+                                <td className="p-2 font-medium">{player.name}</td>
+                                <td className="p-2">
+                                  <Badge variant="outline" className="text-xs">
+                                    {player.position}
+                                  </Badge>
+                                </td>
+                                <td className="p-2 text-gray-600">{player.team}</td>
+                                <td className="p-2 text-right font-semibold text-blue-600">
+                                  ${player.valuedAt}
+                                </td>
+                                <td className="p-2 text-right text-gray-600">
+                                  ${player.blendAvg.toFixed(0)}
+                                </td>
+                                <td className="p-2 text-center">
+                                  {isDrafted ? (
+                                    <Badge variant="secondary">Drafted</Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="border-green-500 text-green-700">
+                                      Available
+                                    </Badge>
+                                  )}
+                                </td>
+                                <td className="p-2 text-right">
+                                  {draftedInfo ? (
+                                    <div>
+                                      <span className="font-semibold">${draftedInfo.actualPrice}</span>
+                                      <span
+                                        className={`text-xs ml-1 ${
+                                          valueDiff > 0 ? 'text-red-600' : 'text-green-600'
+                                        }`}
+                                      >
+                                        ({valueDiff > 0 ? '+' : ''}${valueDiff})
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-400">-</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            )}
           </Card>
         )}
 
