@@ -1636,28 +1636,6 @@ export default function FantasyBasketball() {
           </Card>
         )}
 
-        {/* Bid Calculator & Constraint Checker */}
-        {draftInProgress && (
-          <Card className="mb-8 border-blue-200">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-blue-600" />
-                Bid Recommendation Calculator
-              </CardTitle>
-              <CardDescription>
-                Check if you should bid on a player based on value and constraints
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <BidCalculator
-                maxBid={maxBid}
-                getBidRecommendation={getBidRecommendation}
-                calculateRecommendedMaxBid={calculateRecommendedMaxBid}
-              />
-            </CardContent>
-          </Card>
-        )}
-
         {/* Position Inflation Tracker */}
         {draftInProgress && draftedPlayers.length > 0 && (
           <Card className="mb-8 border-purple-200">
@@ -1922,48 +1900,25 @@ export default function FantasyBasketball() {
           </Card>
         )}
 
-        {/* Draft Recommendations */}
+        {/* Player Table & Draft Recommendations - Side by Side */}
         {draftInProgress && playerDatabase.length > 0 && (
-          <Card className="mb-8 border-emerald-200">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-emerald-600" />
-                Draft Recommendations
-              </CardTitle>
-              <CardDescription>
-                AI-powered suggestions based on team needs, position scarcity, and value
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {/* Position Needs Summary */}
-                {myPlayers.length > 0 && (
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                    <h3 className="font-semibold text-sm text-emerald-900 mb-2">Position Needs</h3>
-                    <div className="flex gap-2 flex-wrap">
-                      {Object.entries(positionNeeds)
-                        .sort(([, a], [, b]) => b - a)
-                        .map(([pos, need]) => (
-                          <Badge
-                            key={pos}
-                            variant="outline"
-                            className={
-                              need > 0
-                                ? 'border-emerald-600 text-emerald-700 bg-emerald-100'
-                                : 'border-gray-300 text-gray-600'
-                            }
-                          >
-                            {pos} {need > 0 && `(+${need})`}
-                          </Badge>
-                        ))}
-                    </div>
-                  </div>
-                )}
-
+          <div className="grid lg:grid-cols-3 gap-6 mb-8">
+            {/* Draft Recommendations - Right (1 column) */}
+            <div className="lg:col-span-1 lg:order-2">
+              <Card className="border-emerald-200 h-full sticky top-4">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-emerald-600" />
+                    Top Recommendations
+                  </CardTitle>
+                  <CardDescription>
+                    Based on team needs & value
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+              <div className="space-y-3 max-h-[800px] overflow-y-auto">
                 {/* Top Recommended Players */}
-                <div>
-                  <h3 className="font-semibold text-sm mb-3">Top 10 Recommended Targets</h3>
-                  <div className="space-y-2">
+                <div className="space-y-2">
                     {topRecommendations.map((player, idx) => {
                       const isDrafted = draftedPlayerNames.has(player.name.toLowerCase());
                       const draftedInfo = isDrafted
@@ -2031,15 +1986,14 @@ export default function FantasyBasketball() {
                       );
                     })}
                   </div>
-                </div>
               </div>
             </CardContent>
           </Card>
-        )}
+        </div>
 
-        {/* Player Table View - Always visible during draft */}
-        {draftInProgress && playerDatabase.length > 0 && (
-          <Card className="mb-8 border-slate-200">
+        {/* Player Database Table - Left/Center (2 columns) */}
+        <div className="lg:col-span-2 lg:order-1">
+          <Card className="border-slate-200 h-full">
             <CardHeader>
               <div className="flex justify-between items-center">
                 <div>
@@ -2048,13 +2002,12 @@ export default function FantasyBasketball() {
                     Player Database
                   </CardTitle>
                   <CardDescription>
-                    Live view of all players with stats and draft status
+                    Search and nominate players for auction
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
-            {(
-              <CardContent>
+            <CardContent>
                 <div className="space-y-4">
                   {/* Search and Filters */}
                   <div className="flex gap-3 flex-wrap">
@@ -2228,9 +2181,10 @@ export default function FantasyBasketball() {
                   </div>
                 </div>
               </CardContent>
-            )}
           </Card>
-        )}
+        </div>
+      </div>
+    )}
 
         {/* Nomination Modal */}
         <Dialog open={nominatedPlayer !== null} onOpenChange={() => setNominatedPlayer(null)}>
