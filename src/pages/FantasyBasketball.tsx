@@ -231,6 +231,59 @@ export default function FantasyBasketball() {
     [playerDatabase, draftedPlayerNames]
   );
 
+  // Calculate roster slots from settings
+  const totalSlots = useMemo(() => {
+    const positions = leagueSettings.rosterPositions.split(',').map(p => p.trim());
+    // Count non-bench, non-IL slots
+    return positions.filter(p => !p.startsWith('BN') && !p.startsWith('IL')).length;
+  }, [leagueSettings.rosterPositions]);
+
+  const slotsRemaining = totalSlots - myPlayers.length;
+
+  // Calculate slot-aware max bid
+  const maxBid = useMemo(() => {
+    if (slotsRemaining <= 0) return 0;
+    return budgetRemaining - (slotsRemaining - 1);
+  }, [budgetRemaining, slotsRemaining]);
+
+  // Calculate inflation by position
+  const positionInflation = useMemo(() => {
+    const positions = ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F'];
+    const inflationData: PositionInflation[] = [];
+
+    positions.forEach(pos => {
+      const posPlayers = draftedPlayers.filter(p =>
+        p.position.includes(pos) || (pos === 'G' && (p.position.includes('PG') || p.position.includes('SG'))) ||
+        (pos === 'F' && (p.position.includes('SF') || p.position.includes('PF')))
+      );
+
+      if (posPlayers.length > 0) {
+        const totalInflation = posPlayers.reduce((sum, p) => {
+          const inflation = ((p.actualPrice - p.projectedValue) / p.projectedValue) * 100;
+          return sum + inflation;
+        }, 0);
+
+        inflationData.push({
+          position: pos,
+          averageInflation: totalInflation / posPlayers.length,
+          count: posPlayers.length,
+        });
+      }
+    });
+
+    return inflationData;
+  }, [draftedPlayers]);
+
+  // Calculate global inflation
+  const globalInflation = useMemo(() => {
+    if (draftedPlayers.length === 0) return 0;
+    const totalInflation = draftedPlayers.reduce((sum, p) => {
+      const inflation = ((p.actualPrice - p.projectedValue) / p.projectedValue) * 100;
+      return sum + inflation;
+    }, 0);
+    return totalInflation / draftedPlayers.length;
+  }, [draftedPlayers]);
+
   // Position needs analysis
   const positionNeeds = useMemo(() => {
     const needs: Record<string, number> = {
@@ -310,59 +363,6 @@ export default function FantasyBasketball() {
 
     return filtered;
   }, [playerDatabase, availablePlayers, draftedPlayerNames, tableFilter, positionFilter]);
-
-  // Calculate roster slots from settings
-  const totalSlots = useMemo(() => {
-    const positions = leagueSettings.rosterPositions.split(',').map(p => p.trim());
-    // Count non-bench, non-IL slots
-    return positions.filter(p => !p.startsWith('BN') && !p.startsWith('IL')).length;
-  }, [leagueSettings.rosterPositions]);
-
-  const slotsRemaining = totalSlots - myPlayers.length;
-
-  // Calculate slot-aware max bid
-  const maxBid = useMemo(() => {
-    if (slotsRemaining <= 0) return 0;
-    return budgetRemaining - (slotsRemaining - 1);
-  }, [budgetRemaining, slotsRemaining]);
-
-  // Calculate inflation by position
-  const positionInflation = useMemo(() => {
-    const positions = ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F'];
-    const inflationData: PositionInflation[] = [];
-
-    positions.forEach(pos => {
-      const posPlayers = draftedPlayers.filter(p =>
-        p.position.includes(pos) || (pos === 'G' && (p.position.includes('PG') || p.position.includes('SG'))) ||
-        (pos === 'F' && (p.position.includes('SF') || p.position.includes('PF')))
-      );
-
-      if (posPlayers.length > 0) {
-        const totalInflation = posPlayers.reduce((sum, p) => {
-          const inflation = ((p.actualPrice - p.projectedValue) / p.projectedValue) * 100;
-          return sum + inflation;
-        }, 0);
-
-        inflationData.push({
-          position: pos,
-          averageInflation: totalInflation / posPlayers.length,
-          count: posPlayers.length,
-        });
-      }
-    });
-
-    return inflationData;
-  }, [draftedPlayers]);
-
-  // Calculate global inflation
-  const globalInflation = useMemo(() => {
-    if (draftedPlayers.length === 0) return 0;
-    const totalInflation = draftedPlayers.reduce((sum, p) => {
-      const inflation = ((p.actualPrice - p.projectedValue) / p.projectedValue) * 100;
-      return sum + inflation;
-    }, 0);
-    return totalInflation / draftedPlayers.length;
-  }, [draftedPlayers]);
 
   const handleStatCategoryToggle = (categoryId: string) => {
     setLeagueSettings(prev => ({
