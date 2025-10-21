@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Upload, TrendingUp, DollarSign, Users, BarChart3, Settings, AlertTriangle, Wallet, Search, FileSpreadsheet } from 'lucide-react';
+import { Upload, TrendingUp, DollarSign, Users, BarChart3, Settings, AlertTriangle, Wallet, Search, FileSpreadsheet, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import * as XLSX from 'xlsx';
 
 interface LeagueSettings {
@@ -485,6 +486,15 @@ export default function FantasyBasketball() {
   const [draftedByMe, setDraftedByMe] = useState(false);
   const [selectedOpponent, setSelectedOpponent] = useState<string>('');
 
+  // Nomination modal state
+  const [nominatedPlayer, setNominatedPlayer] = useState<PlayerData | null>(null);
+  const [nominationPrice, setNominationPrice] = useState('');
+  const [nominationTeam, setNominationTeam] = useState<string>('');
+  const [nominationIsMine, setNominationIsMine] = useState(false);
+
+  // Table search state
+  const [tableSearch, setTableSearch] = useState('');
+
   // Get drafted player names for lookup
   const draftedPlayerNames = useMemo(() =>
     new Set(draftedPlayers.map(p => p.name.toLowerCase())),
@@ -770,8 +780,18 @@ export default function FantasyBasketball() {
       filtered = filtered.filter(p => p.position.includes(positionFilter));
     }
 
+    // Filter by search text
+    if (tableSearch.trim()) {
+      const search = tableSearch.toLowerCase();
+      filtered = filtered.filter(p =>
+        p.name.toLowerCase().includes(search) ||
+        p.team.toLowerCase().includes(search) ||
+        p.position.toLowerCase().includes(search)
+      );
+    }
+
     return filtered;
-  }, [playerDatabase, availablePlayers, draftedPlayerNames, tableFilter, positionFilter]);
+  }, [playerDatabase, availablePlayers, draftedPlayerNames, tableFilter, positionFilter, tableSearch]);
 
   const handleStatCategoryToggle = (categoryId: string) => {
     setLeagueSettings(prev => ({
@@ -780,6 +800,53 @@ export default function FantasyBasketball() {
         ? prev.statCategories.filter(c => c !== categoryId)
         : [...prev.statCategories, categoryId]
     }));
+  };
+
+  const handleNominatePlayer = (player: PlayerData) => {
+    setNominatedPlayer(player);
+    setNominationPrice('');
+    setNominationTeam('');
+    setNominationIsMine(false);
+  };
+
+  const handleSubmitNomination = () => {
+    if (!nominatedPlayer || !nominationPrice) return;
+
+    const draftedBy = nominationIsMine ? 'me' : nominationTeam;
+    if (!draftedBy) return;
+
+    const newPlayer: DraftedPlayer = {
+      name: nominatedPlayer.name,
+      position: nominatedPlayer.position,
+      projectedValue: 0, // We don't have projected value in the new flow
+      actualPrice: parseFloat(nominationPrice),
+      draftedBy,
+    };
+
+    setDraftedPlayers(prev => [...prev, newPlayer]);
+
+    if (nominationIsMine) {
+      setMyPlayers(prev => [...prev, newPlayer]);
+      setBudgetRemaining(prev => prev - parseFloat(nominationPrice));
+    } else if (nominationTeam) {
+      // Update opponent team
+      setOpponentTeams(prev => prev.map(team => {
+        if (team.name === nominationTeam) {
+          return {
+            ...team,
+            budget: team.budget - parseFloat(nominationPrice),
+            players: [...team.players, newPlayer]
+          };
+        }
+        return team;
+      }));
+    }
+
+    // Reset modal
+    setNominatedPlayer(null);
+    setNominationPrice('');
+    setNominationTeam('');
+    setNominationIsMine(false);
   };
 
   const handleAddDraftedPlayer = () => {
@@ -1357,120 +1424,14 @@ export default function FantasyBasketball() {
                       </Alert>
                     )}
 
-                    {/* Draft Entry Form */}
-                    <div className="border-t pt-4 space-y-3">
-                      <h3 className="font-semibold text-sm">Record Drafted Player</h3>
-
-                      {/* Player Search */}
-                      {playerDatabase.length > 0 && (
-                        <div className="relative">
-                          <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                            <Input
-                              placeholder="Search players..."
-                              value={playerSearch}
-                              onChange={(e) => setPlayerSearch(e.target.value)}
-                              className="pl-9"
-                            />
-                          </div>
-                          {filteredPlayers.length > 0 && (
-                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                              {filteredPlayers.map((player) => (
-                                <button
-                                  key={player.rank}
-                                  onClick={() => {
-                                    handlePlayerSelect(player);
-                                    setPlayerSearch('');
-                                  }}
-                                  className="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors border-b border-gray-100 last:border-0"
-                                >
-                                  <div className="flex justify-between items-center">
-                                    <div>
-                                      <p className="font-medium text-sm">{player.name}</p>
-                                      <p className="text-xs text-gray-500">
-                                        {player.position} · {player.team}
-                                      </p>
-                                    </div>
-                                    <div className="text-right">
-                                      <p className="text-sm font-semibold text-blue-600">#{player.rank}</p>
-                                      <p className="text-xs text-gray-500">{player.pointsPerGame.toFixed(1)} pts</p>
-                                    </div>
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <Input
-                          placeholder="Player Name"
-                          value={playerName}
-                          onChange={(e) => setPlayerName(e.target.value)}
-                        />
-                        <Input
-                          placeholder="Position (e.g., PG)"
-                          value={playerPosition}
-                          onChange={(e) => setPlayerPosition(e.target.value)}
-                        />
-                        <Input
-                          type="number"
-                          placeholder="Projected $"
-                          value={projectedValue}
-                          onChange={(e) => setProjectedValue(e.target.value)}
-                        />
-                        <Input
-                          type="number"
-                          placeholder="Actual $"
-                          value={actualPrice}
-                          onChange={(e) => setActualPrice(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-3">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="drafted-by-me"
-                            checked={draftedByMe}
-                            onCheckedChange={(checked) => {
-                              setDraftedByMe(checked === true);
-                              if (checked) setSelectedOpponent('');
-                            }}
-                          />
-                          <Label htmlFor="drafted-by-me" className="font-normal cursor-pointer">
-                            I drafted this player
-                          </Label>
-                        </div>
-
-                        {!draftedByMe && opponentTeams.length > 0 && (
-                          <div className="space-y-2">
-                            <Label htmlFor="opponent-select" className="text-sm">Or select opponent:</Label>
-                            <Select
-                              value={selectedOpponent}
-                              onValueChange={setSelectedOpponent}
-                            >
-                              <SelectTrigger id="opponent-select">
-                                <SelectValue placeholder="Select opponent team..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {opponentTeams.map((team) => (
-                                  <SelectItem key={team.name} value={team.name}>
-                                    {team.name} (${team.budget} left, {team.players.length} players)
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        )}
-                      </div>
-
-                      <Button
-                        onClick={handleAddDraftedPlayer}
-                        className="w-full"
-                        disabled={!draftedByMe && !selectedOpponent}
-                      >
-                        Add Player
-                      </Button>
+                    {/* Draft Instructions */}
+                    <div className="border-t pt-4">
+                      <Alert className="border-blue-300 bg-blue-50">
+                        <AlertDescription className="text-sm text-blue-800">
+                          <strong>How to draft:</strong> Use the Player Database table below to search and nominate players.
+                          Click "Nominate" on any player row to record auction results.
+                        </AlertDescription>
+                      </Alert>
                     </div>
 
                     {/* My Players List */}
@@ -2095,8 +2056,26 @@ export default function FantasyBasketball() {
             {(
               <CardContent>
                 <div className="space-y-4">
-                  {/* Filters */}
+                  {/* Search and Filters */}
                   <div className="flex gap-3 flex-wrap">
+                    <div className="relative flex-1 min-w-[200px]">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        placeholder="Search players by name, team, position..."
+                        value={tableSearch}
+                        onChange={(e) => setTableSearch(e.target.value)}
+                        className="pl-9"
+                      />
+                      {tableSearch && (
+                        <button
+                          onClick={() => setTableSearch('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
                     <Select value={tableFilter} onValueChange={(v: any) => setTableFilter(v)}>
                       <SelectTrigger className="w-40">
                         <SelectValue />
@@ -2147,6 +2126,7 @@ export default function FantasyBasketball() {
                             <th className="text-right p-2 font-semibold">FT%</th>
                             <th className="text-center p-2 font-semibold">Status</th>
                             <th className="text-right p-2 font-semibold">Auction $</th>
+                            {draftInProgress && <th className="text-center p-2 font-semibold">Action</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -2223,6 +2203,22 @@ export default function FantasyBasketball() {
                                     <span className="text-gray-400">-</span>
                                   )}
                                 </td>
+                                {draftInProgress && (
+                                  <td className="p-2 text-center">
+                                    {!isDrafted ? (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleNominatePlayer(player)}
+                                        className="text-xs"
+                                      >
+                                        Nominate
+                                      </Button>
+                                    ) : (
+                                      <span className="text-xs text-gray-400">Drafted</span>
+                                    )}
+                                  </td>
+                                )}
                               </tr>
                             );
                           })}
@@ -2235,6 +2231,146 @@ export default function FantasyBasketball() {
             )}
           </Card>
         )}
+
+        {/* Nomination Modal */}
+        <Dialog open={nominatedPlayer !== null} onOpenChange={() => setNominatedPlayer(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Nominate Player</DialogTitle>
+              <DialogDescription>
+                Record the auction results for this player
+              </DialogDescription>
+            </DialogHeader>
+            {nominatedPlayer && (
+              <div className="space-y-4">
+                {/* Player Info */}
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-semibold text-lg">{nominatedPlayer.name}</h3>
+                      <p className="text-sm text-gray-600">
+                        {nominatedPlayer.position} · {nominatedPlayer.team}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <Badge variant="outline">Rank #{nominatedPlayer.rank}</Badge>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {getPlayerTier(nominatedPlayer).name}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-4 gap-2 text-xs">
+                    <div>
+                      <p className="text-gray-500">PTS</p>
+                      <p className="font-semibold">{nominatedPlayer.pointsPerGame.toFixed(1)}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">REB</p>
+                      <p className="font-semibold">{nominatedPlayer.reboundsPerGame.toFixed(1)}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">AST</p>
+                      <p className="font-semibold">{nominatedPlayer.assistsPerGame.toFixed(1)}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">BLK</p>
+                      <p className="font-semibold">{nominatedPlayer.blocksPerGame.toFixed(1)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Auction Price Input */}
+                <div className="space-y-2">
+                  <Label htmlFor="nomination-price">Auction Price ($)</Label>
+                  <Input
+                    id="nomination-price"
+                    type="number"
+                    placeholder="Enter final auction price"
+                    value={nominationPrice}
+                    onChange={(e) => setNominationPrice(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+
+                {/* Team Selection */}
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="nomination-is-mine"
+                      checked={nominationIsMine}
+                      onCheckedChange={(checked) => {
+                        setNominationIsMine(checked === true);
+                        if (checked) setNominationTeam('');
+                      }}
+                    />
+                    <Label htmlFor="nomination-is-mine" className="font-normal cursor-pointer">
+                      I won this player
+                    </Label>
+                  </div>
+
+                  {!nominationIsMine && opponentTeams.length > 0 && (
+                    <div className="space-y-2">
+                      <Label htmlFor="nomination-team">Or select opponent team:</Label>
+                      <Select
+                        value={nominationTeam}
+                        onValueChange={setNominationTeam}
+                      >
+                        <SelectTrigger id="nomination-team">
+                          <SelectValue placeholder="Select team that won..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {opponentTeams.map((team) => (
+                            <SelectItem key={team.name} value={team.name}>
+                              {team.name} (${team.budget} left, {team.players.length} players)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bid Recommendation */}
+                {nominationIsMine && nominationPrice && (
+                  <Alert className={
+                    parseFloat(nominationPrice) > maxBid
+                      ? 'border-red-300 bg-red-50'
+                      : 'border-blue-300 bg-blue-50'
+                  }>
+                    <AlertDescription className="text-sm">
+                      {parseFloat(nominationPrice) > maxBid ? (
+                        <span className="text-red-800">
+                          <strong>Warning:</strong> This exceeds your max bid of ${maxBid}
+                        </span>
+                      ) : (
+                        <span className="text-blue-800">
+                          Your max bid is ${maxBid}. Budget remaining after: ${budgetRemaining - parseFloat(nominationPrice)}
+                        </span>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* Submit Button */}
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleSubmitNomination}
+                    disabled={!nominationPrice || (!nominationIsMine && !nominationTeam)}
+                    className="flex-1"
+                  >
+                    Confirm Draft
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setNominatedPlayer(null)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* How It Works Section */}
         <Card className="mt-8 border-gray-200">
