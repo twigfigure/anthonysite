@@ -1293,66 +1293,7 @@ export default function FantasyBasketball() {
           )}
         </Card>
 
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          {/* Excel Upload Section */}
-          <Card className="border-blue-200">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileSpreadsheet className="w-5 h-5 text-blue-600" />
-                Upload Draft Data
-              </CardTitle>
-              <CardDescription>
-                Upload your Excel file with player rankings, projections, and auction values
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
-                  <input
-                    type="file"
-                    accept=".xlsx,.xls"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    id="excel-upload"
-                  />
-                  <label htmlFor="excel-upload" className="cursor-pointer">
-                    <FileSpreadsheet className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                    <p className="text-sm text-gray-600 mb-2">
-                      Click to upload Excel file
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Supports .xlsx and .xls formats
-                    </p>
-                  </label>
-                </div>
-
-                {uploadedFiles.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between bg-green-50 border border-green-200 p-3 rounded-lg">
-                      <div>
-                        <p className="text-sm font-medium text-green-800">
-                          {uploadedFiles[0]}
-                        </p>
-                        <p className="text-xs text-green-600">
-                          {playerDatabase.length} players loaded
-                        </p>
-                      </div>
-                      <Badge className="bg-green-600">✓ Loaded</Badge>
-                    </div>
-                  </div>
-                )}
-
-                {playerDatabase.length === 0 && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <p className="text-xs text-blue-800">
-                      <strong>Expected format:</strong> Columns should include PLAYER, POS, TEAM, VALUED AT, Y! AVG, ESPN AVG, BLEND AVG
-                    </p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
+        <div className="mb-8">
           {/* Live Draft Tracking */}
           <Card className="border-green-200">
             <CardHeader>
@@ -1555,6 +1496,19 @@ export default function FantasyBasketball() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Player database info */}
+        {playerDatabase.length > 0 && (
+          <Card className="mb-8 border-blue-200">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-center gap-3 text-sm text-blue-800">
+                <FileSpreadsheet className="w-5 h-5" />
+                <span className="font-medium">{uploadedFiles[0] || 'Player database loaded'}</span>
+                <Badge className="bg-blue-600">{playerDatabase.length} players</Badge>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Category Coverage & Budget Allocation */}
         {draftInProgress && myPlayers.length > 0 && (
