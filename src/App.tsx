@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import Kindred from "./pages/Kindred";
+import FantasyBasketball from "./pages/FantasyBasketball";
 import MigrateImages from "./pages/MigrateImages";
 import NotFound from "./pages/NotFound";
 
@@ -21,6 +22,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/kindred" element={<Kindred />} />
+            <Route path="/fantasy-basketball" element={<FantasyBasketball />} />
             <Route path="/migrate-images" element={<MigrateImages />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
