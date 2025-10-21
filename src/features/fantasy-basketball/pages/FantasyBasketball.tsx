@@ -116,10 +116,10 @@ interface PlayerTier {
 }
 
 const PLAYER_TIERS: PlayerTier[] = [
-  { name: 'Tier 1', minValue: 4.0, maxValue: 100, priceRange: '$45-60', description: 'Elite MVP-level anchors' },
-  { name: 'Tier 2', minValue: 2.0, maxValue: 3.99, priceRange: '$25-40', description: 'All-Star caliber players' },
-  { name: 'Tier 3', minValue: 0.5, maxValue: 1.99, priceRange: '$10-20', description: 'Solid mid-round starters' },
-  { name: 'Tier 4', minValue: -10, maxValue: 0.49, priceRange: '$1-5', description: 'Role players & specialists' },
+  { name: 'Tier 1', minValue: 0.19, maxValue: 100, priceRange: '$45-60', description: 'Elite MVP-level anchors (Top 15%)' },
+  { name: 'Tier 2', minValue: 0.03, maxValue: 0.18, priceRange: '$25-40', description: 'All-Star caliber players (Top 35%)' },
+  { name: 'Tier 3', minValue: -0.18, maxValue: 0.02, priceRange: '$10-20', description: 'Solid starters (Top 60%)' },
+  { name: 'Tier 4', minValue: -10, maxValue: -0.19, priceRange: '$1-5', description: 'Role players & specialists (Bottom 40%)' },
 ];
 
 // Player archetype definitions
