@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Upload, TrendingUp, DollarSign, Users, BarChart3, Settings, AlertTriangle, Wallet, Search, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,17 +24,37 @@ interface LeagueSettings {
 }
 
 interface PlayerData {
+  round: number;
   rank: number;
+  value: number; // BBM value metric
   name: string;
-  position: string;
   team: string;
-  gp: number;
-  mpg: number;
-  total: number;
-  valuedAt: number; // Primary auction value
-  yahooAvg: number;
-  espnAvg: number;
-  blendAvg: number;
+  position: string;
+  injury: string;
+  gamesPlayed: number;
+  minutesPerGame: number;
+  pointsPerGame: number;
+  threePointersPerGame: number;
+  reboundsPerGame: number;
+  assistsPerGame: number;
+  stealsPerGame: number;
+  blocksPerGame: number;
+  fgPercentage: number;
+  ftPercentage: number;
+  turnoversPerGame: number;
+  usage: number;
+  // Value metrics
+  pointsValue: number;
+  threeValue: number;
+  reboundsValue: number;
+  assistsValue: number;
+  stealsValue: number;
+  blocksValue: number;
+  fgPercentageValue: number;
+  ftPercentageValue: number;
+  turnoversValue: number;
+  // Optional auction data
+  auctionValue?: number;
 }
 
 interface DraftedPlayer {
@@ -321,21 +341,17 @@ export default function FantasyBasketball() {
 
     // Score each available player
     const scoredPlayers = availablePlayers.map(player => {
-      let score = player.valuedAt; // Base score is value
+      let score = player.value; // BBM value metric
 
       // Bonus for filling position needs
       const positions = player.position.split('/');
-      const positionNeedBonus = Math.max(...positions.map(pos => positionNeeds[pos] || 0)) * 5;
+      const positionNeedBonus = Math.max(...positions.map(pos => positionNeeds[pos] || 0)) * 0.1;
 
       // Penalty for inflated positions
       const posInflation = positionInflation.find(pi => player.position.includes(pi.position));
-      const inflationPenalty = posInflation ? (posInflation.averageInflation / 10) : 0;
+      const inflationPenalty = posInflation ? (posInflation.averageInflation / 100) : 0;
 
-      // Bonus for value (blend avg vs valued at)
-      const valueDiff = player.blendAvg - player.valuedAt;
-      const valueBonus = valueDiff > 0 ? valueDiff * 0.5 : 0;
-
-      score = score + positionNeedBonus - inflationPenalty + valueBonus;
+      score = score + positionNeedBonus - inflationPenalty;
 
       return { ...player, score };
     });
@@ -461,6 +477,64 @@ export default function FantasyBasketball() {
     };
   };
 
+  // Parse BBM Player Rankings format
+  const parseBBMData = (jsonData: any[]): PlayerData[] => {
+    return jsonData.map((row) => ({
+      round: row['Round'] || 0,
+      rank: row['Rank'] || 0,
+      value: row['Value'] || 0,
+      name: row['Name'] || '',
+      team: row['Team'] || '',
+      position: row['Pos'] || '',
+      injury: row['Inj'] || '',
+      gamesPlayed: row['g'] || 0,
+      minutesPerGame: row['minutes/g'] || 0,
+      pointsPerGame: row['points/g'] || 0,
+      threePointersPerGame: row['3pt/g'] || 0,
+      reboundsPerGame: row['rebound/g'] || 0,
+      assistsPerGame: row['assists/g'] || 0,
+      stealsPerGame: row['steals/g'] || 0,
+      blocksPerGame: row['blocks/g'] || 0,
+      fgPercentage: row['fg%'] || 0,
+      ftPercentage: row['ft%'] || 0,
+      turnoversPerGame: row['to/g'] || 0,
+      usage: row['USG'] || 0,
+      pointsValue: row['pV'] || 0,
+      threeValue: row['3V'] || 0,
+      reboundsValue: row['rV'] || 0,
+      assistsValue: row['aV'] || 0,
+      stealsValue: row['sV'] || 0,
+      blocksValue: row['bV'] || 0,
+      fgPercentageValue: row['fg%V'] || 0,
+      ftPercentageValue: row['ft%V'] || 0,
+      turnoversValue: row['toV'] || 0,
+      auctionValue: 0, // Will be set manually
+    }));
+  };
+
+  // Auto-load BBM_PlayerRankings.xlsx on component mount
+  useEffect(() => {
+    const loadDefaultPlayerData = async () => {
+      try {
+        const response = await fetch('/BBM_PlayerRankings.xlsx');
+        const arrayBuffer = await response.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+        const players = parseBBMData(jsonData);
+        setPlayerDatabase(players);
+        setUploadedFiles(['BBM_PlayerRankings.xlsx (auto-loaded)']);
+        console.log(`Auto-loaded ${players.length} players from BBM_PlayerRankings.xlsx`);
+      } catch (error) {
+        console.error('Error auto-loading player data:', error);
+      }
+    };
+
+    loadDefaultPlayerData();
+  }, []);
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -477,33 +551,7 @@ export default function FantasyBasketball() {
         const worksheet = workbook.Sheets[sheetName];
         const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
 
-        // Parse player data from Excel
-        const players: PlayerData[] = jsonData.map((row) => {
-          // Helper function to parse dollar values like "$79.30 " to numbers
-          const parseDollar = (val: any): number => {
-            if (typeof val === 'number') return val;
-            if (typeof val === 'string') {
-              const cleaned = val.replace(/[$,\s]/g, '');
-              return parseFloat(cleaned) || 0;
-            }
-            return 0;
-          };
-
-          return {
-            rank: row['R#'] || 0,
-            name: row['PLAYER'] || '',
-            position: row['POS'] || '',
-            team: row['TEAM'] || '',
-            gp: row['GP'] || 0,
-            mpg: row['MPG'] || 0,
-            total: row['TOTAL'] || 0,
-            valuedAt: parseDollar(row['VALUED AT']),
-            yahooAvg: parseDollar(row['Y! AVG']),
-            espnAvg: parseDollar(row['ESPN AVG']),
-            blendAvg: parseDollar(row['BLEND AVG']),
-          };
-        });
-
+        const players = parseBBMData(jsonData);
         setPlayerDatabase(players);
         console.log(`Loaded ${players.length} players from Excel file`);
       } catch (error) {
@@ -519,7 +567,7 @@ export default function FantasyBasketball() {
   const handlePlayerSelect = (selectedPlayer: PlayerData) => {
     setPlayerName(selectedPlayer.name);
     setPlayerPosition(selectedPlayer.position);
-    setProjectedValue(selectedPlayer.valuedAt.toString());
+    setProjectedValue((selectedPlayer.auctionValue || 0).toString());
   };
 
   // Filter players based on search
@@ -895,8 +943,8 @@ export default function FantasyBasketball() {
                                       </p>
                                     </div>
                                     <div className="text-right">
-                                      <p className="text-sm font-semibold text-blue-600">${player.valuedAt}</p>
-                                      <p className="text-xs text-gray-500">Projected</p>
+                                      <p className="text-sm font-semibold text-blue-600">#{player.rank}</p>
+                                      <p className="text-xs text-gray-500">{player.pointsPerGame.toFixed(1)} pts</p>
                                     </div>
                                   </div>
                                 </button>
@@ -1128,9 +1176,9 @@ export default function FantasyBasketball() {
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="text-sm font-bold text-emerald-600">${player.valuedAt}</p>
+                              <p className="text-sm font-bold text-emerald-600">Value: {player.value.toFixed(2)}</p>
                               <p className="text-xs text-gray-500">
-                                Expert: ${player.blendAvg.toFixed(0)}
+                                {player.pointsPerGame.toFixed(1)} pts · {player.assistsPerGame.toFixed(1)} ast
                               </p>
                               {draftedInfo && (
                                 <p className="text-xs font-semibold text-red-600">
@@ -1142,7 +1190,7 @@ export default function FantasyBasketball() {
                           {/* Why recommended */}
                           <div className="mt-2 text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded">
                             {player.position.split('/').some(pos => positionNeeds[pos] > 0) && 'Fills position need · '}
-                            {player.blendAvg > player.valuedAt && 'Expert consensus higher · '}
+                            {player.value > 0.5 && 'High BBM value · '}
                             {!positionInflation.find(pi => player.position.includes(pi.position) && pi.averageInflation > 10) && 'Low inflation position'}
                           </div>
                         </div>
@@ -1155,8 +1203,8 @@ export default function FantasyBasketball() {
           </Card>
         )}
 
-        {/* Player Table View */}
-        {playerDatabase.length > 0 && (
+        {/* Player Table View - Always visible during draft */}
+        {draftInProgress && playerDatabase.length > 0 && (
           <Card className="mb-8 border-slate-200">
             <CardHeader>
               <div className="flex justify-between items-center">
@@ -1166,18 +1214,12 @@ export default function FantasyBasketball() {
                     Player Database
                   </CardTitle>
                   <CardDescription>
-                    View all players, their values, and draft status
+                    Live view of all players with stats and draft status
                   </CardDescription>
                 </div>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowPlayerTable(!showPlayerTable)}
-                >
-                  {showPlayerTable ? 'Hide Table' : 'Show Table'}
-                </Button>
               </div>
             </CardHeader>
-            {showPlayerTable && (
+            {(
               <CardContent>
                 <div className="space-y-4">
                   {/* Filters */}
@@ -1221,11 +1263,17 @@ export default function FantasyBasketball() {
                             <th className="text-left p-2 font-semibold">Rank</th>
                             <th className="text-left p-2 font-semibold">Player</th>
                             <th className="text-left p-2 font-semibold">Pos</th>
-                            <th className="text-left p-2 font-semibold">Team</th>
-                            <th className="text-right p-2 font-semibold">Value</th>
-                            <th className="text-right p-2 font-semibold">Expert Avg</th>
+                            <th className="text-right p-2 font-semibold">PTS</th>
+                            <th className="text-right p-2 font-semibold">3PM</th>
+                            <th className="text-right p-2 font-semibold">REB</th>
+                            <th className="text-right p-2 font-semibold">AST</th>
+                            <th className="text-right p-2 font-semibold">STL</th>
+                            <th className="text-right p-2 font-semibold">BLK</th>
+                            <th className="text-right p-2 font-semibold">FG%</th>
+                            <th className="text-right p-2 font-semibold">FT%</th>
+                            <th className="text-right p-2 font-semibold">TO</th>
                             <th className="text-center p-2 font-semibold">Status</th>
-                            <th className="text-right p-2 font-semibold">Actual $</th>
+                            <th className="text-right p-2 font-semibold">Auction $</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1234,9 +1282,6 @@ export default function FantasyBasketball() {
                             const draftedInfo = isDrafted
                               ? draftedPlayers.find(p => p.name.toLowerCase() === player.name.toLowerCase())
                               : null;
-                            const valueDiff = draftedInfo
-                              ? draftedInfo.actualPrice - player.valuedAt
-                              : 0;
 
                             return (
                               <tr
@@ -1246,19 +1291,24 @@ export default function FantasyBasketball() {
                                 }`}
                               >
                                 <td className="p-2 text-gray-600">{player.rank}</td>
-                                <td className="p-2 font-medium">{player.name}</td>
+                                <td className="p-2 font-medium">
+                                  {player.name}
+                                  {player.injury && <span className="ml-1 text-red-500 text-xs">({player.injury})</span>}
+                                </td>
                                 <td className="p-2">
                                   <Badge variant="outline" className="text-xs">
                                     {player.position}
                                   </Badge>
                                 </td>
-                                <td className="p-2 text-gray-600">{player.team}</td>
-                                <td className="p-2 text-right font-semibold text-blue-600">
-                                  ${player.valuedAt}
-                                </td>
-                                <td className="p-2 text-right text-gray-600">
-                                  ${player.blendAvg.toFixed(0)}
-                                </td>
+                                <td className="p-2 text-right">{player.pointsPerGame.toFixed(1)}</td>
+                                <td className="p-2 text-right">{player.threePointersPerGame.toFixed(1)}</td>
+                                <td className="p-2 text-right">{player.reboundsPerGame.toFixed(1)}</td>
+                                <td className="p-2 text-right">{player.assistsPerGame.toFixed(1)}</td>
+                                <td className="p-2 text-right">{player.stealsPerGame.toFixed(1)}</td>
+                                <td className="p-2 text-right">{player.blocksPerGame.toFixed(1)}</td>
+                                <td className="p-2 text-right">{(player.fgPercentage * 100).toFixed(1)}%</td>
+                                <td className="p-2 text-right">{(player.ftPercentage * 100).toFixed(1)}%</td>
+                                <td className="p-2 text-right">{player.turnoversPerGame.toFixed(1)}</td>
                                 <td className="p-2 text-center">
                                   {isDrafted ? (
                                     <Badge variant="secondary">Drafted</Badge>
@@ -1270,16 +1320,7 @@ export default function FantasyBasketball() {
                                 </td>
                                 <td className="p-2 text-right">
                                   {draftedInfo ? (
-                                    <div>
-                                      <span className="font-semibold">${draftedInfo.actualPrice}</span>
-                                      <span
-                                        className={`text-xs ml-1 ${
-                                          valueDiff > 0 ? 'text-red-600' : 'text-green-600'
-                                        }`}
-                                      >
-                                        ({valueDiff > 0 ? '+' : ''}${valueDiff})
-                                      </span>
-                                    </div>
+                                    <span className="font-semibold">${draftedInfo.actualPrice}</span>
                                   ) : (
                                     <span className="text-gray-400">-</span>
                                   )}
