@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { TrendingUp, DollarSign, Users, BarChart3, Settings, AlertTriangle, Wallet, Search, FileSpreadsheet, X, ChevronDown } from 'lucide-react';
+import { TrendingUp, DollarSign, Users, BarChart3, Settings, AlertTriangle, Wallet, Search, FileSpreadsheet, X, ChevronDown, Trash2, Edit2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -454,7 +454,6 @@ export default function FantasyBasketball() {
     teamNames: Array.from({ length: 10 }, (_, i) => `Team ${i + 1}`),
   });
 
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [playerDatabase, setPlayerDatabase] = useState<PlayerData[]>([]);
   const [draftedPlayers, setDraftedPlayers] = useState<DraftedPlayer[]>([]);
   const [myPlayers, setMyPlayers] = useState<DraftedPlayer[]>([]);
@@ -470,7 +469,6 @@ export default function FantasyBasketball() {
 
   // Opponent tracking state
   const [opponentTeams, setOpponentTeams] = useState<OpponentTeam[]>([]);
-  const [showCompetitiveLandscape, setShowCompetitiveLandscape] = useState(false);
 
   // Draft entry form state
   const [playerName, setPlayerName] = useState('');
@@ -488,6 +486,14 @@ export default function FantasyBasketball() {
 
   // Table search state
   const [tableSearch, setTableSearch] = useState('');
+
+  // Player database tab state
+  const [playerDatabaseTab, setPlayerDatabaseTab] = useState<'players' | 'history'>('players');
+
+  // Draft history edit state
+  const [editingDraftIndex, setEditingDraftIndex] = useState<number | null>(null);
+  const [editDraftTeam, setEditDraftTeam] = useState<string>('');
+  const [editDraftPrice, setEditDraftPrice] = useState<string>('');
 
   // Collapsible state for opponent teams in competitive analysis
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
@@ -536,7 +542,7 @@ export default function FantasyBasketball() {
   }, [budgetRemaining, slotsRemaining]);
 
   // Helper function to assign roster slots for any team
-  const assignRosterSlots = (players: DraftedPlayer[]) => {
+  const assignRosterSlots = useCallback((players: DraftedPlayer[]) => {
     const positions = leagueSettings.rosterPositions.split(',').map(p => p.trim());
 
     // Helper function to check if a player can fill a position
@@ -597,12 +603,12 @@ export default function FantasyBasketball() {
     }
 
     return slots;
-  };
+  }, [leagueSettings.rosterPositions]);
 
   // Roster slot assignment for My Team
   const rosterSlots = useMemo(() => {
     return assignRosterSlots(myPlayers);
-  }, [myPlayers, leagueSettings.rosterPositions]);
+  }, [myPlayers, assignRosterSlots]);
 
   // Get roster slots for the currently selected team view
   const selectedTeamRoster = useMemo(() => {
@@ -616,7 +622,7 @@ export default function FantasyBasketball() {
     }
 
     return [];
-  }, [selectedTeamView, rosterSlots, opponentTeams, leagueSettings.rosterPositions]);
+  }, [selectedTeamView, rosterSlots, opponentTeams, assignRosterSlots]);
 
   // Calculate inflation by position
   const positionInflation = useMemo(() => {
@@ -662,35 +668,74 @@ export default function FantasyBasketball() {
     return totalInflation / playersWithValue.length;
   }, [draftedPlayers]);
 
-  // Position needs analysis
+  // Position needs analysis based on actual roster slots
   const positionNeeds = useMemo(() => {
     const needs: Record<string, number> = {
       PG: 0, SG: 0, SF: 0, PF: 0, C: 0
     };
 
-    // Count how many of each position I have
-    const positionCounts: Record<string, number> = {
+    // Parse roster positions from league settings
+    const rosterPositions = leagueSettings.rosterPositions.split(',').map(p => p.trim());
+
+    // Filter out bench and IL slots - we only care about starting positions
+    const startingSlots = rosterPositions.filter(pos =>
+      !pos.startsWith('BN') && !pos.startsWith('IL')
+    );
+
+    // Count required positions from roster
+    const requiredPositions: Record<string, number> = {
+      PG: 0, SG: 0, SF: 0, PF: 0, C: 0
+    };
+
+    startingSlots.forEach(slot => {
+      if (slot === 'PG') requiredPositions.PG++;
+      else if (slot === 'SG') requiredPositions.SG++;
+      else if (slot === 'SF') requiredPositions.SF++;
+      else if (slot === 'PF') requiredPositions.PF++;
+      else if (slot === 'C') requiredPositions.C++;
+      else if (slot === 'G') {
+        // G slot can be PG or SG
+        requiredPositions.PG += 0.5;
+        requiredPositions.SG += 0.5;
+      } else if (slot === 'F') {
+        // F slot can be SF or PF
+        requiredPositions.SF += 0.5;
+        requiredPositions.PF += 0.5;
+      } else if (slot === 'Util') {
+        // Util can be anyone - distribute evenly
+        requiredPositions.PG += 0.2;
+        requiredPositions.SG += 0.2;
+        requiredPositions.SF += 0.2;
+        requiredPositions.PF += 0.2;
+        requiredPositions.C += 0.2;
+      }
+    });
+
+    // Count how many of each position I have (can fill multiple positions)
+    const filledPositions: Record<string, number> = {
       PG: 0, SG: 0, SF: 0, PF: 0, C: 0
     };
 
     myPlayers.forEach(player => {
-      const positions = player.position.split('/');
+      const positions = player.position.split('/').map(p => p.trim());
+      // Each player contributes fractionally to each position they can fill
+      const contribution = 1 / positions.length;
       positions.forEach(pos => {
-        if (positionCounts[pos] !== undefined) {
-          positionCounts[pos]++;
+        if (filledPositions[pos] !== undefined) {
+          filledPositions[pos] += contribution;
         }
       });
     });
 
-    // Calculate needs (higher score = more needed)
-    // Simple heuristic: positions with fewer players are more needed
-    const maxCount = Math.max(...Object.values(positionCounts), 1);
+    // Calculate needs: required - filled (higher = more needed)
     Object.keys(needs).forEach(pos => {
-      needs[pos] = maxCount - positionCounts[pos];
+      const required = requiredPositions[pos] || 0;
+      const filled = filledPositions[pos] || 0;
+      needs[pos] = Math.max(0, required - filled);
     });
 
     return needs;
-  }, [myPlayers]);
+  }, [myPlayers, leagueSettings.rosterPositions]);
 
   // Calculate category coverage for my team
   const categoryCoverage = useMemo(() => {
@@ -1126,7 +1171,7 @@ export default function FantasyBasketball() {
     const newPlayer: DraftedPlayer = {
       name: nominatedPlayer.name,
       position: nominatedPlayer.position,
-      projectedValue: 0, // We don't have projected value in the new flow
+      projectedValue: nominatedPlayer.auctionValue || 1, // Use calculated auction value
       actualPrice: parseFloat(nominationPrice),
       draftedBy,
     };
@@ -1155,6 +1200,101 @@ export default function FantasyBasketball() {
     setNominationPrice('');
     setNominationTeam('');
     setNominationIsMine(false);
+  };
+
+  const handleEditDraftEntry = (index: number) => {
+    const player = draftedPlayers[index];
+    setEditingDraftIndex(index);
+    setEditDraftTeam(player.draftedBy);
+    setEditDraftPrice(player.actualPrice.toString());
+  };
+
+  const handleSaveDraftEdit = () => {
+    if (editingDraftIndex === null || !editDraftPrice || !editDraftTeam) return;
+
+    const oldPlayer = draftedPlayers[editingDraftIndex];
+    const priceDiff = parseFloat(editDraftPrice) - oldPlayer.actualPrice;
+
+    const updatedPlayer: DraftedPlayer = {
+      ...oldPlayer,
+      draftedBy: editDraftTeam,
+      actualPrice: parseFloat(editDraftPrice),
+    };
+
+    // Update drafted players list
+    setDraftedPlayers(prev => prev.map((p, i) => i === editingDraftIndex ? updatedPlayer : p));
+
+    // Update myPlayers and budget if changed
+    if (oldPlayer.draftedBy === 'me' && editDraftTeam === 'me') {
+      // Still my player, just price changed
+      setMyPlayers(prev => prev.map(p => p.name === oldPlayer.name ? updatedPlayer : p));
+      setBudgetRemaining(prev => prev - priceDiff);
+    } else if (oldPlayer.draftedBy === 'me' && editDraftTeam !== 'me') {
+      // Changed from me to opponent
+      setMyPlayers(prev => prev.filter(p => p.name !== oldPlayer.name));
+      setBudgetRemaining(prev => prev + oldPlayer.actualPrice);
+    } else if (oldPlayer.draftedBy !== 'me' && editDraftTeam === 'me') {
+      // Changed from opponent to me
+      setMyPlayers(prev => [...prev, updatedPlayer]);
+      setBudgetRemaining(prev => prev - parseFloat(editDraftPrice));
+    }
+
+    // Update opponent teams
+    setOpponentTeams(prev => prev.map(team => {
+      // Remove from old team
+      if (team.name === oldPlayer.draftedBy && oldPlayer.draftedBy !== 'me') {
+        return {
+          ...team,
+          budget: team.budget + oldPlayer.actualPrice,
+          players: team.players.filter(p => p.name !== oldPlayer.name)
+        };
+      }
+      // Add to new team
+      if (team.name === editDraftTeam && editDraftTeam !== 'me') {
+        return {
+          ...team,
+          budget: team.budget - parseFloat(editDraftPrice),
+          players: [...team.players, updatedPlayer]
+        };
+      }
+      return team;
+    }));
+
+    // Reset edit state
+    setEditingDraftIndex(null);
+    setEditDraftTeam('');
+    setEditDraftPrice('');
+  };
+
+  const handleCancelDraftEdit = () => {
+    setEditingDraftIndex(null);
+    setEditDraftTeam('');
+    setEditDraftPrice('');
+  };
+
+  const handleDeleteDraftEntry = (index: number) => {
+    const player = draftedPlayers[index];
+
+    // Remove from drafted players
+    setDraftedPlayers(prev => prev.filter((_, i) => i !== index));
+
+    // Update myPlayers and budget if it was my player
+    if (player.draftedBy === 'me') {
+      setMyPlayers(prev => prev.filter(p => p.name !== player.name));
+      setBudgetRemaining(prev => prev + player.actualPrice);
+    } else {
+      // Update opponent team
+      setOpponentTeams(prev => prev.map(team => {
+        if (team.name === player.draftedBy) {
+          return {
+            ...team,
+            budget: team.budget + player.actualPrice,
+            players: team.players.filter(p => p.name !== player.name)
+          };
+        }
+        return team;
+      }));
+    }
   };
 
   const handleAddDraftedPlayer = () => {
@@ -1276,9 +1416,70 @@ export default function FantasyBasketball() {
     };
   };
 
+  // Calculate auction values based on z-scores using VORP method
+  const calculateAuctionValues = (players: PlayerData[], teamCount: number, budgetPerTeam: number): PlayerData[] => {
+    const totalBudget = teamCount * budgetPerTeam; // e.g., 10 teams × $200 = $2000
+    const rosterSize = 13; // Typical roster size
+    const draftableCount = teamCount * rosterSize; // e.g., 130 players
+
+    // Calculate total z-score for each player (sum of all 9 categories)
+    const playersWithTotalZ = players.map(p => ({
+      ...p,
+      totalZScore: p.pointsValue + p.threeValue + p.reboundsValue + p.assistsValue +
+                   p.stealsValue + p.blocksValue + p.fgPercentageValue +
+                   p.ftPercentageValue + p.turnoversValue
+    }));
+
+    // Sort by total z-score descending
+    const sortedPlayers = [...playersWithTotalZ].sort((a, b) => b.totalZScore - a.totalZScore);
+
+    // Find replacement level (130th player's z-score)
+    const replacementIndex = Math.min(draftableCount - 1, sortedPlayers.length - 1);
+    const baselineZ = sortedPlayers[replacementIndex]?.totalZScore || 0;
+
+    // Calculate VORP (Value Over Replacement Player) for top draftable players
+    const playersWithVORP = sortedPlayers.map((p, index) => {
+      // Only top draftableCount players get positive VORP
+      const adjustedZ = p.totalZScore - baselineZ;
+      const vorp = (index < draftableCount && adjustedZ > 0) ? adjustedZ : 0;
+      return { ...p, vorp };
+    });
+
+    // Sum of all VORP
+    const totalVORP = playersWithVORP.reduce((sum, p) => sum + p.vorp, 0);
+
+    // Reserve $1 for each draftable player
+    const reservedBudget = draftableCount; // $1 × 130 = $130
+    const remainingBudget = totalBudget - reservedBudget; // $2000 - $130 = $1870
+
+    // Calculate conversion factor ($ per VORP point)
+    const conversionFactor = totalVORP > 0 ? remainingBudget / totalVORP : 0;
+
+    // Assign auction values
+    return playersWithVORP.map(p => {
+      let auctionValue: number;
+
+      if (p.vorp > 0) {
+        // Draftable player: $1 base + proportional share of remaining budget
+        const vorpDollars = p.vorp * conversionFactor;
+        auctionValue = Math.max(1, Math.round(1 + vorpDollars));
+      } else {
+        // Below replacement: $1 minimum
+        auctionValue = 1;
+      }
+
+      // Remove temporary fields
+      const { totalZScore, vorp, ...playerData } = p;
+      return {
+        ...playerData,
+        auctionValue
+      };
+    });
+  };
+
   // Parse BBM Player Rankings format
   const parseBBMData = (jsonData: Record<string, unknown>[]): PlayerData[] => {
-    return jsonData.map((row) => ({
+    const rawPlayers = jsonData.map((row) => ({
       round: row['Round'] || 0,
       rank: row['Rank'] || 0,
       value: row['Value'] || 0,
@@ -1307,8 +1508,12 @@ export default function FantasyBasketball() {
       fgPercentageValue: row['fg%V'] || 0,
       ftPercentageValue: row['ft%V'] || 0,
       turnoversValue: row['toV'] || 0,
-      auctionValue: 0, // Will be set manually
     }));
+
+    // Calculate auction values based on z-scores
+    const teamCount = leagueSettings.teamCount || 10;
+    const budgetPerTeam = leagueSettings.budgetPerTeam || 200;
+    return calculateAuctionValues(rawPlayers, teamCount, budgetPerTeam);
   };
 
   // Auto-load BBM_PlayerRankings.xlsx on component mount
@@ -1324,7 +1529,6 @@ export default function FantasyBasketball() {
 
         const players = parseBBMData(jsonData);
         setPlayerDatabase(players);
-        setUploadedFiles(['BBM_PlayerRankings.xlsx (auto-loaded)']);
         console.log(`Auto-loaded ${players.length} players from BBM_PlayerRankings.xlsx`);
       } catch (error) {
         console.error('Error auto-loading player data:', error);
@@ -1332,35 +1536,36 @@ export default function FantasyBasketball() {
     };
 
     loadDefaultPlayerData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-
-    const file = files[0];
-    setUploadedFiles([file.name]);
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
-
-        const players = parseBBMData(jsonData);
-        setPlayerDatabase(players);
-        console.log(`Loaded ${players.length} players from Excel file`);
-      } catch (error) {
-        console.error('Error parsing Excel file:', error);
-        alert('Error parsing Excel file. Please check the format.');
-      }
-    };
-
-    reader.readAsBinaryString(file);
-  };
+  // Removed - auto-loads from public folder instead
+  // const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  //   const files = event.target.files;
+  //   if (!files || files.length === 0) return;
+  //
+  //   const file = files[0];
+  //
+  //   const reader = new FileReader();
+  //   reader.onload = (e) => {
+  //     try {
+  //       const data = e.target?.result;
+  //       const workbook = XLSX.read(data, { type: 'binary' });
+  //       const sheetName = workbook.SheetNames[0];
+  //       const worksheet = workbook.Sheets[sheetName];
+  //       const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[];
+  //
+  //       const players = parseBBMData(jsonData);
+  //       setPlayerDatabase(players);
+  //       console.log(`Loaded ${players.length} players from Excel file`);
+  //     } catch (error) {
+  //       console.error('Error parsing Excel file:', error);
+  //       alert('Error parsing Excel file. Please check the format.');
+  //     }
+  //   };
+  //
+  //   reader.readAsBinaryString(file);
+  // };
 
   // Auto-fill player data when name is selected
   const handlePlayerSelect = (selectedPlayer: PlayerData) => {
@@ -1643,10 +1848,11 @@ export default function FantasyBasketball() {
                   </>
                 ) : (
                   <Tabs defaultValue="overview" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3">
+                    <TabsList className="grid w-full grid-cols-4">
                       <TabsTrigger value="overview">Overview</TabsTrigger>
-                      <TabsTrigger value="category">Category Coverage</TabsTrigger>
-                      <TabsTrigger value="budget">Budget by Tier</TabsTrigger>
+                      <TabsTrigger value="remaining">Remaining</TabsTrigger>
+                      <TabsTrigger value="category">Category</TabsTrigger>
+                      <TabsTrigger value="budget">Budget</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="overview" className="space-y-4">
@@ -1746,6 +1952,99 @@ export default function FantasyBasketball() {
                           ))}
                         </div>
                       </div>
+                    </TabsContent>
+
+                    <TabsContent value="remaining" className="space-y-4">
+                      {/* Remaining Players by Position & Tier */}
+                      {(() => {
+                        const positions = ['PG', 'SG', 'SF', 'PF', 'C'];
+                        const tiers = ['Tier 1', 'Tier 2', 'Tier 3', 'Tier 4'];
+
+                        // Calculate counts for each tier and position
+                        const tierPositionCounts = tiers.map(tierName => {
+                          const tierData = positions.map(pos => {
+                            // Count total players in this tier+position
+                            const totalPlayers = playerDatabase.filter(p => {
+                              const playerTier = getPlayerTier(p);
+                              const playerPositions = p.position.split('/').map(pp => pp.trim());
+                              return playerTier.name === tierName && playerPositions.includes(pos);
+                            }).length;
+
+                            // Count available (undrafted) players in this tier+position
+                            const availablePlayers = playerDatabase.filter(p => {
+                              const playerTier = getPlayerTier(p);
+                              const playerPositions = p.position.split('/').map(pp => pp.trim());
+                              const isDrafted = draftedPlayers.some(dp =>
+                                dp.name.toLowerCase() === p.name.toLowerCase()
+                              );
+                              return playerTier.name === tierName &&
+                                     playerPositions.includes(pos) &&
+                                     !isDrafted;
+                            }).length;
+
+                            return {
+                              position: pos,
+                              total: totalPlayers,
+                              available: availablePlayers
+                            };
+                          });
+
+                          return {
+                            tier: tierName,
+                            positions: tierData
+                          };
+                        });
+
+                        return (
+                          <div className="space-y-4">
+                            {tierPositionCounts.map(({ tier, positions: posData }) => (
+                              <div key={tier} className="border border-gray-200 rounded-lg p-3">
+                                <h4 className="font-semibold text-sm mb-3 text-gray-700">{tier}</h4>
+                                <div className="grid grid-cols-5 gap-2">
+                                  {posData.map(({ position, total, available }) => {
+                                    const percentageLeft = total > 0 ? (available / total) * 100 : 0;
+                                    const isLow = percentageLeft < 25;
+                                    const isMedium = percentageLeft >= 25 && percentageLeft < 50;
+
+                                    return (
+                                      <div
+                                        key={position}
+                                        className={`border rounded p-2 text-center ${
+                                          available === 0
+                                            ? 'bg-red-50 border-red-300'
+                                            : isLow
+                                            ? 'bg-orange-50 border-orange-300'
+                                            : isMedium
+                                            ? 'bg-yellow-50 border-yellow-300'
+                                            : 'bg-green-50 border-green-300'
+                                        }`}
+                                      >
+                                        <div className="font-bold text-xs text-gray-600 mb-1">{position}</div>
+                                        <div className={`text-lg font-bold ${
+                                          available === 0
+                                            ? 'text-red-700'
+                                            : isLow
+                                            ? 'text-orange-700'
+                                            : isMedium
+                                            ? 'text-yellow-700'
+                                            : 'text-green-700'
+                                        }`}>
+                                          {available}/{total}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                            <Alert className="border-blue-300 bg-blue-50">
+                              <AlertDescription className="text-xs text-blue-800">
+                                <strong>Color coding:</strong> Green = 50%+ available, Yellow = 25-50%, Orange = &lt;25%, Red = All drafted
+                              </AlertDescription>
+                            </Alert>
+                          </div>
+                        );
+                      })()}
                     </TabsContent>
 
                     <TabsContent value="category" className="space-y-4">
@@ -2487,7 +2786,13 @@ export default function FantasyBasketball() {
               </div>
             </CardHeader>
             <CardContent>
-                <div className="space-y-4">
+              <Tabs value={playerDatabaseTab} onValueChange={(v) => setPlayerDatabaseTab(v as 'players' | 'history')}>
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="players">Player Database</TabsTrigger>
+                  <TabsTrigger value="history">Draft History ({draftedPlayers.length})</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="players" className="space-y-4">
                   {/* Search and Filters */}
                   <div className="flex gap-3 flex-wrap">
                     <div className="relative flex-1 min-w-[200px]">
@@ -2540,7 +2845,7 @@ export default function FantasyBasketball() {
 
                   {/* Table */}
                   <div className="border rounded-lg overflow-hidden">
-                    <div className="overflow-x-auto max-h-96">
+                    <div className="overflow-x-auto max-h-[640px]">
                       <table className="w-full text-xs">
                         <thead className="bg-slate-100 sticky top-0">
                           <tr className="border-b">
@@ -2569,7 +2874,6 @@ export default function FantasyBasketball() {
                               ? draftedPlayers.find(p => p.name.toLowerCase() === player.name.toLowerCase())
                               : null;
                             const tier = getPlayerTier(player);
-                            const archetypes = getPlayerArchetypes(player);
 
                             return (
                               <tr
@@ -2632,8 +2936,10 @@ export default function FantasyBasketball() {
                                 <td className="px-1 py-1.5 text-right">
                                   {draftedInfo ? (
                                     <span className="font-semibold">${draftedInfo.actualPrice}</span>
+                                  ) : player.auctionValue ? (
+                                    <span className="text-blue-600 font-medium">${player.auctionValue}</span>
                                   ) : (
-                                    <span className="text-gray-400">-</span>
+                                    <span className="text-gray-400">$1</span>
                                   )}
                                 </td>
                                 {draftInProgress && (
@@ -2659,8 +2965,149 @@ export default function FantasyBasketball() {
                       </table>
                     </div>
                   </div>
-                </div>
-              </CardContent>
+                </TabsContent>
+
+                <TabsContent value="history" className="space-y-4">
+                  {draftedPlayers.length === 0 ? (
+                    <Alert>
+                      <AlertDescription>
+                        No players drafted yet. Start drafting to see your draft history here.
+                      </AlertDescription>
+                    </Alert>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <div className="overflow-x-auto max-h-[640px]">
+                        <table className="w-full text-sm">
+                          <thead className="bg-slate-100 sticky top-0">
+                            <tr className="border-b">
+                              <th className="text-left px-3 py-2 font-semibold">#</th>
+                              <th className="text-left px-3 py-2 font-semibold">Player</th>
+                              <th className="text-left px-3 py-2 font-semibold">Position</th>
+                              <th className="text-left px-3 py-2 font-semibold">Drafted By</th>
+                              <th className="text-right px-3 py-2 font-semibold">Price</th>
+                              <th className="text-right px-3 py-2 font-semibold">Value</th>
+                              <th className="text-right px-3 py-2 font-semibold">Inflation</th>
+                              <th className="text-center px-3 py-2 font-semibold">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {draftedPlayers.map((player, index) => {
+                              const isEditing = editingDraftIndex === index;
+                              const inflation = player.projectedValue > 0
+                                ? ((player.actualPrice - player.projectedValue) / player.projectedValue) * 100
+                                : 0;
+
+                              return (
+                                <tr key={index} className="border-b hover:bg-slate-50">
+                                  <td className="px-3 py-2 text-gray-600">{index + 1}</td>
+                                  <td className="px-3 py-2 font-medium">{player.name}</td>
+                                  <td className="px-3 py-2">
+                                    <Badge variant="outline" className="text-xs">
+                                      {player.position}
+                                    </Badge>
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    {isEditing ? (
+                                      <Select value={editDraftTeam} onValueChange={setEditDraftTeam}>
+                                        <SelectTrigger className="h-8">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="me">My Team</SelectItem>
+                                          {opponentTeams.map((team) => (
+                                            <SelectItem key={team.name} value={team.name}>
+                                              {team.name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    ) : (
+                                      <span className={player.draftedBy === 'me' ? 'font-semibold text-green-700' : ''}>
+                                        {player.draftedBy === 'me' ? 'My Team' : player.draftedBy}
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2 text-right">
+                                    {isEditing ? (
+                                      <Input
+                                        type="number"
+                                        value={editDraftPrice}
+                                        onChange={(e) => setEditDraftPrice(e.target.value)}
+                                        className="h-8 w-20 text-right"
+                                      />
+                                    ) : (
+                                      <span className="font-semibold">${player.actualPrice}</span>
+                                    )}
+                                  </td>
+                                  <td className="px-3 py-2 text-right text-gray-600">
+                                    ${player.projectedValue}
+                                  </td>
+                                  <td className="px-3 py-2 text-right">
+                                    <span className={`font-medium ${
+                                      inflation > 15 ? 'text-red-600' :
+                                      inflation > 5 ? 'text-orange-600' :
+                                      inflation < -5 ? 'text-green-600' :
+                                      'text-gray-600'
+                                    }`}>
+                                      {inflation > 0 ? '+' : ''}{inflation.toFixed(1)}%
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-2 text-center">
+                                    {isEditing ? (
+                                      <div className="flex justify-center gap-1">
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={handleSaveDraftEdit}
+                                          className="h-8 w-8 p-0"
+                                        >
+                                          <Check className="w-4 h-4 text-green-600" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={handleCancelDraftEdit}
+                                          className="h-8 w-8 p-0"
+                                        >
+                                          <X className="w-4 h-4 text-gray-600" />
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <div className="flex justify-center gap-1">
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => handleEditDraftEntry(index)}
+                                          className="h-8 w-8 p-0"
+                                        >
+                                          <Edit2 className="w-4 h-4 text-blue-600" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => {
+                                            if (confirm(`Delete ${player.name} from draft history?`)) {
+                                              handleDeleteDraftEntry(index);
+                                            }
+                                          }}
+                                          className="h-8 w-8 p-0"
+                                        >
+                                          <Trash2 className="w-4 h-4 text-red-600" />
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </CardContent>
           </Card>
         </div>
       </div>
