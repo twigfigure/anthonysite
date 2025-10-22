@@ -874,6 +874,39 @@ export default function FantasyBasketball() {
         reasons.push('Scarce category - harder to build');
       }
 
+      // Factor 5: Player archetype correlation
+      const myPlayerData = myPlayers
+        .map(p => playerDatabase.find(pd => pd.name.toLowerCase() === p.name.toLowerCase()))
+        .filter((p): p is PlayerData => p !== undefined);
+
+      // Count bigs (C, PF) vs guards (PG, SG)
+      const bigCount = myPlayerData.filter(p =>
+        p.position.includes('C') || p.position.includes('PF')
+      ).length;
+      const guardCount = myPlayerData.filter(p =>
+        p.position.includes('PG') || p.position.includes('SG')
+      ).length;
+
+      if (cat === 'ft%' && bigCount >= myPlayers.length * 0.5) {
+        score += 25;
+        reasons.push(`You have ${bigCount} bigs - FT% punt unlocks dominant rebounders/shot blockers`);
+      }
+
+      if (cat === 'fg%' && guardCount >= myPlayers.length * 0.5) {
+        score += 20;
+        reasons.push(`You have ${guardCount} guards - FG% punt pairs well with 3PM/PTS focus`);
+      }
+
+      if (cat === 'ast' && bigCount >= myPlayers.length * 0.5) {
+        score += 20;
+        reasons.push(`Big-heavy roster - AST punt lets you dominate REB/BLK`);
+      }
+
+      if (cat === 'to' && categoryCoverage?.strength['ast'] === 'strong') {
+        score += 15;
+        reasons.push('High-assist teams often have high TOs - punting TO is natural here');
+      }
+
       // Determine confidence
       let confidence: 'high' | 'medium' | 'low' = 'low';
       if (score >= 50) confidence = 'high';
@@ -887,10 +920,25 @@ export default function FantasyBasketball() {
       });
     });
 
-    // Sort by score (highest = most recommended to punt)
-    return recommendations
-      .sort((a, b) => b.score - a.score)
-      .filter(r => r.score > 10); // Only show categories worth considering
+    // Check for dangerous punt combinations
+    const sortedRecs = recommendations.sort((a, b) => b.score - a.score);
+
+    // Warn if both FG% and FT% are highly recommended
+    const fgPuntRec = sortedRecs.find(r => r.category === 'fg%');
+    const ftPuntRec = sortedRecs.find(r => r.category === 'ft%');
+
+    if (fgPuntRec && ftPuntRec && fgPuntRec.score > 30 && ftPuntRec.score > 30) {
+      // Penalize both to prevent double-efficiency punt
+      fgPuntRec.score -= 20;
+      ftPuntRec.score -= 20;
+      fgPuntRec.reasons.push('⚠️ Avoid punting both FG% AND FT% - too many efficiency categories lost');
+      ftPuntRec.reasons.push('⚠️ Avoid punting both FG% AND FT% - too many efficiency categories lost');
+    }
+
+    // Filter and sort by final score
+    return sortedRecs
+      .filter(r => r.score > 10) // Only show categories worth considering
+      .sort((a, b) => b.score - a.score);
   }, [categoryCoverage, opponentTeams, availablePlayers, draftedPlayers, playerDatabase, myPlayers, draftInProgress]);
 
   // Pivot suggestions for when user should change their punt strategy
@@ -945,6 +993,16 @@ export default function FantasyBasketball() {
         }
       }
     });
+
+    // CRITICAL: Warn if punting both FG% and FT%
+    if (puntCategories.includes('fg%') && puntCategories.includes('ft%')) {
+      pivots.unshift({
+        currentPunt: 'fg% and ft%',
+        suggestedPivot: puntCategories.includes('fg%') ? 'ft%' : 'fg%',
+        reason: '⚠️ DANGER: Punting both FG% AND FT% gives up too many efficiency categories. Pick ONE to punt, not both!',
+        urgency: 'high'
+      });
+    }
 
     return pivots.length > 0 ? pivots : null;
   }, [draftInProgress, puntCategories, myPlayers, categoryCoverage, puntRecommendations]);
