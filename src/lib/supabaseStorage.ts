@@ -6,11 +6,13 @@ const BUCKET_NAME = 'kindred-images';
  * Uploads a base64 image to Supabase Storage
  * @param base64Image - The base64 encoded image string (with or without data:image prefix)
  * @param userId - The user's ID for organizing files
+ * @param bucketName - The storage bucket name (defaults to kindred-images)
  * @returns The public URL of the uploaded image
  */
 export async function uploadImageToStorage(
   base64Image: string,
-  userId: string
+  userId: string,
+  bucketName: string = BUCKET_NAME
 ): Promise<string> {
   try {
     // Remove the data:image/png;base64, prefix if present
@@ -32,7 +34,7 @@ export async function uploadImageToStorage(
 
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
-      .from(BUCKET_NAME)
+      .from(bucketName)
       .upload(filename, blob, {
         contentType: 'image/png',
         cacheControl: '3600',
@@ -46,7 +48,7 @@ export async function uploadImageToStorage(
 
     // Get public URL
     const { data: urlData } = supabase.storage
-      .from(BUCKET_NAME)
+      .from(bucketName)
       .getPublicUrl(filename);
 
     if (!urlData?.publicUrl) {

@@ -1,4 +1,285 @@
 /**
+ * Splits a combined hunter image (portrait on left, splash art on right) into two separate images
+ * @param base64Image - The combined base64 image
+ * @returns Object with avatar and splashArt base64 strings
+ */
+export async function splitHunterImage(base64Image: string): Promise<{
+  avatar: string;
+  splashArt: string;
+}> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+
+      const width = img.width;
+      const height = img.height;
+
+      // Split point: exactly 50/50 down the middle
+      const splitPoint = Math.floor(width / 2);
+
+      // Extract avatar (left 50%)
+      const avatarCanvas = document.createElement('canvas');
+      avatarCanvas.width = splitPoint;
+      avatarCanvas.height = height;
+      const avatarCtx = avatarCanvas.getContext('2d');
+      if (!avatarCtx) {
+        reject(new Error('Could not get avatar canvas context'));
+        return;
+      }
+      // Draw left half of the image (from 0 to splitPoint)
+      avatarCtx.drawImage(img, 0, 0, splitPoint, height, 0, 0, splitPoint, height);
+      const avatarBase64 = avatarCanvas.toDataURL('image/png');
+
+      // Extract splash art (right 50%)
+      const splashWidth = width - splitPoint;
+      const splashCanvas = document.createElement('canvas');
+      splashCanvas.width = splashWidth;
+      splashCanvas.height = height;
+      const splashCtx = splashCanvas.getContext('2d');
+      if (!splashCtx) {
+        reject(new Error('Could not get splash canvas context'));
+        return;
+      }
+      // Draw right half of the image (from splitPoint to end)
+      splashCtx.drawImage(img, splitPoint, 0, splashWidth, height, 0, 0, splashWidth, height);
+      const splashBase64 = splashCanvas.toDataURL('image/png');
+
+      resolve({
+        avatar: avatarBase64,
+        splashArt: splashBase64,
+      });
+    };
+
+    img.onerror = () => {
+      reject(new Error('Failed to load image for splitting'));
+    };
+
+    img.src = base64Image;
+  });
+}
+
+/**
+ * Crops splash art to tight character bounds with minimal padding
+ * This allows CSS to handle final scaling more effectively
+ * @param imageDataUrl - The image to crop
+ * @returns Tightly cropped image as data URL
+ */
+export async function standardizeImageSize(imageDataUrl: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+
+    img.onload = () => {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = img.width;
+      tempCanvas.height = img.height;
+      const tempCtx = tempCanvas.getContext('2d');
+
+      if (!tempCtx) {
+        resolve(imageDataUrl);
+        return;
+      }
+
+      tempCtx.drawImage(img, 0, 0);
+      const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
+      const data = imageData.data;
+
+      // Find bounding box of non-transparent pixels (character bounds)
+      let minX = img.width;
+      let minY = img.height;
+      let maxX = 0;
+      let maxY = 0;
+
+      for (let y = 0; y < img.height; y++) {
+        for (let x = 0; x < img.width; x++) {
+          const i = (y * img.width + x) * 4;
+          const a = data[i + 3]; // Alpha channel
+
+          // Check if pixel is not transparent
+          if (a > 10) {
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
+        }
+      }
+
+      // If no content found, return original
+      if (minX >= maxX || minY >= maxY) {
+        resolve(imageDataUrl);
+        return;
+      }
+
+      // Calculate content dimensions
+      const contentWidth = maxX - minX + 1;
+      const contentHeight = maxY - minY + 1;
+
+      // Add minimal padding (1% of content size) - just enough to prevent cutoff
+      const paddingAmount = Math.max(contentWidth, contentHeight) * 0.01;
+
+      const cropMinX = Math.max(0, Math.floor(minX - paddingAmount));
+      const cropMinY = Math.max(0, Math.floor(minY - paddingAmount));
+      const cropMaxX = Math.min(img.width - 1, Math.ceil(maxX + paddingAmount));
+      const cropMaxY = Math.min(img.height - 1, Math.ceil(maxY + paddingAmount));
+
+      const cropWidth = cropMaxX - cropMinX + 1;
+      const cropHeight = cropMaxY - cropMinY + 1;
+
+      // Create tightly cropped canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = cropWidth;
+      canvas.height = cropHeight;
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        resolve(imageDataUrl);
+        return;
+      }
+
+      // Draw cropped character
+      ctx.drawImage(
+        img,
+        cropMinX, cropMinY, cropWidth, cropHeight,
+        0, 0, cropWidth, cropHeight
+      );
+
+      // Convert to data URL
+      resolve(canvas.toDataURL('image/png'));
+    };
+
+    img.onerror = () => {
+      reject(new Error('Failed to load image'));
+    };
+
+    img.src = imageDataUrl;
+  });
+}
+
+/**
+ * Processes avatar image with proper portrait framing
+ * Ensures head is centered with appropriate headroom
+ * Automatically crops to upper body (top 60%) for full-body images
+ * @param imageDataUrl - The avatar image to process
+ * @returns Processed avatar as data URL
+ */
+export async function processAvatarImage(imageDataUrl: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        resolve(imageDataUrl);
+        return;
+      }
+
+      // Draw image to temp canvas for analysis
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = img.width;
+      tempCanvas.height = img.height;
+      const tempCtx = tempCanvas.getContext('2d');
+
+      if (!tempCtx) {
+        resolve(imageDataUrl);
+        return;
+      }
+
+      tempCtx.drawImage(img, 0, 0);
+      const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
+      const data = imageData.data;
+
+      // Find bounding box of non-transparent pixels
+      let minX = img.width;
+      let minY = img.height;
+      let maxX = 0;
+      let maxY = 0;
+
+      for (let y = 0; y < img.height; y++) {
+        for (let x = 0; x < img.width; x++) {
+          const i = (y * img.width + x) * 4;
+          const a = data[i + 3];
+
+          if (a > 10) {
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
+        }
+      }
+
+      // If no content found, return original
+      if (minX >= maxX || minY >= maxY) {
+        resolve(imageDataUrl);
+        return;
+      }
+
+      const contentWidth = maxX - minX + 1;
+      const contentHeight = maxY - minY + 1;
+
+      // Check aspect ratio to determine if it's a full-body or portrait image
+      const aspectRatio = contentHeight / contentWidth;
+      const isFullBody = aspectRatio > 1.5; // Tall aspect ratio = likely full body
+
+      const finalMinY = minY;
+      let finalMaxY = maxY;
+
+      if (isFullBody) {
+        // For full-body images, aggressively crop to upper 45% (tight head + shoulders)
+        const upperBodyHeight = contentHeight * 0.45;
+        finalMaxY = Math.floor(minY + upperBodyHeight);
+      } else {
+        // For portrait images, crop to upper 50% for tight close-up
+        const portraitHeight = contentHeight * 0.50;
+        finalMaxY = Math.floor(minY + portraitHeight);
+      }
+
+      // For tight portrait framing, minimal padding (8% above, 3% sides, 3% below)
+      const adjustedHeight = finalMaxY - finalMinY + 1;
+      const topPadding = adjustedHeight * 0.08;
+      const sidePadding = contentWidth * 0.03;
+      const bottomPadding = adjustedHeight * 0.03;
+
+      // Calculate final crop area with padding
+      const cropMinX = Math.max(0, minX - sidePadding);
+      const cropMaxX = Math.min(img.width - 1, maxX + sidePadding);
+      const cropMinY = Math.max(0, finalMinY - topPadding);
+      const cropMaxY = Math.min(img.height - 1, finalMaxY + bottomPadding);
+
+      const cropWidth = cropMaxX - cropMinX + 1;
+      const cropHeight = cropMaxY - cropMinY + 1;
+
+      // Create output canvas
+      canvas.width = cropWidth;
+      canvas.height = cropHeight;
+
+      // Draw cropped image
+      ctx.drawImage(
+        img,
+        cropMinX, cropMinY, cropWidth, cropHeight,
+        0, 0, cropWidth, cropHeight
+      );
+
+      resolve(canvas.toDataURL('image/png'));
+    };
+
+    img.onerror = () => {
+      reject(new Error('Failed to load avatar image'));
+    };
+
+    img.src = imageDataUrl;
+  });
+}
+
+/**
  * Crops white space from an image and returns a new cropped data URL
  */
 export async function cropWhiteSpace(imageDataUrl: string): Promise<string> {

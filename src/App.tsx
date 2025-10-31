@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./features/homepage/pages/Index";
 import Kindred from "./features/kindred/pages/Kindred";
 import FantasyBasketball from "./features/fantasy-basketball/pages/FantasyBasketball";
+import GuildManager from "./features/guild-manager/pages/GuildManager";
 import MigrateImages from "./pages/MigrateImages";
 import NotFound from "./pages/NotFound";
 
@@ -23,6 +24,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/kindred" element={<Kindred />} />
             <Route path="/fantasy-basketball" element={<FantasyBasketball />} />
+            <Route path="/guild-manager" element={<GuildManager />} />
             <Route path="/migrate-images" element={<MigrateImages />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

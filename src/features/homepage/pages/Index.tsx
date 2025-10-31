@@ -1,7 +1,10 @@
 import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import { ChevronDown, Menu, X, MessageCircle } from "lucide-react";
+import { ChevronDown, Menu, X, MessageCircle, LogIn } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AuthModal } from "@/components/AuthModal";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
 import Hero from "../components/Hero";
 import AvailabilityCalendar from "../components/AvailabilityCalendar";
 import ContactForm from "../components/ContactForm";
@@ -15,8 +18,10 @@ const Index = () => {
   const [showProjectsMenu, setShowProjectsMenu] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [chatModalOpen, setChatModalOpen] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'availability' | 'feed' | 'connect'>('feed');
   const closeTimeoutRef = useRef<number | null>(null);
+  const { user, signOut } = useAuth();
 
   const handleMouseEnter = () => {
     // Clear any pending close timeout
@@ -45,6 +50,12 @@ const Index = () => {
           <MessageCircle className="w-5 h-5 text-white" />
         </button>
         <button
+          onClick={() => user ? signOut() : setAuthModalOpen(true)}
+          className="p-3 bg-card/80 hover:bg-card backdrop-blur-md border border-border rounded-full shadow-lg transition-colors"
+        >
+          <LogIn className="w-5 h-5" />
+        </button>
+        <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="p-3 bg-card/80 backdrop-blur-md border border-border rounded-full shadow-lg"
         >
@@ -70,6 +81,9 @@ const Index = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Auth Modal */}
+      <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} />
 
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
@@ -148,6 +162,14 @@ const Index = () => {
             >
               <div className="font-semibold mb-0.5">Fantasy Basketball Auction</div>
               <div className="text-xs opacity-75">Dynamic auction draft tool</div>
+            </Link>
+            <Link
+              to="/guild-manager"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-purple/10 transition-colors"
+            >
+              <div className="font-semibold mb-0.5">Guild Manager</div>
+              <div className="text-xs opacity-75">Solo Leveling inspired guild game</div>
             </Link>
           </div>
 
@@ -233,10 +255,17 @@ const Index = () => {
                 </Link>
                 <Link
                   to="/fantasy-basketball"
-                  className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-orange/10 transition-colors"
+                  className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-orange/10 transition-colors border-b border-border"
                 >
                   <div className="font-semibold mb-0.5">Fantasy Basketball Auction</div>
                   <div className="text-xs opacity-75">Dynamic auction draft tool</div>
+                </Link>
+                <Link
+                  to="/guild-manager"
+                  className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-purple/10 transition-colors"
+                >
+                  <div className="font-semibold mb-0.5">Guild Manager</div>
+                  <div className="text-xs opacity-75">Solo Leveling inspired guild game</div>
                 </Link>
               </div>
             )}
@@ -248,6 +277,27 @@ const Index = () => {
           >
             Buy Me Boba
           </a>
+
+          {/* Sign In/Out Button */}
+          {user ? (
+            <Button
+              onClick={() => signOut()}
+              variant="outline"
+              size="sm"
+              className="text-sm"
+            >
+              Sign Out
+            </Button>
+          ) : (
+            <Button
+              onClick={() => setAuthModalOpen(true)}
+              size="sm"
+              className="text-sm"
+            >
+              <LogIn className="w-4 h-4 mr-2" />
+              Sign In
+            </Button>
+          )}
         </div>
       </nav>
 
