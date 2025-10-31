@@ -6,6 +6,9 @@ import type { Guild, Hunter } from '../types';
 import { RANK_BG_COLORS } from '../types';
 import { HunterDetails } from './HunterDetails';
 import { RecruitHunterDialog } from './RecruitHunterDialog';
+import { ScoutDialog } from './ScoutDialog';
+import { scoutingService } from '../lib/supabase';
+import { useToast } from '@/hooks/use-toast';
 
 interface HunterListProps {
   hunters: Hunter[];
@@ -16,8 +19,39 @@ interface HunterListProps {
 export function HunterList({ hunters, guild, onHunterUpdate }: HunterListProps) {
   const [selectedHunter, setSelectedHunter] = useState<Hunter | null>(null);
   const [showRecruitDialog, setShowRecruitDialog] = useState(false);
+  const [showScoutDialog, setShowScoutDialog] = useState(false);
+  const [scouting, setScouting] = useState(false);
+  const { toast } = useToast();
 
   const canRecruitMore = hunters.length < guild.max_hunters;
+
+  const handleScout = async () => {
+    setScouting(true);
+    try {
+      // Generate new scouts (unlimited for testing)
+      await scoutingService.generateScoutedHunters(guild.id, guild.world_level);
+
+      toast({
+        title: 'Scouts Refreshed!',
+        description: 'New hunters are now available for recruitment.',
+      });
+
+      // Open the scout dialog
+      setShowScoutDialog(true);
+
+      // Refresh guild data
+      onHunterUpdate();
+    } catch (error) {
+      console.error('Failed to scout:', error);
+      toast({
+        title: 'Scouting Failed',
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
+        variant: 'destructive'
+      });
+    } finally {
+      setScouting(false);
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -26,19 +60,29 @@ export function HunterList({ hunters, guild, onHunterUpdate }: HunterListProps) 
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle>Guild Roster</CardTitle>
+              <CardTitle>Hunter Roster</CardTitle>
               <CardDescription>
                 {hunters.length} / {guild.max_hunters} hunters
               </CardDescription>
             </div>
-            <Button
-              onClick={() => setShowRecruitDialog(true)}
-              disabled={!canRecruitMore}
-              size="sm"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Recruit
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleScout}
+                disabled={scouting}
+              >
+                {scouting ? 'Scouting...' : 'Scout'}
+              </Button>
+              <Button
+                onClick={() => setShowRecruitDialog(true)}
+                disabled={!canRecruitMore}
+                size="sm"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Recruit
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -86,6 +130,14 @@ export function HunterList({ hunters, guild, onHunterUpdate }: HunterListProps) 
         onOpenChange={setShowRecruitDialog}
         guild={guild}
         onRecruit={onHunterUpdate}
+      />
+
+      {/* Scout Dialog */}
+      <ScoutDialog
+        open={showScoutDialog}
+        onOpenChange={setShowScoutDialog}
+        guild={guild}
+        onHunterRecruited={onHunterUpdate}
       />
     </div>
   );

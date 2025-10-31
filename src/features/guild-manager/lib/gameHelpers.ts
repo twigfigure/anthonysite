@@ -395,63 +395,203 @@ export function compareRarities(rarity1: EquipmentRarity, rarity2: EquipmentRari
 }
 
 // ============================================
-// NAME GENERATORS
+// NAME GENERATORS - ORGANIZED BY REGION
 // ============================================
 
-const FIRST_NAMES = [
-  // Fire Emblem inspired
-  'Eirika', 'Ephraim', 'Lysithea', 'Dimitri', 'Edelgard', 'Claude', 'Marth', 'Roy', 'Lyn', 'Hector',
-  'Celica', 'Alm', 'Ike', 'Micaiah', 'Lucina', 'Chrom', 'Robin', 'Corrin', 'Byleth', 'Soren',
-  // Final Fantasy inspired
-  'Celes', 'Terra', 'Cloud', 'Tifa', 'Aerith', 'Zidane', 'Vivi', 'Tidus', 'Yuna', 'Auron',
-  'Lightning', 'Noctis', 'Ignis', 'Prompto', 'Gladio', 'Vaan', 'Balthier', 'Fran', 'Ashe', 'Ramza',
-  // Suikoden inspired
-  'Viktor', 'Flik', 'Odessa', 'Gremio', 'Kasumi', 'Futch', 'Valeria', 'Kahn', 'Lorelai', 'Georg',
-  'Eike', 'Lazlo', 'Nanami', 'Jowy', 'Riou', 'Lucia', 'Thomas', 'Hugo', 'Chris', 'Nash',
-  // Unicorn Overlord inspired
-  'Alain', 'Scarlett', 'Clive', 'Travis', 'Berenice', 'Josef', 'Melisandre', 'Morard', 'Rosalinde', 'Yunifi',
-  'Hodrick', 'Adel', 'Primm', 'Bruno', 'Dinah', 'Lhinalagos', 'Elgor', 'Rolf', 'Virginia', 'Tatiana',
-  // Romance of the Three Kingdoms inspired (Chinese)
-  'Zhao', 'Guan', 'Zhang', 'Zhuge', 'Cao', 'Liu', 'Sun', 'Zhou', 'Xiahou', 'Sima',
-  'Lu', 'Ma', 'Huang', 'Wei', 'Gan', 'Xu', 'Dian', 'Pang', 'Jiang', 'Diao',
-  // Japanese inspired
-  'Akira', 'Haruto', 'Ren', 'Kaito', 'Yuki', 'Hana', 'Sakura', 'Mei', 'Riku', 'Sora',
-  'Takeshi', 'Kenji', 'Masato', 'Hiroshi', 'Ayame', 'Yuri', 'Hikari', 'Natsuki', 'Shinji', 'Ryota',
-  // Arabic/Persian inspired
-  'Zahir', 'Rashid', 'Soraya', 'Farah', 'Malik', 'Amira', 'Khalid', 'Leyla', 'Tariq', 'Zara',
-  // African inspired
-  'Amara', 'Kofi', 'Zuri', 'Jabari', 'Nia', 'Kwame', 'Aisha', 'Thabo', 'Imani', 'Chioma',
-  // South Asian inspired
-  'Arjun', 'Priya', 'Ravi', 'Maya', 'Vikram', 'Anjali', 'Kiran', 'Indra', 'Rohan', 'Kavya',
-  // Mesoamerican fantasy inspired
-  'Itzal', 'Xochitl', 'Tenoch', 'Citlali', 'Atl', 'Nenetl', 'Yaretzi', 'Cualli', 'Tlalli', 'Zyanya'
-];
+// Regional name pools grouped by kingdom/region and gender
+const REGIONAL_NAMES = {
+  // Northern Empire - Germanic/Nordic inspired, harsh cold climate
+  northern: {
+    maleNames: [
+      'Ephraim', 'Dimitri', 'Ike', 'Hector', 'Soren',
+      'Viktor', 'Flik', 'Georg', 'Eike', 'Josef', 'Bruno', 'Hodrick', 'Rolf',
+      'Gunther', 'Klaus', 'Lars', 'Bjorn', 'Ragnar', 'Olaf', 'Sven', 'Erik'
+    ],
+    femaleNames: [
+      'Eirika', 'Edelgard', 'Micaiah',
+      'Freya', 'Astrid', 'Ingrid', 'Elsa', 'Sigrid', 'Helga', 'Brunhilde', 'Greta', 'Hilda'
+    ],
+    lastNames: [
+      'Blaiddyd', 'Hresvelg', 'Galatea', 'Greil', 'Daein', 'Crimea', 'Eisner',
+      'Ironhelm', 'Elfhelm', 'Drakengard', 'Drakenhold', 'Frostborne', 'Wintermane', 'Stormforge'
+    ]
+  },
 
-const LAST_NAMES = [
-  // Fantasy surnames inspired by the games
-  'Renais', 'Blaiddyd', 'Hresvelg', 'Riegan', 'Lowell', 'Ostia', 'Pherae', 'Caelin', 'Grado', 'Frelia',
-  'Leonster', 'Chalphy', 'Greil', 'Daein', 'Crimea', 'Valla', 'Hoshido', 'Nohr', 'Eisner', 'Galatea',
-  'Strife', 'Lockhart', 'Gainsborough', 'Tribal', 'Crescent', 'Highwind', 'Leonhart', 'Almasy', 'Trepe', 'Kinneas',
-  'Farrell', 'Beoulve', 'Ashelia', 'Bunansa', 'Nabaat', 'Caelum', 'Argentum', 'Scientia', 'Amicitia', 'Izunia',
-  'McDohl', 'Atreides', 'Silverberg', 'Blight', 'Falenas', 'Harmonia', 'Toran', 'Dunan', 'Zexen', 'Karaya',
-  'Corvin', 'Valmore', 'Rossini', 'Gloucester', 'Drakengard', 'Ironhelm', 'Elfhelm', 'Bastoria', 'Drakenhold', 'Sanctum',
-  // Chinese/Three Kingdoms inspired
-  'Yun', 'Bei', 'Liang', 'Quan', 'Meng', 'Wen', 'Long', 'Feng', 'Shan', 'Xing',
-  // Japanese inspired
-  'Hayashi', 'Tanaka', 'Fujiwara', 'Takahashi', 'Nakamura', 'Yamamoto', 'Kobayashi', 'Watanabe', 'Sato', 'Ito',
-  // Arabic/Persian inspired
-  'al-Rashid', 'al-Zahir', 'ibn-Malik', 'al-Noor', 'al-Qamar', 'al-Shams', 'ibn-Tariq', 'al-Farid', 'al-Aziz', 'ibn-Khalid',
-  // African inspired
-  'Mbeki', 'Okonkwo', 'Adeyemi', 'Nkrumah', 'Chinua', 'Tendai', 'Okoro', 'Mwangi', 'Bantu', 'Koroma',
-  // South Asian inspired
-  'Patel', 'Sharma', 'Kumar', 'Singh', 'Rao', 'Mehta', 'Gupta', 'Reddy', 'Desai', 'Varma',
-  // Mesoamerican fantasy inspired
-  'Xolotl', 'Tepeyac', 'Tonalli', 'Mixtli', 'Nahuatl', 'Coatl', 'Itzel', 'Yaotl', 'Necalli', 'Tlatoani'
-];
+  // Eastern Dynasty - Chinese/Japanese inspired
+  eastern: {
+    maleNames: [
+      'Zhao', 'Guan', 'Zhang', 'Zhuge', 'Cao', 'Liu', 'Sun', 'Zhou', 'Xiahou', 'Sima',
+      'Lu', 'Ma', 'Huang', 'Wei', 'Gan', 'Xu', 'Dian', 'Pang', 'Jiang',
+      'Akira', 'Haruto', 'Ren', 'Kaito', 'Riku', 'Takeshi', 'Kenji', 'Masato', 'Hiroshi', 'Ryota'
+    ],
+    femaleNames: [
+      'Diao', 'Yuki', 'Hana', 'Sakura', 'Mei', 'Sora',
+      'Ayame', 'Yuri', 'Hikari', 'Natsuki', 'Ai', 'Yui', 'Rin', 'Kasumi'
+    ],
+    lastNames: [
+      'Yun', 'Bei', 'Liang', 'Quan', 'Meng', 'Wen', 'Long', 'Feng', 'Shan', 'Xing',
+      'Hayashi', 'Tanaka', 'Fujiwara', 'Takahashi', 'Nakamura', 'Yamamoto', 'Kobayashi', 'Watanabe',
+      'Hoshido', 'Crimsonblade', 'Shadowpeak', 'Jadewing'
+    ]
+  },
 
-export function generateRandomHunterName(): string {
-  const firstName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
-  const lastName = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+  // Western Kingdom - Classic European fantasy
+  western: {
+    maleNames: [
+      'Marth', 'Roy', 'Alm', 'Chrom', 'Robin', 'Corrin', 'Byleth',
+      'Cloud', 'Ramza', 'Alain', 'Clive', 'Travis',
+      'Arthur', 'Percival', 'Tristan', 'Lancelot', 'Galahad', 'Edmund', 'Frederick'
+    ],
+    femaleNames: [
+      'Lyn', 'Celica', 'Lucina',
+      'Celes', 'Terra', 'Tifa', 'Aerith', 'Lightning', 'Ashe',
+      'Scarlett', 'Berenice', 'Melisandre', 'Rosalinde', 'Virginia', 'Tatiana',
+      'Gwendolyn', 'Isolde', 'Guinevere', 'Elaine', 'Vivienne'
+    ],
+    lastNames: [
+      'Renais', 'Riegan', 'Lowell', 'Ostia', 'Pherae', 'Caelin', 'Grado', 'Frelia', 'Leonster', 'Chalphy',
+      'Strife', 'Lockhart', 'Gainsborough', 'Highwind', 'Leonhart', 'Almasy', 'Trepe',
+      'Corvin', 'Valmore', 'Rossini', 'Gloucester', 'Bastoria', 'Sanctum', 'Silverpine', 'Stormwatch'
+    ]
+  },
+
+  // Southern Tribes - African/Middle Eastern inspired
+  southern: {
+    maleNames: [
+      'Kofi', 'Jabari', 'Kwame', 'Thabo',
+      'Zahir', 'Rashid', 'Malik', 'Khalid', 'Tariq',
+      'Adeyemi', 'Nkrumah', 'Tendai', 'Chinua', 'Kamau', 'Omar', 'Hassan', 'Karim'
+    ],
+    femaleNames: [
+      'Amara', 'Zuri', 'Nia', 'Aisha', 'Imani', 'Chioma',
+      'Soraya', 'Farah', 'Amira', 'Leyla', 'Zara',
+      'Sanaa', 'Zola', 'Dessa', 'Fatima', 'Layla', 'Yasmin'
+    ],
+    lastNames: [
+      'Mbeki', 'Okonkwo', 'Adeyemi', 'Nkrumah', 'Chinua', 'Tendai', 'Okoro', 'Mwangi', 'Bantu', 'Koroma',
+      'al-Rashid', 'al-Zahir', 'ibn-Malik', 'al-Noor', 'al-Qamar', 'al-Shams', 'ibn-Tariq', 'al-Farid',
+      'Sunscorched', 'Sandstrider', 'Dustwalker', 'Oasisborn'
+    ]
+  },
+
+  // Central Republic - Diverse melting pot, cosmopolitan
+  central: {
+    maleNames: [
+      'Vaan', 'Balthier', 'Noctis', 'Ignis', 'Prompto', 'Gladio', 'Zidane', 'Vivi', 'Tidus', 'Auron',
+      'Lazlo', 'Jowy', 'Riou', 'Thomas', 'Hugo', 'Chris', 'Nash',
+      'Arjun', 'Ravi', 'Vikram', 'Kiran', 'Indra', 'Rohan',
+      'Marcus', 'Dimitri', 'Adrian', 'Sebastian'
+    ],
+    femaleNames: [
+      'Fran', 'Yuna',
+      'Nanami', 'Lucia',
+      'Priya', 'Maya', 'Anjali', 'Kavya',
+      'Elena', 'Sofia', 'Natasha', 'Isabella', 'Valentina'
+    ],
+    lastNames: [
+      'Beoulve', 'Ashelia', 'Bunansa', 'Nabaat', 'Caelum', 'Argentum', 'Scientia', 'Amicitia', 'Izunia',
+      'McDohl', 'Atreides', 'Silverberg', 'Blight', 'Falenas', 'Harmonia', 'Toran', 'Dunan',
+      'Patel', 'Sharma', 'Kumar', 'Singh', 'Rao', 'Mehta', 'Gupta',
+      'Irongate', 'Coalworth', 'Tradeway', 'Crossroads'
+    ]
+  },
+
+  // Mystic Enclave - Arcane/magical, mysterious origins
+  mystic: {
+    maleNames: [
+      'Claude', 'Gremio', 'Futch', 'Kahn',
+      'Adel', 'Lhinalagos', 'Elgor', 'Morard',
+      'Tenoch', 'Atl', 'Cualli',
+      'Thales', 'Zephyr', 'Orpheus', 'Morpheus'
+    ],
+    femaleNames: [
+      'Lysithea', 'Odessa', 'Kasumi', 'Valeria', 'Lorelai',
+      'Primm', 'Dinah', 'Yunifi',
+      'Itzal', 'Xochitl', 'Citlali', 'Nenetl', 'Yaretzi', 'Tlalli', 'Zyanya',
+      'Azura', 'Nyx', 'Mystral', 'Arcana', 'Selene', 'Circe'
+    ],
+    lastNames: [
+      'Valla', 'Nohr', 'Zexen', 'Karaya',
+      'Xolotl', 'Tepeyac', 'Tonalli', 'Mixtli', 'Nahuatl', 'Coatl', 'Itzel', 'Yaotl', 'Necalli', 'Tlatoani',
+      'Farrell', 'Tribal', 'Crescent',
+      'Aethermoor', 'Shadowfen', 'Runestone', 'Voidwalker', 'Starweaver', 'Moonwhisper'
+    ]
+  }
+};
+
+// Helper function to get all first names by gender (for backward compatibility)
+function getAllFirstNames(gender?: 'Male' | 'Female'): string[] {
+  if (gender === 'Male') {
+    return Object.values(REGIONAL_NAMES).flatMap(region => region.maleNames);
+  } else if (gender === 'Female') {
+    return Object.values(REGIONAL_NAMES).flatMap(region => region.femaleNames);
+  }
+  // If no gender specified, return all names
+  return Object.values(REGIONAL_NAMES).flatMap(region => [...region.maleNames, ...region.femaleNames]);
+}
+
+// Helper function to get all last names (for backward compatibility)
+function getAllLastNames(): string[] {
+  return Object.values(REGIONAL_NAMES).flatMap(region => region.lastNames);
+}
+
+// Generate a name from a specific region and gender
+export function generateNameFromRegion(
+  regionKey: 'northern' | 'eastern' | 'western' | 'southern' | 'central' | 'mystic',
+  gender?: 'Male' | 'Female'
+): string {
+  const region = REGIONAL_NAMES[regionKey];
+
+  // Select appropriate name pool based on gender
+  let firstNamePool: string[];
+  if (gender === 'Male') {
+    firstNamePool = region.maleNames;
+  } else if (gender === 'Female') {
+    firstNamePool = region.femaleNames;
+  } else {
+    // Random gender if not specified
+    firstNamePool = Math.random() < 0.5 ? region.maleNames : region.femaleNames;
+  }
+
+  const firstName = firstNamePool[Math.floor(Math.random() * firstNamePool.length)];
+  const lastName = region.lastNames[Math.floor(Math.random() * region.lastNames.length)];
+  return `${firstName} ${lastName}`;
+}
+
+// Map region names to region keys
+function getRegionKeyFromName(regionName: string): 'northern' | 'eastern' | 'western' | 'southern' | 'central' | 'mystic' {
+  // Check which kingdom/region group the region belongs to
+  if (regionName.includes('Frostspire') || regionName.includes('Glacial') || regionName.includes('Tundra')) {
+    return 'northern';
+  } else if (regionName.includes('Crimson') || regionName.includes('Jade') || regionName.includes('Shadow Mountains')) {
+    return 'eastern';
+  } else if (regionName.includes('Emerald') || regionName.includes('Silverpine') || regionName.includes('Stormcoast')) {
+    return 'western';
+  } else if (regionName.includes('Scorched') || regionName.includes('Savanna') || regionName.includes('Red Rock')) {
+    return 'southern';
+  } else if (regionName.includes('Irongate') || regionName.includes('Trade Routes') || regionName.includes('Coal')) {
+    return 'central';
+  } else if (regionName.includes('Aethermoor') || regionName.includes('Shadowfen') || regionName.includes('Runestone')) {
+    return 'mystic';
+  }
+  // Default to random region
+  const regions: Array<'northern' | 'eastern' | 'western' | 'southern' | 'central' | 'mystic'> =
+    ['northern', 'eastern', 'western', 'southern', 'central', 'mystic'];
+  return regions[Math.floor(Math.random() * regions.length)];
+}
+
+// Generate random hunter name (region and gender-aware)
+export function generateRandomHunterName(region?: string, gender?: 'Male' | 'Female'): string {
+  if (region) {
+    const regionKey = getRegionKeyFromName(region);
+    return generateNameFromRegion(regionKey, gender);
+  }
+
+  // If no region provided, use all names
+  const allFirstNames = getAllFirstNames(gender);
+  const allLastNames = getAllLastNames();
+  const firstName = allFirstNames[Math.floor(Math.random() * allFirstNames.length)];
+  const lastName = allLastNames[Math.floor(Math.random() * allLastNames.length)];
   return `${firstName} ${lastName}`;
 }
 
@@ -551,6 +691,34 @@ const REGIONS = [
   'Runestone Wastes'
 ];
 
+// Map regions to their kingdoms
+const REGION_TO_KINGDOM: Record<string, string> = {
+  // Northern Empire
+  'Frostspire Peaks': 'Northern Empire',
+  'Glacial Wastes': 'Northern Empire',
+  'Tundra Borderlands': 'Northern Empire',
+  // Eastern Dynasty
+  'Crimson Highlands': 'Eastern Dynasty',
+  'Jade River Valley': 'Eastern Dynasty',
+  'Shadow Mountains': 'Eastern Dynasty',
+  // Western Kingdom
+  'Emerald Heartlands': 'Western Kingdom',
+  'Silverpine Forests': 'Western Kingdom',
+  'Stormcoast': 'Western Kingdom',
+  // Southern Tribes
+  'Scorched Badlands': 'Southern Tribes',
+  'Savanna Territories': 'Southern Tribes',
+  'Red Rock Canyons': 'Southern Tribes',
+  // Central Republic
+  'Irongate District': 'Central Republic',
+  'Trade Routes': 'Central Republic',
+  'Coal Valleys': 'Central Republic',
+  // Mystic Enclave
+  'Aethermoor Heights': 'Mystic Enclave',
+  'The Shadowfen': 'Mystic Enclave',
+  'Runestone Wastes': 'Mystic Enclave'
+};
+
 // Generate random personality trait
 export function generatePersonality(): string {
   return PERSONALITY_TRAITS[Math.floor(Math.random() * PERSONALITY_TRAITS.length)];
@@ -559,6 +727,11 @@ export function generatePersonality(): string {
 // Generate random region
 export function generateRegion(): string {
   return REGIONS[Math.floor(Math.random() * REGIONS.length)];
+}
+
+// Get kingdom from region
+export function getKingdomFromRegion(region: string): string {
+  return REGION_TO_KINGDOM[region] || 'Unknown';
 }
 
 // Generate random gender

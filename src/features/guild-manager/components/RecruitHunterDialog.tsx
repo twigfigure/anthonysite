@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { hunterService, activityLogService } from '../lib/supabase';
-import { generateRandomHunterName, generatePersonality, generateBackstory, generateAffinities, getWeeklyUpkeepCost } from '../lib/gameHelpers';
+import { generateRandomHunterName, generatePersonality, generateBackstory, generateAffinities, getWeeklyUpkeepCost, generateRegion, getKingdomFromRegion } from '../lib/gameHelpers';
 import { generateHunterCombinedPrompt, getRandomRegion, getRandomGender } from '../lib/hunterImagePrompts';
 import { generatePassiveAbility } from '../lib/passiveAbilities';
 import { generateImageWithBanana } from '@/lib/bananaService';
@@ -47,7 +47,9 @@ export function RecruitHunterDialog({
   const { toast } = useToast();
 
   const handleRandomName = () => {
-    setName(generateRandomHunterName());
+    // Generate a random region to create region-appropriate names
+    const randomRegion = generateRegion();
+    setName(generateRandomHunterName(randomRegion));
   };
 
   const handleRecruit = async () => {
@@ -133,13 +135,14 @@ export function RecruitHunterDialog({
       // Calculate upkeep cost based on rank
       const upkeepCost = getWeeklyUpkeepCost(rank);
 
-      // Create hunter with images, passive ability, region, gender, personality, backstory, affinities, and upkeep
+      // Create hunter with images, passive ability, kingdom, region, gender, personality, backstory, affinities, and upkeep
       const newHunter = await hunterService.createHunter({
         guild_id: guild.id,
         name: name.trim(),
         rank,
         class: hunterClass,
         level: 1,
+        kingdom: getKingdomFromRegion(hunterRegion),
         region: hunterRegion,
         gender: hunterGender,
         personality,

@@ -11,11 +11,13 @@ import { HunterList } from '../components/HunterList';
 import { PortalList } from '../components/PortalList';
 import { GuildOverview } from '../components/GuildOverview';
 import { GuildInventory } from '../components/GuildInventory';
+import { GuildOnboarding } from '../components/GuildOnboarding';
 
 export default function GuildManager() {
   const [guild, setGuild] = useState<Guild | null>(null);
   const [hunters, setHunters] = useState<Hunter[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [user, setUser] = useState<any>(null);
   const { toast } = useToast();
 
@@ -52,9 +54,11 @@ export default function GuildManager() {
     try {
       let guildData = await guildService.getGuildByUserId(user.id);
 
-      // If no guild exists, create a starter guild
+      // If no guild exists, show onboarding
       if (!guildData) {
-        guildData = await createStarterGuild();
+        setShowOnboarding(true);
+        setLoading(false);
+        return;
       }
 
       setGuild(guildData);
@@ -69,13 +73,34 @@ export default function GuildManager() {
     }
   }
 
-  async function createStarterGuild() {
+  async function handleOnboardingComplete(guildName: string, kingdomId: string, regionId: string) {
+    try {
+      setLoading(true);
+      const guildData = await createStarterGuild(guildName, `${kingdomId}:${regionId}`);
+      setGuild(guildData);
+      setShowOnboarding(false);
+
+      toast({
+        title: 'Welcome to Guild Manager!',
+        description: `Your guild "${guildName}" has been established in the ${regionId.replace(/-/g, ' ')}.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error creating guild',
+        description: error.message,
+        variant: 'destructive'
+      });
+      setLoading(false);
+    }
+  }
+
+  async function createStarterGuild(guildName: string, region: string) {
     try {
       // Create guild
       const newGuild = await guildService.createGuild(
         user.id,
-        `${user.email?.split('@')[0]}'s Guild`,
-        'Central Region'
+        guildName,
+        region
       );
 
       // Create starter B-rank hunter
@@ -187,6 +212,10 @@ export default function GuildManager() {
     );
   }
 
+  if (showOnboarding) {
+    return <GuildOnboarding onComplete={handleOnboardingComplete} />;
+  }
+
   if (!guild) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-8">
@@ -227,7 +256,7 @@ export default function GuildManager() {
         {/* Main Content Tabs */}
         <Tabs defaultValue="hunters" className="w-full">
           <TabsList className="grid w-full grid-cols-5 lg:w-auto">
-            <TabsTrigger value="hunters">Hunters</TabsTrigger>
+            <TabsTrigger value="hunters">Guild Lodge</TabsTrigger>
             <TabsTrigger value="portals">Portals</TabsTrigger>
             <TabsTrigger value="buildings">Buildings</TabsTrigger>
             <TabsTrigger value="inventory">Inventory</TabsTrigger>
