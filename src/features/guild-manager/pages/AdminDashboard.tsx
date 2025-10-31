@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import type { AdminTab } from '../types/admin';
 import { BackstoryTab } from '../components/admin/BackstoryTab';
 import { PortalsTab } from '../components/admin/PortalsTab';
+import { GuildsTab } from '../components/admin/GuildsTab';
 
 export default function AdminDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -121,15 +122,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="guilds" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Guilds Overview</CardTitle>
-                <CardDescription>View all player guilds</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Coming soon...</p>
-              </CardContent>
-            </Card>
+            <GuildsTab />
           </TabsContent>
 
           <TabsContent value="database" className="mt-6">
