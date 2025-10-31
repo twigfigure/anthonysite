@@ -13,6 +13,11 @@ export function GuildOverview({ guild, hunters }: GuildOverviewProps) {
   const assignedHunters = hunters.filter(h => h.is_assigned).length;
   const deadHunters = hunters.filter(h => h.is_dead).length;
 
+  // Calculate total weekly upkeep for all hunters (excluding dead ones)
+  const totalWeeklyUpkeep = hunters
+    .filter(h => !h.is_dead)
+    .reduce((sum, h) => sum + (h.upkeep_cost || 0), 0);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* Guild Level */}
@@ -43,9 +48,12 @@ export function GuildOverview({ guild, hunters }: GuildOverviewProps) {
             </div>
             <Coins className="h-12 w-12 text-yellow-600 dark:text-yellow-400" />
           </div>
-          <div className="mt-2">
+          <div className="mt-2 space-y-1">
             <p className="text-xs text-yellow-700 dark:text-yellow-400">
               Crystals: {guild.crystals}
+            </p>
+            <p className="text-xs text-red-600 dark:text-red-400">
+              Weekly Upkeep: {formatGold(totalWeeklyUpkeep)} gold
             </p>
           </div>
         </CardContent>

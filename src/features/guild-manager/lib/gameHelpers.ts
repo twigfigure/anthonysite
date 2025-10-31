@@ -40,6 +40,20 @@ export function getMaxSpellSlotsForRank(rank: HunterRank): number {
   return maxSpellSlots[rank];
 }
 
+// Get weekly upkeep cost for a hunter based on rank
+export function getWeeklyUpkeepCost(rank: HunterRank): number {
+  const upkeepCosts: Record<HunterRank, number> = {
+    D: 1000,      // 1,000 gold/week
+    C: 2500,      // 2,500 gold/week
+    B: 6000,      // 6,000 gold/week
+    A: 15000,     // 15,000 gold/week
+    S: 40000,     // 40,000 gold/week
+    SS: 100000,   // 100,000 gold/week
+    SSS: 250000   // 250,000 gold/week
+  };
+  return upkeepCosts[rank];
+}
+
 // Get guaranteed minimum affinities for a given rank
 export function getMinAffinitiesForRank(rank: HunterRank): number {
   const minAffinities: Record<HunterRank, number> = {
@@ -140,19 +154,55 @@ export function calculateEffectiveStats(
 }
 
 // Calculate combat power (overall hunter strength)
-export function calculateCombatPower(hunter: Hunter): number {
-  return (
-    hunter.attack_power * 2 +
-    hunter.magic_power * 2 +
-    hunter.defense +
-    hunter.magic_resistance +
-    Math.floor(hunter.max_hp / 10) +
-    Math.floor(hunter.max_mana / 10) +
-    hunter.strength +
-    hunter.agility +
-    hunter.intelligence +
-    hunter.vitality
+// Includes equipment bonuses and skill count
+export function calculateCombatPower(
+  hunter: Hunter,
+  equippedBonuses?: {
+    strength_bonus?: number;
+    agility_bonus?: number;
+    intelligence_bonus?: number;
+    vitality_bonus?: number;
+    luck_bonus?: number;
+    hp_bonus?: number;
+    mana_bonus?: number;
+    attack_bonus?: number;
+    magic_bonus?: number;
+    defense_bonus?: number;
+    magic_resist_bonus?: number;
+  },
+  learnedSkillCount: number = 0
+): number {
+  // If equipment bonuses provided, calculate effective stats
+  let stats = hunter;
+  if (equippedBonuses) {
+    const effectiveStats = calculateEffectiveStats(hunter, equippedBonuses);
+    stats = {
+      ...hunter,
+      ...effectiveStats
+    };
+  }
+
+  // Base combat power from stats
+  const baseCp = (
+    stats.attack_power * 2 +
+    stats.magic_power * 2 +
+    stats.defense +
+    stats.magic_resistance +
+    Math.floor(stats.max_hp / 10) +
+    Math.floor(stats.max_mana / 10) +
+    stats.strength +
+    stats.agility +
+    stats.intelligence +
+    stats.vitality
   );
+
+  // Add CP for innate abilities (passive skills)
+  const innateAbilityBonus = hunter.innate_abilities.length * 50;
+
+  // Add CP for learned skills (each skill adds 100 CP)
+  const learnedSkillBonus = learnedSkillCount * 100;
+
+  return baseCp + innateAbilityBonus + learnedSkillBonus;
 }
 
 // Calculate stats gained on level up

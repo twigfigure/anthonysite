@@ -123,6 +123,10 @@ export interface Hunter {
   // Assignment status
   is_assigned: boolean;
 
+  // Upkeep system
+  upkeep_cost: number; // Weekly salary cost
+  last_upkeep_paid: string; // Timestamp of last upkeep payment
+
   created_at: string;
   updated_at: string;
 }

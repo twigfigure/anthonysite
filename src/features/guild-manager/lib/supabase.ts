@@ -612,3 +612,63 @@ export const rankUpService = {
     }
   }
 };
+
+// ============================================
+// UPKEEP SERVICE
+// ============================================
+
+export const upkeepService = {
+  // Get total weekly upkeep for all hunters in a guild
+  async getGuildTotalUpkeep(guildId: string) {
+    const { data, error } = await supabase.rpc('get_guild_total_upkeep', {
+      p_guild_id: guildId
+    });
+
+    if (error) throw error;
+    return data as number;
+  },
+
+  // Check if a hunter's upkeep is due (7+ days since last payment)
+  async isUpkeepDue(hunterId: string) {
+    const { data, error } = await supabase.rpc('is_upkeep_due', {
+      p_hunter_id: hunterId
+    });
+
+    if (error) throw error;
+    return data as boolean;
+  },
+
+  // Pay upkeep for a single hunter
+  async payHunterUpkeep(guildId: string, hunterId: string) {
+    const { data, error } = await supabase.rpc('pay_hunter_upkeep', {
+      p_guild_id: guildId,
+      p_hunter_id: hunterId
+    });
+
+    if (error) throw error;
+    return data as {
+      success: boolean;
+      cost?: number;
+      remaining_gold?: number;
+      error?: string;
+    };
+  },
+
+  // Pay upkeep for all hunters in a guild at once
+  async payAllGuildUpkeep(guildId: string) {
+    const { data, error } = await supabase.rpc('pay_all_guild_upkeep', {
+      p_guild_id: guildId
+    });
+
+    if (error) throw error;
+    return data as {
+      success: boolean;
+      total_cost?: number;
+      hunters_paid?: number;
+      remaining_gold?: number;
+      required?: number;
+      available?: number;
+      error?: string;
+    };
+  }
+};

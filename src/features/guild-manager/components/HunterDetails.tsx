@@ -24,12 +24,13 @@ import {
   CircleDot,
   Footprints,
   Hand,
-  Crown
+  Crown,
+  Coins
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Hunter, ElementalAffinity, HunterActivityLog, Guild } from '../types';
 import { RANK_BG_COLORS, AFFINITY_COLORS } from '../types';
-import { calculateCombatPower, getExpForLevel, getMaxLevelForRank, getMaxSpellSlotsForRank } from '../lib/gameHelpers';
+import { calculateCombatPower, getExpForLevel, getMaxLevelForRank, getMaxSpellSlotsForRank, formatGold } from '../lib/gameHelpers';
 import { hunterService, activityLogService } from '../lib/supabase';
 import { deleteImageFromStorage } from '@/lib/supabaseStorage';
 import { canAttemptRankUp, getRankUpStatusText } from '../lib/rankUpSystem';
@@ -395,6 +396,16 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Weekly Salary */}
+            <Separator />
+            <div className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-1.5 text-muted-foreground">
+                <Coins className="h-3.5 w-3.5 text-yellow-500" />
+                Weekly Salary
+              </span>
+              <span className="font-bold text-yellow-600 dark:text-yellow-500">{formatGold(hunter.upkeep_cost)} gold</span>
             </div>
 
             {/* Passive Ability */}

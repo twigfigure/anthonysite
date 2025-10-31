@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { hunterService, activityLogService } from '../lib/supabase';
-import { generateRandomHunterName, generatePersonality, generateBackstory, generateAffinities } from '../lib/gameHelpers';
+import { generateRandomHunterName, generatePersonality, generateBackstory, generateAffinities, getWeeklyUpkeepCost } from '../lib/gameHelpers';
 import { generateHunterCombinedPrompt, getRandomRegion, getRandomGender } from '../lib/hunterImagePrompts';
 import { generatePassiveAbility } from '../lib/passiveAbilities';
 import { generateImageWithBanana } from '@/lib/bananaService';
@@ -130,7 +130,10 @@ export function RecruitHunterDialog({
       // Generate affinities based on rank
       const affinities = generateAffinities(rank);
 
-      // Create hunter with images, passive ability, region, gender, personality, backstory, and affinities
+      // Calculate upkeep cost based on rank
+      const upkeepCost = getWeeklyUpkeepCost(rank);
+
+      // Create hunter with images, passive ability, region, gender, personality, backstory, affinities, and upkeep
       const newHunter = await hunterService.createHunter({
         guild_id: guild.id,
         name: name.trim(),
@@ -145,6 +148,7 @@ export function RecruitHunterDialog({
         avatar_url: avatarUrl,
         splash_art_url: splashArtUrl,
         innate_abilities: [JSON.stringify(passiveAbility)],
+        upkeep_cost: upkeepCost,
         ...baseStats,
       });
 
