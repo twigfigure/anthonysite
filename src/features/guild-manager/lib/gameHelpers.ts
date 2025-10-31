@@ -3,14 +3,54 @@ import type {
   Hunter,
   HunterRank,
   PortalDifficulty,
-  EquipmentRarity,
-  RANK_ORDER,
-  DIFFICULTY_ORDER
+  EquipmentRarity
 } from '../types';
 
 // ============================================
 // LEVEL AND EXPERIENCE CALCULATIONS
 // ============================================
+
+// Get max level for a given rank
+export function getMaxLevelForRank(rank: HunterRank): number {
+  const maxLevels: Record<HunterRank, number> = {
+    D: 40,
+    C: 50,
+    B: 60,
+    A: 80,
+    S: 100,
+    SS: 110,
+    SSS: 120
+  };
+  return maxLevels[rank];
+}
+
+// Get max spell slots for a given rank
+export function getMaxSpellSlotsForRank(rank: HunterRank): number {
+  const maxSpellSlots: Record<HunterRank, number> = {
+    D: 1,
+    C: 2,
+    B: 3,
+    A: 5,
+    S: 7,
+    SS: 8,
+    SSS: 10
+  };
+  return maxSpellSlots[rank];
+}
+
+// Get max affinities for a given rank
+export function getMaxAffinitiesForRank(rank: HunterRank): number {
+  const maxAffinities: Record<HunterRank, number> = {
+    D: 1,    // D rank: 1 affinity
+    C: 1,    // C rank: 1 affinity
+    B: 1,    // B rank: 1 affinity
+    A: 2,    // A rank: 2 affinities
+    S: 2,    // S rank: 2 affinities
+    SS: 3,   // SS rank: 3 affinities
+    SSS: 3   // SSS rank: 3 affinities
+  };
+  return maxAffinities[rank];
+}
 
 // Experience required for next level (exponential growth)
 export function getExpForLevel(level: number): number {
@@ -118,8 +158,6 @@ export function getStatsOnLevelUp(hunterClass: string, rank: HunterRank): {
 // Get rank multiplier for stat gains
 function getRankMultiplier(rank: HunterRank): number {
   const multipliers: Record<HunterRank, number> = {
-    F: 0.5,
-    E: 0.7,
     D: 0.9,
     C: 1.0,
     B: 1.2,
@@ -242,7 +280,7 @@ export function rollLoot(lootTable: any[], luckBonus: number = 0): any[] {
 // ============================================
 
 export function compareRanks(rank1: HunterRank, rank2: HunterRank): number {
-  const ranks: HunterRank[] = ['F', 'E', 'D', 'C', 'B', 'A', 'S', 'SS', 'SSS'];
+  const ranks: HunterRank[] = ['D', 'C', 'B', 'A', 'S', 'SS', 'SSS'];
   return ranks.indexOf(rank1) - ranks.indexOf(rank2);
 }
 

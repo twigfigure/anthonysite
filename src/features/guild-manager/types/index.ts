@@ -1,6 +1,6 @@
 // Guild Manager Game Types
 
-export type HunterRank = 'F' | 'E' | 'D' | 'C' | 'B' | 'A' | 'S' | 'SS' | 'SSS';
+export type HunterRank = 'D' | 'C' | 'B' | 'A' | 'S' | 'SS' | 'SSS';
 
 export type HunterClass =
   | 'Fighter'
@@ -10,6 +10,18 @@ export type HunterClass =
   | 'Assassin'
   | 'Ranger'
   | 'Support';
+
+export type ElementalAffinity =
+  | 'Fire'      // Basic
+  | 'Water'     // Basic
+  | 'Earth'     // Basic
+  | 'Wind'      // Basic
+  | 'Ice'       // Special
+  | 'Metal'     // Special
+  | 'Holy'      // Special
+  | 'Dark'      // Special
+  | 'Lightning' // Special
+  | 'Anima';    // Special
 
 export type PortalDifficulty =
   | 'Blue'    // Easy
@@ -74,6 +86,7 @@ export interface Hunter {
   level: number;
   experience: number;
   region?: string; // Kingdom/region/culture origin
+  affinities: ElementalAffinity[]; // Elemental affinities
 
   // Images
   avatar_url?: string;
@@ -385,8 +398,6 @@ export const RARITY_ORDER: EquipmentRarity[] = [
 
 // Color mappings for UI
 export const RANK_COLORS: Record<HunterRank, string> = {
-  F: 'text-gray-500',
-  E: 'text-gray-400',
   D: 'text-green-500',
   C: 'text-blue-500',
   B: 'text-purple-500',
@@ -395,6 +406,45 @@ export const RANK_COLORS: Record<HunterRank, string> = {
   SS: 'text-orange-500',
   SSS: 'text-red-500'
 };
+
+export const RANK_BG_COLORS: Record<HunterRank, string> = {
+  D: 'bg-green-500',
+  C: 'bg-blue-500',
+  B: 'bg-purple-500',
+  A: 'bg-pink-500',
+  S: 'bg-yellow-500',
+  SS: 'bg-orange-500',
+  SSS: 'bg-red-500'
+};
+
+export const AFFINITY_COLORS: Record<ElementalAffinity, string> = {
+  Fire: 'text-red-500',
+  Water: 'text-blue-500',
+  Earth: 'text-amber-700',
+  Wind: 'text-cyan-400',
+  Ice: 'text-cyan-300',
+  Metal: 'text-gray-400',
+  Holy: 'text-yellow-300',
+  Dark: 'text-purple-900',
+  Lightning: 'text-yellow-400',
+  Anima: 'text-green-400'
+};
+
+// Basic affinities available to all ranks
+export const BASIC_AFFINITIES: ElementalAffinity[] = ['Fire', 'Water', 'Earth', 'Wind'];
+
+// Special affinities only available to A rank and above
+export const SPECIAL_AFFINITIES: ElementalAffinity[] = ['Ice', 'Metal', 'Holy', 'Dark', 'Lightning', 'Anima'];
+
+// Get available affinities for a rank
+export function getAvailableAffinitiesForRank(rank: HunterRank): ElementalAffinity[] {
+  // A rank and above can have special affinities
+  if (rank === 'A' || rank === 'S' || rank === 'SS' || rank === 'SSS') {
+    return [...BASIC_AFFINITIES, ...SPECIAL_AFFINITIES];
+  }
+  // D, C, B ranks can only have basic affinities
+  return BASIC_AFFINITIES;
+}
 
 export const DIFFICULTY_COLORS: Record<PortalDifficulty, string> = {
   Blue: 'bg-blue-500',

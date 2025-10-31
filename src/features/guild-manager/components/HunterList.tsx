@@ -1,21 +1,9 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { Shield, Sword, Heart, Zap, User, Plus, Clock } from 'lucide-react';
+import { User, Plus } from 'lucide-react';
 import type { Guild, Hunter } from '../types';
-import { RANK_COLORS } from '../types';
-import { calculateCombatPower, formatTimeRemaining, getExpForLevel } from '../lib/gameHelpers';
+import { RANK_BG_COLORS } from '../types';
 import { HunterDetails } from './HunterDetails';
 import { RecruitHunterDialog } from './RecruitHunterDialog';
 
@@ -138,22 +126,12 @@ function HunterAvatar({ hunter, isSelected, onClick }: HunterAvatarProps) {
       )}
 
       {/* Rank Badge */}
-      <div className={`absolute top-1 left-1 px-1.5 py-0.5 rounded text-xs font-bold ${
-        hunter.rank === 'SSS' ? 'bg-yellow-400 text-black' :
-        hunter.rank === 'SS' ? 'bg-yellow-500 text-black' :
-        hunter.rank === 'S' ? 'bg-orange-500 text-white' :
-        hunter.rank === 'A' ? 'bg-purple-500 text-white' :
-        hunter.rank === 'B' ? 'bg-blue-500 text-white' :
-        hunter.rank === 'C' ? 'bg-green-500 text-white' :
-        hunter.rank === 'D' ? 'bg-gray-500 text-white' :
-        hunter.rank === 'E' ? 'bg-gray-600 text-white' :
-        'bg-gray-700 text-white'
-      }`}>
+      <div className={`absolute top-1 left-1 px-1.5 py-0.5 rounded text-xs font-bold text-white ${RANK_BG_COLORS[hunter.rank]}`}>
         {hunter.rank}
       </div>
 
       {/* Level Badge */}
-      <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-black/70 text-white text-xs font-bold">
+      <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-black/80 text-white text-xs font-bold border-2 border-white/30">
         Lv.{hunter.level}
       </div>
 
