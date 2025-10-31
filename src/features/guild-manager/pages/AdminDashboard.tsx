@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import type { AdminTab } from '../types/admin';
 import { BackstoryTab } from '../components/admin/BackstoryTab';
+import { PortalsTab } from '../components/admin/PortalsTab';
 
 export default function AdminDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -116,15 +117,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="portals" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Portal Management</CardTitle>
-                <CardDescription>Manage portal templates</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Coming soon...</p>
-              </CardContent>
-            </Card>
+            <PortalsTab />
           </TabsContent>
 
           <TabsContent value="guilds" className="mt-6">
