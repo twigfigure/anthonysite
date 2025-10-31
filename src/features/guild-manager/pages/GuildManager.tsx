@@ -216,9 +216,14 @@ export default function GuildManager() {
             <h1 className="text-4xl font-bold text-white mb-2">{guild.name}</h1>
             <p className="text-purple-200">{guild.region} • World Level {guild.world_level}</p>
           </div>
-          <Button onClick={() => window.location.href = '/'} variant="outline">
-            Return Home
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => window.location.href = '/guild-manager/admin'} variant="secondary">
+              Admin
+            </Button>
+            <Button onClick={() => window.location.href = '/'} variant="outline">
+              Return Home
+            </Button>
+          </div>
         </div>
 
         {/* Guild Overview Stats */}
