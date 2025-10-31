@@ -196,3 +196,29 @@ QUALITY REQUIREMENTS:
 
 This dual-view must showcase the same ${rank}-rank ${hunterClass} hunter from both portrait and action perspectives, maintaining perfect character consistency.`;
 }
+
+// Map kingdom IDs to region names
+const KINGDOM_TO_REGION_NAME: Record<string, RegionName> = {
+  'northern-empire': 'Northern Empire',
+  'eastern-dynasty': 'Eastern Dynasty',
+  'western-kingdom': 'Western Kingdom',
+  'southern-tribes': 'Southern Tribes',
+  'central-republic': 'Central Republic',
+  'mystic-enclave': 'Mystic Enclave'
+};
+
+// Generate avatar URL placeholder (would call image generation API in production)
+export function generateHunterAvatarUrl(rank: HunterRank, hunterClass: HunterClass, kingdomId: string): string {
+  // In production, this would call an image generation API
+  // For now, return a placeholder that encodes the parameters
+  const regionName = KINGDOM_TO_REGION_NAME[kingdomId] || 'Central Republic';
+  return `https://placeholder-avatar.com/${rank}-${hunterClass}-${regionName.replace(/\s+/g, '-')}`;
+}
+
+// Generate splash art URL placeholder (would call image generation API in production)
+export function generateHunterSplashUrl(rank: HunterRank, hunterClass: HunterClass, kingdomId: string): string {
+  // In production, this would call an image generation API
+  // For now, return a placeholder that encodes the parameters
+  const regionName = KINGDOM_TO_REGION_NAME[kingdomId] || 'Central Republic';
+  return `https://placeholder-splash.com/${rank}-${hunterClass}-${regionName.replace(/\s+/g, '-')}`;
+}

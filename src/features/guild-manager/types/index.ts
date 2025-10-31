@@ -72,6 +72,8 @@ export interface Guild {
   influence: number;
   world_level: number;
   max_hunters: number;
+  scout_attempts: number;
+  last_scout_refresh: string;
   created_at: string;
   updated_at: string;
 }
@@ -85,7 +87,8 @@ export interface Hunter {
   class: HunterClass;
   level: number;
   experience: number;
-  region?: string; // Kingdom/region/culture origin
+  kingdom?: string; // Kingdom origin
+  region?: string; // Region within kingdom origin
   gender?: 'Male' | 'Female'; // Hunter's gender
   personality?: string; // Personality traits/description
   backstory?: string; // Character backstory
@@ -129,6 +132,50 @@ export interface Hunter {
 
   created_at: string;
   updated_at: string;
+}
+
+// Scouted Hunter Interface (available for recruitment)
+export interface ScoutedHunter {
+  id: string;
+  guild_id: string;
+  name: string;
+  rank: HunterRank;
+  class: HunterClass;
+  level: number;
+
+  // Base Stats
+  strength: number;
+  agility: number;
+  intelligence: number;
+  vitality: number;
+  luck: number;
+
+  // Derived Stats
+  hp: number;
+  max_hp: number;
+  mana: number;
+  max_mana: number;
+  attack: number;
+  magic: number;
+  defense: number;
+  magic_resist: number;
+
+  // Personality & Background
+  personality?: string;
+  backstory?: string;
+
+  // Abilities & Affinities
+  affinities: ElementalAffinity[];
+  innate_abilities: string[];
+
+  // Recruitment Info
+  signing_fee: number;
+  base_salary: number;
+
+  // Metadata
+  generated_at: string;
+  expires_at: string;
+  created_at: string;
 }
 
 // Equipment Interface

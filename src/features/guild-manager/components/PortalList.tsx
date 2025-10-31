@@ -1,9 +1,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Flame, Sparkles } from 'lucide-react';
+import { Flame, Sparkles, MapPin } from 'lucide-react';
 import type { Guild, Hunter, PortalDifficulty } from '../types';
 import { DIFFICULTY_COLORS } from '../types';
+import { generatePortalsForRegion, type GeneratedPortal } from '../lib/portalGeneration';
 
 interface PortalListProps {
   guild: Guild;
@@ -11,8 +12,9 @@ interface PortalListProps {
 }
 
 export function PortalList({ guild, hunters }: PortalListProps) {
-  // Mock portal data for now - will be replaced with actual data later
-  const availablePortals = getPortalsForWorldLevel(guild.world_level);
+  // Extract region from guild.region (format: "kingdom-id:region-id")
+  const regionId = guild.region.split(':')[1] || guild.region;
+  const availablePortals = generatePortalsForRegion(regionId, guild.world_level);
 
   return (
     <div className="space-y-4">
@@ -35,7 +37,7 @@ export function PortalList({ guild, hunters }: PortalListProps) {
 }
 
 interface PortalCardProps {
-  portal: MockPortal;
+  portal: GeneratedPortal;
   guild: Guild;
   hunters: Hunter[];
 }
@@ -112,120 +114,3 @@ function PortalCard({ portal, guild, hunters }: PortalCardProps) {
   );
 }
 
-// Mock portal interface and data generator
-interface MockPortal {
-  id: string;
-  name: string;
-  difficulty: PortalDifficulty;
-  worldLevel: number;
-  isBoss: boolean;
-  minLevel: number;
-  recommendedHunters: number;
-  timeMinutes: number;
-  baseGold: number;
-  baseExp: number;
-}
-
-function getPortalsForWorldLevel(worldLevel: number): MockPortal[] {
-  const portals: MockPortal[] = [];
-
-  // World Level 1 portals
-  if (worldLevel === 1) {
-    portals.push(
-      {
-        id: '1',
-        name: 'Goblin Cave',
-        difficulty: 'Blue',
-        worldLevel: 1,
-        isBoss: false,
-        minLevel: 1,
-        recommendedHunters: 1,
-        timeMinutes: 15,
-        baseGold: 100,
-        baseExp: 50,
-      },
-      {
-        id: '2',
-        name: 'Spider Den',
-        difficulty: 'Blue',
-        worldLevel: 1,
-        isBoss: false,
-        minLevel: 1,
-        recommendedHunters: 2,
-        timeMinutes: 20,
-        baseGold: 150,
-        baseExp: 75,
-      },
-      {
-        id: '3',
-        name: 'Ancient Ruins',
-        difficulty: 'Blue',
-        worldLevel: 1,
-        isBoss: false,
-        minLevel: 2,
-        recommendedHunters: 1,
-        timeMinutes: 25,
-        baseGold: 200,
-        baseExp: 100,
-      },
-      {
-        id: '4',
-        name: 'Orc Stronghold',
-        difficulty: 'Green',
-        worldLevel: 1,
-        isBoss: true,
-        minLevel: 3,
-        recommendedHunters: 3,
-        timeMinutes: 45,
-        baseGold: 500,
-        baseExp: 300,
-      }
-    );
-  }
-
-  // World Level 2+ - progressively harder
-  if (worldLevel >= 2) {
-    const levelMultiplier = worldLevel - 1;
-
-    portals.push(
-      {
-        id: `wl${worldLevel}-1`,
-        name: 'Dark Forest',
-        difficulty: worldLevel === 2 ? 'Green' : 'Yellow',
-        worldLevel,
-        isBoss: false,
-        minLevel: 5 + levelMultiplier * 5,
-        recommendedHunters: 2,
-        timeMinutes: 20,
-        baseGold: 300 * worldLevel,
-        baseExp: 150 * worldLevel,
-      },
-      {
-        id: `wl${worldLevel}-2`,
-        name: 'Cursed Temple',
-        difficulty: worldLevel === 2 ? 'Green' : worldLevel === 3 ? 'Yellow' : 'Orange',
-        worldLevel,
-        isBoss: false,
-        minLevel: 7 + levelMultiplier * 5,
-        recommendedHunters: 3,
-        timeMinutes: 30,
-        baseGold: 500 * worldLevel,
-        baseExp: 250 * worldLevel,
-      },
-      {
-        id: `wl${worldLevel}-boss`,
-        name: `Level ${worldLevel} Boss Portal`,
-        difficulty: worldLevel === 2 ? 'Yellow' : worldLevel === 3 ? 'Orange' : 'Red',
-        worldLevel,
-        isBoss: true,
-        minLevel: 10 + levelMultiplier * 5,
-        recommendedHunters: 5,
-        timeMinutes: 60,
-        baseGold: 2000 * worldLevel,
-        baseExp: 1000 * worldLevel,
-      }
-    );
-  }
-
-  return portals;
-}

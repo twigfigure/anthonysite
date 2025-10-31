@@ -1,5 +1,7 @@
 // Guild Manager Supabase Helper Functions
 import { supabase } from '@/lib/supabase';
+import { getWeeklyUpkeepCost, generateAffinities } from './gameHelpers';
+import { generatePassiveAbility } from './passiveAbilities';
 import type {
   Guild,
   Hunter,
@@ -12,7 +14,8 @@ import type {
   HunterEquipment,
   EquippedItem,
   EquipmentBonuses,
-  HunterActivityLog
+  HunterActivityLog,
+  ScoutedHunter
 } from '../types';
 
 // ============================================
@@ -70,6 +73,33 @@ export const guildService = {
 
     if (error) throw error;
     return data;
+  },
+
+  // Delete guild and all associated data (hunters, assignments, etc.)
+  async deleteGuild(guildId: string) {
+    // Delete all hunters (which cascades to equipment, assignments, etc.)
+    const { error: huntersError } = await supabase
+      .from('hunters')
+      .delete()
+      .eq('guild_id', guildId);
+
+    if (huntersError) throw huntersError;
+
+    // Delete scouted hunters
+    const { error: scoutedError } = await supabase
+      .from('scouted_hunters')
+      .delete()
+      .eq('guild_id', guildId);
+
+    if (scoutedError) throw scoutedError;
+
+    // Delete the guild itself
+    const { error: guildError } = await supabase
+      .from('guilds')
+      .delete()
+      .eq('id', guildId);
+
+    if (guildError) throw guildError;
   }
 };
 
@@ -196,7 +226,7 @@ export const hunterService = {
 
 export const portalService = {
   // Get available portals for a guild's world level
-  async getAvailablePortals(guildId: string, worldLevel: number) {
+  async getAvailablePortals(guildId: string, _worldLevel: number) {
     const { data, error } = await supabase
       .from('portals')
       .select(`
@@ -288,7 +318,7 @@ export const assignmentService = {
     rewards: {
       gold: number;
       experience: number;
-      loot: any[];
+      loot: LootDrop[];
     }
   ) {
     const { data, error } = await supabase
@@ -591,7 +621,7 @@ export const activityLogService = {
     hunterId: string,
     activityType: string,
     description: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ) {
     const { data, error } = await supabase
       .from('hunter_activity_log')
@@ -783,5 +813,197 @@ export const upkeepService = {
       available?: number;
       error?: string;
     };
+  }
+};
+
+// ============================================
+// SCOUTING SYSTEM
+// ============================================
+
+export const scoutingService = {
+  // Get scouted hunters for a guild
+  async getScoutedHunters(guildId: string): Promise<ScoutedHunter[]> {
+    const { data, error } = await supabase
+      .from('scouted_hunters')
+      .select('*')
+      .eq('guild_id', guildId)
+      .gt('expires_at', new Date().toISOString())
+      .order('rank', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Check if scouts need to be generated (no active scouts)
+  async needsScoutGeneration(guildId: string): Promise<boolean> {
+    const scouts = await this.getScoutedHunters(guildId);
+    return scouts.length === 0;
+  },
+
+  // Use a scout attempt and return remaining attempts
+  async useScoutAttempt(guildId: string): Promise<{ success: boolean; attempts_remaining: number; next_refresh: string; error?: string }> {
+    const { data, error } = await supabase.rpc('use_scout_attempt', {
+      p_guild_id: guildId
+    });
+
+    if (error) throw error;
+    return data;
+  },
+
+  // Generate new scouted hunters
+  async generateScoutedHunters(guildId: string, worldLevel: number): Promise<ScoutedHunter[]> {
+    // First, delete existing scouts
+    await supabase
+      .from('scouted_hunters')
+      .delete()
+      .eq('guild_id', guildId);
+
+    // Generate 6 hunters
+    const hunters: Omit<ScoutedHunter, 'id' | 'created_at'>[] = [];
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // Expires in 7 days
+
+    for (let i = 0; i < 6; i++) {
+      const hunter = this.generateRandomHunter(guildId, worldLevel, expiresAt.toISOString());
+      hunters.push(hunter);
+    }
+
+    // Insert all hunters
+    const { data, error } = await supabase
+      .from('scouted_hunters')
+      .insert(hunters)
+      .select();
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Helper: Generate a random hunter based on world level
+  generateRandomHunter(guildId: string, worldLevel: number, expiresAt: string): Omit<ScoutedHunter, 'id' | 'created_at'> {
+    const ranks: Array<{ rank: string; weight: number }> = [
+      { rank: 'D', weight: 40 },
+      { rank: 'C', weight: 30 },
+      { rank: 'B', weight: 15 },
+      { rank: 'A', weight: 10 },
+      { rank: 'S', weight: 4 },
+      { rank: 'SS', weight: 0.9 },
+      { rank: 'SSS', weight: 0.1 }
+    ];
+
+    // Adjust weights based on world level
+    const adjustedRanks = ranks.map(r => ({
+      ...r,
+      weight: r.weight * (1 + worldLevel * 0.1)
+    }));
+
+    const totalWeight = adjustedRanks.reduce((sum, r) => sum + r.weight, 0);
+    let random = Math.random() * totalWeight;
+    let selectedRank = 'D';
+
+    for (const { rank, weight } of adjustedRanks) {
+      random -= weight;
+      if (random <= 0) {
+        selectedRank = rank;
+        break;
+      }
+    }
+
+    const classes = ['Fighter', 'Tank', 'Mage', 'Healer', 'Assassin', 'Ranger', 'Support'];
+    const selectedClass = classes[Math.floor(Math.random() * classes.length)];
+
+    // Generate stats based on rank
+    const rankMultipliers: Record<string, number> = {
+      'D': 1.0,
+      'C': 1.2,
+      'B': 1.5,
+      'A': 2.0,
+      'S': 3.0,
+      'SS': 5.0,
+      'SSS': 8.0
+    };
+
+    const multiplier = rankMultipliers[selectedRank] || 1.0;
+    const baseLevel = Math.max(1, Math.floor(worldLevel * 0.8));
+
+    // Base stats
+    const strength = Math.floor((10 + Math.random() * 10) * multiplier);
+    const agility = Math.floor((10 + Math.random() * 10) * multiplier);
+    const intelligence = Math.floor((10 + Math.random() * 10) * multiplier);
+    const vitality = Math.floor((10 + Math.random() * 10) * multiplier);
+    const luck = Math.floor((5 + Math.random() * 5) * multiplier);
+
+    // Derived stats
+    const max_hp = Math.floor(100 + vitality * 10);
+    const max_mana = Math.floor(50 + intelligence * 5);
+    const attack = Math.floor(strength * 2);
+    const magic = Math.floor(intelligence * 2);
+    const defense = Math.floor(vitality * 1.5);
+    const magic_resist = Math.floor(intelligence * 1.5);
+
+    // Calculate signing fee and salary based on rank
+    const rankFees: Record<string, number> = {
+      'D': 500,
+      'C': 2000,
+      'B': 8000,
+      'A': 30000,
+      'S': 100000,
+      'SS': 500000,
+      'SSS': 2000000
+    };
+
+    const signing_fee = rankFees[selectedRank] || 500;
+    const base_salary = getWeeklyUpkeepCost(selectedRank as HunterRank);
+
+    // Generate name
+    const firstNames = ['Aria', 'Drake', 'Luna', 'Kai', 'Nova', 'Rex', 'Zara', 'Finn', 'Sage', 'Blaze'];
+    const lastNames = ['Steel', 'Shadow', 'Frost', 'Storm', 'Flame', 'Stone', 'Swift', 'Bright', 'Dark', 'Wild'];
+    const name = `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
+
+    // Generate affinities and passive ability based on rank
+    const affinities = generateAffinities(selectedRank as HunterRank);
+    const passiveAbility = generatePassiveAbility(selectedRank as HunterRank, selectedClass as HunterClass);
+
+    return {
+      guild_id: guildId,
+      name,
+      rank: selectedRank as HunterRank,
+      class: selectedClass as HunterClass,
+      level: baseLevel,
+      strength,
+      agility,
+      intelligence,
+      vitality,
+      luck,
+      hp: max_hp,
+      max_hp,
+      mana: max_mana,
+      max_mana,
+      attack,
+      magic,
+      defense,
+      magic_resist,
+      affinities,
+      innate_abilities: [JSON.stringify(passiveAbility)],
+      signing_fee,
+      base_salary,
+      generated_at: new Date().toISOString(),
+      expires_at: expiresAt
+    };
+  },
+
+  // Recruit a scouted hunter
+  async recruitScoutedHunter(guildId: string, scoutedHunterId: string): Promise<{ success: boolean; hunter_id?: string; signing_fee?: number; error?: string }> {
+    console.log('Attempting to recruit hunter:', { guildId, scoutedHunterId });
+    const { data, error } = await supabase.rpc('recruit_scouted_hunter', {
+      p_guild_id: guildId,
+      p_scouted_hunter_id: scoutedHunterId
+    });
+
+    if (error) {
+      console.error('RPC error:', error);
+      throw error;
+    }
+    console.log('RPC result:', data);
+    return data;
   }
 };
