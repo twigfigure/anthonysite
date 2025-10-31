@@ -10,6 +10,7 @@ import type { Guild, Hunter } from '../types';
 import { HunterList } from '../components/HunterList';
 import { PortalList } from '../components/PortalList';
 import { GuildOverview } from '../components/GuildOverview';
+import { GuildInventory } from '../components/GuildInventory';
 
 export default function GuildManager() {
   const [guild, setGuild] = useState<Guild | null>(null);
@@ -225,7 +226,7 @@ export default function GuildManager() {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="hunters" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto">
             <TabsTrigger value="hunters">Hunters</TabsTrigger>
             <TabsTrigger value="portals">Portals</TabsTrigger>
             <TabsTrigger value="buildings">Buildings</TabsTrigger>
@@ -244,26 +245,16 @@ export default function GuildManager() {
             <PortalList guild={guild} hunters={hunters} />
           </TabsContent>
 
+          <TabsContent value="inventory" className="mt-6">
+            <GuildInventory guildId={guild.id} hunters={hunters} />
+          </TabsContent>
+
           <TabsContent value="buildings" className="mt-6">
             <Card>
               <CardHeader>
                 <CardTitle>Guild Buildings</CardTitle>
                 <CardDescription>
                   Construct and upgrade buildings to enhance your guild
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Coming soon...</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="inventory" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Guild Inventory</CardTitle>
-                <CardDescription>
-                  Materials, equipment, and resources
                 </CardDescription>
               </CardHeader>
               <CardContent>

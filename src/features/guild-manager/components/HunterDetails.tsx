@@ -25,17 +25,20 @@ import {
   Footprints,
   Hand,
   Crown,
-  Coins
+  Coins,
+  X
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import type { Hunter, ElementalAffinity, HunterActivityLog, Guild } from '../types';
-import { RANK_BG_COLORS, AFFINITY_COLORS } from '../types';
+import type { Hunter, ElementalAffinity, HunterActivityLog, Guild, EquippedItem, EquipmentBonuses } from '../types';
+import { RANK_BG_COLORS, AFFINITY_COLORS, RARITY_COLORS } from '../types';
 import { calculateCombatPower, getExpForLevel, getMaxLevelForRank, getMaxSpellSlotsForRank, formatGold } from '../lib/gameHelpers';
-import { hunterService, activityLogService } from '../lib/supabase';
+import { hunterService, activityLogService, equipmentService } from '../lib/supabase';
 import { deleteImageFromStorage } from '@/lib/supabaseStorage';
 import { canAttemptRankUp, getRankUpStatusText } from '../lib/rankUpSystem';
 import { RankUpDialog } from './RankUpDialog';
+import { EquipmentSelector } from './EquipmentSelector';
 import { useState, useEffect } from 'react';
+import type { EquipmentSlot } from '../types';
 
 interface HunterDetailsProps {
   hunter: Hunter;
@@ -71,7 +74,9 @@ function getAffinityIcon(affinity: ElementalAffinity) {
 }
 
 export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
-  const combatPower = calculateCombatPower(hunter);
+  const [equippedItems, setEquippedItems] = useState<EquippedItem[]>([]);
+  const [equipmentBonuses, setEquipmentBonuses] = useState<EquipmentBonuses | null>(null);
+  const combatPower = calculateCombatPower(hunter, equipmentBonuses || undefined);
   const maxLevel = getMaxLevelForRank(hunter.rank);
   const maxSpellSlots = getMaxSpellSlotsForRank(hunter.rank);
   const expForNextLevel = getExpForLevel(hunter.level + 1);
@@ -83,7 +88,14 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
   const [activityLogs, setActivityLogs] = useState<HunterActivityLog[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [showRankUpDialog, setShowRankUpDialog] = useState(false);
+  const [showEquipmentSelector, setShowEquipmentSelector] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot>('Weapon');
   const canRankUp = canAttemptRankUp(hunter);
+
+  // Fetch equipped items when component mounts or equip tab is active
+  useEffect(() => {
+    loadEquippedItems();
+  }, [hunter.id]);
 
   // Fetch activity logs when profile tab is active
   useEffect(() => {
@@ -91,6 +103,51 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
       loadActivityLogs();
     }
   }, [activeTab, hunter.id]);
+
+  const loadEquippedItems = async () => {
+    try {
+      const [items, bonuses] = await Promise.all([
+        equipmentService.getHunterEquippedItems(hunter.id),
+        equipmentService.getHunterEquipmentBonuses(hunter.id)
+      ]);
+      setEquippedItems(items);
+      setEquipmentBonuses(bonuses);
+    } catch (error) {
+      console.error('Failed to load equipped items:', error);
+    }
+  };
+
+  const getEquippedItemForSlot = (slot: string) => {
+    return equippedItems.find(item => item.slot === slot);
+  };
+
+  const handleUnequipItem = async (slot: string) => {
+    try {
+      await equipmentService.unequipItemFromHunter(hunter.id, slot);
+      toast({
+        title: 'Item unequipped',
+        description: `Removed item from ${slot} slot`,
+      });
+      await loadEquippedItems();
+      onUpdate(); // Refresh hunter data
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleOpenEquipmentSelector = (slot: EquipmentSlot) => {
+    setSelectedSlot(slot);
+    setShowEquipmentSelector(true);
+  };
+
+  const handleEquipmentEquipped = async () => {
+    await loadEquippedItems();
+    onUpdate(); // Refresh hunter data
+  };
 
   const loadActivityLogs = async () => {
     setIsLoadingLogs(true);
@@ -350,26 +407,31 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
                     icon={<Dumbbell className="h-3 w-3 text-red-500" />}
                     label="STR"
                     value={hunter.strength}
+                    bonus={equipmentBonuses?.strength_bonus || 0}
                   />
                   <StatRow
                     icon={<Wind className="h-3 w-3 text-green-500" />}
                     label="AGI"
                     value={hunter.agility}
+                    bonus={equipmentBonuses?.agility_bonus || 0}
                   />
                   <StatRow
                     icon={<Brain className="h-3 w-3 text-blue-500" />}
                     label="INT"
                     value={hunter.intelligence}
+                    bonus={equipmentBonuses?.intelligence_bonus || 0}
                   />
                   <StatRow
                     icon={<Heart className="h-3 w-3 text-pink-500" />}
                     label="VIT"
                     value={hunter.vitality}
+                    bonus={equipmentBonuses?.vitality_bonus || 0}
                   />
                   <StatRow
                     icon={<Clover className="h-3 w-3 text-yellow-500" />}
                     label="LUK"
                     value={hunter.luck}
+                    bonus={equipmentBonuses?.luck_bonus || 0}
                   />
                 </div>
                 {/* Right Column - Combat Stats */}
@@ -378,21 +440,25 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
                     icon={<Sword className="h-3 w-3 text-orange-500" />}
                     label="ATK"
                     value={hunter.attack_power}
+                    bonus={equipmentBonuses?.attack_bonus || 0}
                   />
                   <StatRow
                     icon={<Zap className="h-3 w-3 text-blue-500" />}
                     label="MAG"
                     value={hunter.magic_power}
+                    bonus={equipmentBonuses?.magic_bonus || 0}
                   />
                   <StatRow
                     icon={<Shield className="h-3 w-3 text-gray-500" />}
                     label="DEF"
                     value={hunter.defense}
+                    bonus={equipmentBonuses?.defense_bonus || 0}
                   />
                   <StatRow
                     icon={<Shield className="h-3 w-3 text-purple-500" />}
                     label="M.RES"
                     value={hunter.magic_resistance}
+                    bonus={equipmentBonuses?.magic_resist_bonus || 0}
                   />
                 </div>
               </div>
@@ -470,60 +536,256 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
             <h3 className="text-xs font-semibold text-muted-foreground">Equipment Slots</h3>
             <div className="space-y-1.5">
               {/* Weapon */}
-              <div className="border-2 border-dashed border-border rounded-lg p-2 flex items-center gap-2 hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors cursor-pointer">
-                <Sword className="h-5 w-5 text-muted-foreground/30 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-muted-foreground">Weapon</div>
-                </div>
-              </div>
+              {(() => {
+                const equipped = getEquippedItemForSlot('Weapon');
+                return (
+                  <div
+                    className={`border-2 ${equipped ? 'border-purple-500/50 bg-purple-500/5' : 'border-dashed border-border'} rounded-lg p-2 flex items-center gap-2 hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors cursor-pointer`}
+                    onClick={() => handleOpenEquipmentSelector('Weapon')}
+                  >
+                    <Sword className={`h-5 w-5 flex-shrink-0 ${equipped ? 'text-purple-500' : 'text-muted-foreground/30'}`} />
+                    <div className="flex-1 min-w-0">
+                      {equipped && equipped.equipment ? (
+                        <>
+                          <div className={`text-xs font-medium ${RARITY_COLORS[equipped.equipment.rarity]}`}>
+                            {equipped.equipment.name}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">Weapon</div>
+                        </>
+                      ) : (
+                        <div className="text-xs font-medium text-muted-foreground">Weapon</div>
+                      )}
+                    </div>
+                    {equipped && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUnequipItem('Weapon');
+                        }}
+                        className="text-red-500 hover:text-red-700 text-xs"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Armor */}
-              <div className="border-2 border-dashed border-border rounded-lg p-2 flex items-center gap-2 hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors cursor-pointer">
-                <ShieldHalf className="h-5 w-5 text-muted-foreground/30 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-muted-foreground">Armor</div>
-                </div>
-              </div>
+              {(() => {
+                const equipped = getEquippedItemForSlot('Armor');
+                return (
+                  <div
+                    className={`border-2 ${equipped ? 'border-purple-500/50 bg-purple-500/5' : 'border-dashed border-border'} rounded-lg p-2 flex items-center gap-2 hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors cursor-pointer`}
+                    onClick={() => handleOpenEquipmentSelector('Armor')}
+                  >
+                    <ShieldHalf className={`h-5 w-5 flex-shrink-0 ${equipped ? 'text-purple-500' : 'text-muted-foreground/30'}`} />
+                    <div className="flex-1 min-w-0">
+                      {equipped && equipped.equipment ? (
+                        <>
+                          <div className={`text-xs font-medium ${RARITY_COLORS[equipped.equipment.rarity]}`}>
+                            {equipped.equipment.name}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">Armor</div>
+                        </>
+                      ) : (
+                        <div className="text-xs font-medium text-muted-foreground">Armor</div>
+                      )}
+                    </div>
+                    {equipped && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUnequipItem('Armor');
+                        }}
+                        className="text-red-500 hover:text-red-700 text-xs"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Helmet */}
-              <div className="border-2 border-dashed border-border rounded-lg p-2 flex items-center gap-2 hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors cursor-pointer">
-                <Crown className="h-5 w-5 text-muted-foreground/30 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-muted-foreground">Helmet</div>
-                </div>
-              </div>
+              {(() => {
+                const equipped = getEquippedItemForSlot('Helmet');
+                return (
+                  <div
+                    className={`border-2 ${equipped ? 'border-purple-500/50 bg-purple-500/5' : 'border-dashed border-border'} rounded-lg p-2 flex items-center gap-2 hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors cursor-pointer`}
+                    onClick={() => handleOpenEquipmentSelector('Helmet')}
+                  >
+                    <Crown className={`h-5 w-5 flex-shrink-0 ${equipped ? 'text-purple-500' : 'text-muted-foreground/30'}`} />
+                    <div className="flex-1 min-w-0">
+                      {equipped && equipped.equipment ? (
+                        <>
+                          <div className={`text-xs font-medium ${RARITY_COLORS[equipped.equipment.rarity]}`}>
+                            {equipped.equipment.name}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">Helmet</div>
+                        </>
+                      ) : (
+                        <div className="text-xs font-medium text-muted-foreground">Helmet</div>
+                      )}
+                    </div>
+                    {equipped && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUnequipItem('Helmet');
+                        }}
+                        className="text-red-500 hover:text-red-700 text-xs"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Boots */}
-              <div className="border-2 border-dashed border-border rounded-lg p-2 flex items-center gap-2 hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors cursor-pointer">
-                <Footprints className="h-5 w-5 text-muted-foreground/30 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-muted-foreground">Boots</div>
-                </div>
-              </div>
+              {(() => {
+                const equipped = getEquippedItemForSlot('Boots');
+                return (
+                  <div
+                    className={`border-2 ${equipped ? 'border-purple-500/50 bg-purple-500/5' : 'border-dashed border-border'} rounded-lg p-2 flex items-center gap-2 hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors cursor-pointer`}
+                    onClick={() => handleOpenEquipmentSelector('Boots')}
+                  >
+                    <Footprints className={`h-5 w-5 flex-shrink-0 ${equipped ? 'text-purple-500' : 'text-muted-foreground/30'}`} />
+                    <div className="flex-1 min-w-0">
+                      {equipped && equipped.equipment ? (
+                        <>
+                          <div className={`text-xs font-medium ${RARITY_COLORS[equipped.equipment.rarity]}`}>
+                            {equipped.equipment.name}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">Boots</div>
+                        </>
+                      ) : (
+                        <div className="text-xs font-medium text-muted-foreground">Boots</div>
+                      )}
+                    </div>
+                    {equipped && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUnequipItem('Boots');
+                        }}
+                        className="text-red-500 hover:text-red-700 text-xs"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Gloves */}
-              <div className="border-2 border-dashed border-border rounded-lg p-2 flex items-center gap-2 hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors cursor-pointer">
-                <Hand className="h-5 w-5 text-muted-foreground/30 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-muted-foreground">Gloves</div>
-                </div>
-              </div>
+              {(() => {
+                const equipped = getEquippedItemForSlot('Gloves');
+                return (
+                  <div
+                    className={`border-2 ${equipped ? 'border-purple-500/50 bg-purple-500/5' : 'border-dashed border-border'} rounded-lg p-2 flex items-center gap-2 hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors cursor-pointer`}
+                    onClick={() => handleOpenEquipmentSelector('Gloves')}
+                  >
+                    <Hand className={`h-5 w-5 flex-shrink-0 ${equipped ? 'text-purple-500' : 'text-muted-foreground/30'}`} />
+                    <div className="flex-1 min-w-0">
+                      {equipped && equipped.equipment ? (
+                        <>
+                          <div className={`text-xs font-medium ${RARITY_COLORS[equipped.equipment.rarity]}`}>
+                            {equipped.equipment.name}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">Gloves</div>
+                        </>
+                      ) : (
+                        <div className="text-xs font-medium text-muted-foreground">Gloves</div>
+                      )}
+                    </div>
+                    {equipped && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUnequipItem('Gloves');
+                        }}
+                        className="text-red-500 hover:text-red-700 text-xs"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Accessory */}
-              <div className="border-2 border-dashed border-border rounded-lg p-2 flex items-center gap-2 hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors cursor-pointer">
-                <CircleDot className="h-5 w-5 text-muted-foreground/30 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-muted-foreground">Accessory</div>
-                </div>
-              </div>
+              {(() => {
+                const equipped = getEquippedItemForSlot('Accessory');
+                return (
+                  <div
+                    className={`border-2 ${equipped ? 'border-purple-500/50 bg-purple-500/5' : 'border-dashed border-border'} rounded-lg p-2 flex items-center gap-2 hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors cursor-pointer`}
+                    onClick={() => handleOpenEquipmentSelector('Accessory')}
+                  >
+                    <CircleDot className={`h-5 w-5 flex-shrink-0 ${equipped ? 'text-purple-500' : 'text-muted-foreground/30'}`} />
+                    <div className="flex-1 min-w-0">
+                      {equipped && equipped.equipment ? (
+                        <>
+                          <div className={`text-xs font-medium ${RARITY_COLORS[equipped.equipment.rarity]}`}>
+                            {equipped.equipment.name}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">Accessory</div>
+                        </>
+                      ) : (
+                        <div className="text-xs font-medium text-muted-foreground">Accessory</div>
+                      )}
+                    </div>
+                    {equipped && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUnequipItem('Accessory');
+                        }}
+                        className="text-red-500 hover:text-red-700 text-xs"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Artifact */}
-              <div className="border-2 border-dashed border-border rounded-lg p-2 flex items-center gap-2 hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors cursor-pointer">
-                <Sparkles className="h-5 w-5 text-muted-foreground/30 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-muted-foreground">Artifact</div>
-                </div>
-              </div>
+              {(() => {
+                const equipped = getEquippedItemForSlot('Artifact');
+                return (
+                  <div
+                    className={`border-2 ${equipped ? 'border-purple-500/50 bg-purple-500/5' : 'border-dashed border-border'} rounded-lg p-2 flex items-center gap-2 hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors cursor-pointer`}
+                    onClick={() => handleOpenEquipmentSelector('Artifact')}
+                  >
+                    <Sparkles className={`h-5 w-5 flex-shrink-0 ${equipped ? 'text-purple-500' : 'text-muted-foreground/30'}`} />
+                    <div className="flex-1 min-w-0">
+                      {equipped && equipped.equipment ? (
+                        <>
+                          <div className={`text-xs font-medium ${RARITY_COLORS[equipped.equipment.rarity]}`}>
+                            {equipped.equipment.name}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">Artifact</div>
+                        </>
+                      ) : (
+                        <div className="text-xs font-medium text-muted-foreground">Artifact</div>
+                      )}
+                    </div>
+                    {equipped && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleUnequipItem('Artifact');
+                        }}
+                        className="text-red-500 hover:text-red-700 text-xs"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -623,6 +885,15 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
         guild={guild}
         onSuccess={onUpdate}
       />
+
+      {/* Equipment Selector Dialog */}
+      <EquipmentSelector
+        open={showEquipmentSelector}
+        onOpenChange={setShowEquipmentSelector}
+        slot={selectedSlot}
+        hunter={hunter}
+        onEquip={handleEquipmentEquipped}
+      />
     </div>
   );
 }
@@ -631,16 +902,25 @@ interface StatRowProps {
   icon: React.ReactNode;
   label: string;
   value: number;
+  bonus?: number;
 }
 
-function StatRow({ icon, label, value }: StatRowProps) {
+function StatRow({ icon, label, value, bonus = 0 }: StatRowProps) {
+  const totalValue = value + bonus;
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-1">
         {icon}
         <span className="text-xs text-muted-foreground">{label}</span>
       </div>
-      <span className="text-sm font-bold">{value}</span>
+      <div className="flex items-center gap-1">
+        <span className="text-sm font-bold">{totalValue}</span>
+        {bonus !== 0 && (
+          <span className={`text-[10px] ${bonus > 0 ? 'text-green-500' : 'text-red-500'}`}>
+            ({bonus > 0 ? '+' : ''}{bonus})
+          </span>
+        )}
+      </div>
     </div>
   );
 }

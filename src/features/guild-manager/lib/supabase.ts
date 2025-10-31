@@ -8,7 +8,10 @@ import type {
   PortalAssignment,
   GuildBuilding,
   GuildMaterial,
+  Equipment,
   HunterEquipment,
+  EquippedItem,
+  EquipmentBonuses,
   HunterActivityLog
 } from '../types';
 
@@ -317,6 +320,41 @@ export const assignmentService = {
 // ============================================
 
 export const equipmentService = {
+  // Get all available equipment in the game
+  async getAllEquipment() {
+    const { data, error } = await supabase
+      .from('equipment')
+      .select('*')
+      .order('required_level', { ascending: true });
+
+    if (error) throw error;
+    return data as Equipment[];
+  },
+
+  // Get equipment by rarity
+  async getEquipmentByRarity(rarity: string) {
+    const { data, error } = await supabase
+      .from('equipment')
+      .select('*')
+      .eq('rarity', rarity)
+      .order('required_level', { ascending: true });
+
+    if (error) throw error;
+    return data as Equipment[];
+  },
+
+  // Get equipment by slot
+  async getEquipmentBySlot(slot: string) {
+    const { data, error } = await supabase
+      .from('equipment')
+      .select('*')
+      .eq('slot', slot)
+      .order('required_level', { ascending: true });
+
+    if (error) throw error;
+    return data as Equipment[];
+  },
+
   // Get hunter's equipment
   async getHunterEquipment(hunterId: string) {
     const { data, error } = await supabase
@@ -372,6 +410,81 @@ export const equipmentService = {
 
     if (error) throw error;
     return data as HunterEquipment;
+  },
+
+  // ============================================
+  // EQUIPPED ITEMS (New system)
+  // ============================================
+
+  // Equip item to hunter (replaces any item in that slot)
+  async equipItemToHunter(hunterId: string, equipmentId: string, slot: string) {
+    const { data, error } = await supabase.rpc('equip_item_to_hunter', {
+      p_hunter_id: hunterId,
+      p_equipment_id: equipmentId,
+      p_slot: slot
+    });
+
+    if (error) throw error;
+    return data;
+  },
+
+  // Unequip item from hunter slot
+  async unequipItemFromHunter(hunterId: string, slot: string) {
+    const { data, error } = await supabase.rpc('unequip_item_from_hunter', {
+      p_hunter_id: hunterId,
+      p_slot: slot
+    });
+
+    if (error) throw error;
+    return data;
+  },
+
+  // Get all equipped items for a hunter
+  async getHunterEquippedItems(hunterId: string) {
+    const { data, error } = await supabase
+      .from('hunter_equipment')
+      .select(`
+        id,
+        hunter_id,
+        equipment_id,
+        slot,
+        equipped_at,
+        equipment:equipment_id (
+          id,
+          name,
+          description,
+          rarity,
+          slot,
+          strength_bonus,
+          agility_bonus,
+          intelligence_bonus,
+          vitality_bonus,
+          luck_bonus,
+          hp_bonus,
+          mana_bonus,
+          attack_bonus,
+          magic_bonus,
+          defense_bonus,
+          magic_resist_bonus,
+          special_effects,
+          required_level,
+          required_rank
+        )
+      `)
+      .eq('hunter_id', hunterId);
+
+    if (error) throw error;
+    return data as EquippedItem[];
+  },
+
+  // Get equipment bonuses for a hunter
+  async getHunterEquipmentBonuses(hunterId: string) {
+    const { data, error } = await supabase.rpc('get_hunter_equipment_bonuses', {
+      p_hunter_id: hunterId
+    });
+
+    if (error) throw error;
+    return data as EquipmentBonuses;
   }
 };
 

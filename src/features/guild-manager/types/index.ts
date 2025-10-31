@@ -174,6 +174,31 @@ export interface HunterEquipment {
   equipment?: Equipment; // Joined data
 }
 
+// Equipped Item (Currently equipped gear)
+export interface EquippedItem {
+  id: string;
+  hunter_id: string;
+  equipment_id: string;
+  slot: EquipmentSlot;
+  equipped_at: string;
+  equipment?: Equipment; // Joined data
+}
+
+// Equipment bonuses aggregated for a hunter
+export interface EquipmentBonuses {
+  strength_bonus: number;
+  agility_bonus: number;
+  intelligence_bonus: number;
+  vitality_bonus: number;
+  luck_bonus: number;
+  hp_bonus: number;
+  mana_bonus: number;
+  attack_bonus: number;
+  magic_bonus: number;
+  defense_bonus: number;
+  magic_resist_bonus: number;
+}
+
 // Portal Template Interface
 export interface PortalTemplate {
   id: string;
