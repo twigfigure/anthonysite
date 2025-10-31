@@ -19,8 +19,8 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { hunterService, activityLogService } from '../lib/supabase';
-import { generateRandomHunterName, generatePersonality, generateBackstory, generateAffinities, getWeeklyUpkeepCost, generateRegion, getKingdomFromRegion } from '../lib/gameHelpers';
-import { generateHunterCombinedPrompt, getRandomRegion, getRandomGender } from '../lib/hunterImagePrompts';
+import { generateRandomHunterName, generatePersonality, generateBackstory, generateAffinities, getWeeklyUpkeepCost, generateRegionId, getKingdomIdFromRegionId, getRegionNameFromId } from '../lib/gameHelpers';
+import { generateHunterCombinedPrompt, getRandomGender } from '../lib/hunterImagePrompts';
 import { generatePassiveAbility } from '../lib/passiveAbilities';
 import { generateImageWithBanana } from '@/lib/bananaService';
 import { uploadImageToStorage } from '@/lib/supabaseStorage';
@@ -47,9 +47,10 @@ export function RecruitHunterDialog({
   const { toast } = useToast();
 
   const handleRandomName = () => {
-    // Generate a random region to create region-appropriate names
-    const randomRegion = generateRegion();
-    setName(generateRandomHunterName(randomRegion));
+    // Generate a random region ID to create region-appropriate names
+    const randomRegionId = generateRegionId();
+    const randomRegionName = getRegionNameFromId(randomRegionId);
+    setName(generateRandomHunterName(randomRegionName));
   };
 
   const handleRecruit = async () => {
@@ -68,16 +69,18 @@ export function RecruitHunterDialog({
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       const userId = guild.user_id;
 
-      // Randomly select a region and gender for visual variety
-      const hunterRegion = getRandomRegion();
+      // Randomly select a region ID and gender for variety
+      const hunterRegionId = generateRegionId();
+      const hunterKingdomId = getKingdomIdFromRegionId(hunterRegionId);
+      const hunterRegionName = getRegionNameFromId(hunterRegionId);
       const hunterGender = getRandomGender();
 
-      // Generate combined image prompt with region and gender
+      // Generate combined image prompt with region name and gender
       const combinedPrompt = generateHunterCombinedPrompt({
         name: name.trim(),
         rank,
         hunterClass,
-      }, hunterRegion, hunterGender);
+      }, hunterRegionName, hunterGender);
 
       toast({
         title: 'Generating hunter artwork...',
@@ -125,9 +128,9 @@ export function RecruitHunterDialog({
       // Generate passive ability
       const passiveAbility = generatePassiveAbility(rank, hunterClass);
 
-      // Generate personality and backstory
+      // Generate personality and backstory (using region name for text)
       const personality = generatePersonality();
-      const backstory = generateBackstory(name.trim(), hunterClass, rank, hunterRegion, hunterGender, personality);
+      const backstory = generateBackstory(name.trim(), hunterClass, rank, hunterRegionName, hunterGender, personality);
 
       // Generate affinities based on rank
       const affinities = generateAffinities(rank);
@@ -135,15 +138,15 @@ export function RecruitHunterDialog({
       // Calculate upkeep cost based on rank
       const upkeepCost = getWeeklyUpkeepCost(rank);
 
-      // Create hunter with images, passive ability, kingdom, region, gender, personality, backstory, affinities, and upkeep
+      // Create hunter with IDs (not names) for dynamic lookup
       const newHunter = await hunterService.createHunter({
         guild_id: guild.id,
         name: name.trim(),
         rank,
         class: hunterClass,
         level: 1,
-        kingdom: getKingdomFromRegion(hunterRegion),
-        region: hunterRegion,
+        kingdom_id: hunterKingdomId,  // Store ID
+        region_id: hunterRegionId,     // Store ID
         gender: hunterGender,
         personality,
         backstory,
@@ -155,12 +158,12 @@ export function RecruitHunterDialog({
         ...baseStats,
       });
 
-      // Create recruitment log entry
+      // Create recruitment log entry (using region name for readability)
       await activityLogService.createLog(
         newHunter.id,
         'recruited',
-        `${name.trim()} joined the guild as a ${rank}-rank ${hunterClass} from ${hunterRegion}.`,
-        { rank, class: hunterClass, region: hunterRegion }
+        `${name.trim()} joined the guild as a ${rank}-rank ${hunterClass} from ${hunterRegionName}.`,
+        { rank, class: hunterClass, region: hunterRegionName }
       );
 
       toast({

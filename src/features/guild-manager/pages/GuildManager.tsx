@@ -14,7 +14,7 @@ import { GuildOverview } from '../components/GuildOverview';
 import { GuildInventory } from '../components/GuildInventory';
 import { GuildOnboarding } from '../components/GuildOnboarding';
 import { generateKingdomName } from '../lib/kingdomsData';
-import { generateAffinities } from '../lib/gameHelpers';
+import { generateAffinities, initializeWorldbuilding } from '../lib/gameHelpers';
 import { generatePassiveAbility } from '../lib/passiveAbilities';
 import { generateHunterAvatarUrl, generateHunterSplashUrl } from '../lib/hunterImagePrompts';
 
@@ -24,7 +24,18 @@ export default function GuildManager() {
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [worldbuildingReady, setWorldbuildingReady] = useState(false);
   const { toast } = useToast();
+
+  // Initialize worldbuilding data from database on component mount
+  useEffect(() => {
+    initializeWorldbuilding().then(() => {
+      setWorldbuildingReady(true);
+    }).catch((error) => {
+      console.error('Failed to initialize worldbuilding, using fallback data:', error);
+      setWorldbuildingReady(true); // Still set to true so UI loads
+    });
+  }, []);
 
   useEffect(() => {
     checkAuth();
@@ -41,6 +52,13 @@ export default function GuildManager() {
       loadHunters();
     }
   }, [guild]);
+
+  // When worldbuilding is ready, stop loading if guild is already loaded
+  useEffect(() => {
+    if (worldbuildingReady && (guild || showOnboarding)) {
+      setLoading(false);
+    }
+  }, [worldbuildingReady, guild, showOnboarding]);
 
   async function checkAuth() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -62,7 +80,10 @@ export default function GuildManager() {
       // If no guild exists, show onboarding
       if (!guildData) {
         setShowOnboarding(true);
-        setLoading(false);
+        // Wait for worldbuilding to be ready before finishing load
+        if (worldbuildingReady) {
+          setLoading(false);
+        }
         return;
       }
 
@@ -74,7 +95,10 @@ export default function GuildManager() {
         variant: 'destructive'
       });
     } finally {
-      setLoading(false);
+      // Only stop loading if worldbuilding is ready
+      if (worldbuildingReady) {
+        setLoading(false);
+      }
     }
   }
 

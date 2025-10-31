@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,7 @@ interface ImageCropDialogProps {
   hunter: Hunter;
   guild: Guild;
   onUpdate: () => void;
+  imageType?: 'avatar' | 'splash';
 }
 
 export function ImageCropDialog({
@@ -29,6 +30,7 @@ export function ImageCropDialog({
   hunter,
   guild,
   onUpdate,
+  imageType = 'avatar',
 }: ImageCropDialogProps) {
   const [zoom, setZoom] = useState(1);
   const [offsetX, setOffsetX] = useState(0);
@@ -38,23 +40,15 @@ export function ImageCropDialog({
   const imageRef = useRef<HTMLImageElement | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (open && hunter.avatar_url) {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.src = hunter.avatar_url;
-      img.onload = () => {
-        imageRef.current = img;
-        drawCanvas();
-      };
-    }
-  }, [open, hunter.avatar_url]);
+  const imageUrl = imageType === 'avatar' ? hunter.avatar_url : hunter.splash_art_url;
+  const imageLabel = imageType === 'avatar' ? 'Avatar' : 'Splash Art';
 
-  useEffect(() => {
-    drawCanvas();
-  }, [zoom, offsetX, offsetY]);
+  // Canvas size based on image type
+  // Avatar = square, Splash art = tall vertical rectangle
+  const canvasWidth = imageType === 'avatar' ? 512 : 384;
+  const canvasHeight = imageType === 'avatar' ? 512 : 768;
 
-  const drawCanvas = () => {
+  const drawCanvas = useCallback(() => {
     if (!canvasRef.current || !imageRef.current) return;
 
     const canvas = canvasRef.current;
@@ -77,14 +71,30 @@ export function ImageCropDialog({
 
     // Draw image
     ctx.drawImage(img, x, y, drawWidth, drawHeight);
-  };
+  }, [zoom, offsetX, offsetY]);
+
+  useEffect(() => {
+    if (open && imageUrl) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = imageUrl;
+      img.onload = () => {
+        imageRef.current = img;
+        drawCanvas();
+      };
+    }
+  }, [open, imageUrl, drawCanvas]);
+
+  useEffect(() => {
+    drawCanvas();
+  }, [drawCanvas]);
 
   const handleSave = async () => {
     if (!canvasRef.current) return;
 
     setSaving(true);
     try {
-      // Convert canvas to blob
+      // Save exactly what's shown in the preview canvas (including zoom and position)
       const blob = await new Promise<Blob>((resolve, reject) => {
         canvasRef.current?.toBlob((blob) => {
           if (blob) resolve(blob);
@@ -93,27 +103,29 @@ export function ImageCropDialog({
       });
 
       // Upload to storage
-      const avatarUrl = await uploadImageToStorage(
+      const imageUrl = await uploadImageToStorage(
         blob,
         guild.user_id,
         'hunter-images'
       );
 
       // Update hunter record
-      await hunterService.updateHunter(hunter.id, {
-        avatar_url: avatarUrl,
-      });
+      const updateData = imageType === 'avatar'
+        ? { avatar_url: imageUrl }
+        : { splash_art_url: imageUrl };
+
+      await hunterService.updateHunter(hunter.id, updateData);
 
       toast({
-        title: 'Avatar Updated',
-        description: 'Hunter avatar has been successfully cropped and saved.',
+        title: `${imageLabel} Updated`,
+        description: `Hunter ${imageLabel.toLowerCase()} has been successfully updated.`,
       });
 
       onUpdate();
       onOpenChange(false);
     } catch (error) {
       toast({
-        title: 'Failed to save avatar',
+        title: `Failed to save ${imageLabel.toLowerCase()}`,
         description: error instanceof Error ? error.message : 'An unknown error occurred',
         variant: 'destructive',
       });
@@ -132,9 +144,11 @@ export function ImageCropDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Crop Avatar - {hunter.name}</DialogTitle>
+          <DialogTitle>Crop {imageLabel} - {hunter.name}</DialogTitle>
           <DialogDescription>
-            Adjust the zoom and position to center the character's face.
+            {imageType === 'avatar'
+              ? "Adjust the zoom and position to center the character's face."
+              : "Adjust the zoom and position to frame the character's full body."}
           </DialogDescription>
         </DialogHeader>
 
@@ -144,8 +158,8 @@ export function ImageCropDialog({
             <div className="relative">
               <canvas
                 ref={canvasRef}
-                width={512}
-                height={512}
+                width={canvasWidth}
+                height={canvasHeight}
                 className="border-4 border-purple-500 rounded-lg"
               />
               {/* Center guide crosshair */}
@@ -217,7 +231,7 @@ export function ImageCropDialog({
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Avatar'}
+            {saving ? 'Saving...' : `Save ${imageLabel}`}
           </Button>
         </DialogFooter>
       </DialogContent>

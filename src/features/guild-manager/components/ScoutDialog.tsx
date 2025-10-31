@@ -14,12 +14,11 @@ import type { ScoutedHunter, Guild, PassiveAbility } from '../types';
 import { RANK_BG_COLORS, AFFINITY_COLORS } from '../types';
 import { scoutingService, hunterService } from '../lib/supabase';
 import { useToast } from '@/hooks/use-toast';
-import { generatePersonality, generateBackstory } from '../lib/gameHelpers';
+import { generatePersonality, generateBackstory, generateRegionId, getKingdomIdFromRegionId, getRegionNameFromId } from '../lib/gameHelpers';
 import { generateImageWithBanana } from '@/lib/bananaService';
 import { uploadImageToStorage } from '@/lib/supabaseStorage';
 import { splitHunterImage, processAvatarImage, standardizeImageSize } from '@/lib/imageUtils';
-import { generateHunterCombinedPrompt, getRandomRegion, getRandomGender } from '../lib/hunterImagePrompts';
-import { getKingdomFromRegion } from '../lib/gameHelpers';
+import { generateHunterCombinedPrompt, getRandomGender } from '../lib/hunterImagePrompts';
 
 interface ScoutDialogProps {
   open: boolean;
@@ -79,18 +78,20 @@ export function ScoutDialog({ open, onOpenChange, guild, onHunterRecruited }: Sc
 
     setRecruiting(scoutedHunter.id);
     try {
-      // Generate region and gender for the hunter
-      const hunterRegion = getRandomRegion();
+      // Generate region ID and gender for the hunter
+      const hunterRegionId = generateRegionId();
+      const hunterKingdomId = getKingdomIdFromRegionId(hunterRegionId);
+      const hunterRegionName = getRegionNameFromId(hunterRegionId);
       const hunterGender = getRandomGender();
 
-      // Generate image prompt
+      // Generate image prompt (using region name for visuals)
       const imagePrompt = generateHunterCombinedPrompt(
         {
           name: scoutedHunter.name,
           rank: scoutedHunter.rank,
           hunterClass: scoutedHunter.class
         },
-        hunterRegion,
+        hunterRegionName,
         hunterGender
       );
 
@@ -140,13 +141,13 @@ export function ScoutDialog({ open, onOpenChange, guild, onHunterRecruited }: Sc
         uploadImageToStorage(standardizedSplashArt, userId, 'hunter-images'),
       ]);
 
-      // Generate personality and backstory
+      // Generate personality and backstory (using region name for text)
       const personality = generatePersonality();
       const backstory = generateBackstory(
         scoutedHunter.name,
         scoutedHunter.class,
         scoutedHunter.rank,
-        hunterRegion,
+        hunterRegionName,
         hunterGender,
         personality
       );
@@ -155,12 +156,12 @@ export function ScoutDialog({ open, onOpenChange, guild, onHunterRecruited }: Sc
       const result = await scoutingService.recruitScoutedHunter(guild.id, scoutedHunter.id);
 
       if (result.success && result.hunter_id) {
-        // Update the hunter with images, kingdom, region, gender, personality, and backstory
+        // Update the hunter with IDs (not names) for dynamic lookup
         await hunterService.updateHunter(result.hunter_id, {
           avatar_url: avatarUrl,
           splash_art_url: splashArtUrl,
-          kingdom: getKingdomFromRegion(hunterRegion),
-          region: hunterRegion,
+          kingdom_id: hunterKingdomId,  // Store ID
+          region_id: hunterRegionId,     // Store ID
           gender: hunterGender,
           personality,
           backstory

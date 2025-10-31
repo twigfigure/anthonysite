@@ -12,6 +12,7 @@ import {
   Clover,
   Trash2,
   Star,
+  RefreshCw,
   Flame,
   Droplet,
   Mountain,
@@ -26,17 +27,22 @@ import {
   Hand,
   Crown,
   Coins,
-  X
+  X,
+  Pencil
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Hunter, ElementalAffinity, HunterActivityLog, Guild, EquippedItem, EquipmentBonuses } from '../types';
 import { RANK_BG_COLORS, AFFINITY_COLORS, RARITY_COLORS } from '../types';
 import { calculateCombatPower, getExpForLevel, getMaxLevelForRank, getMaxSpellSlotsForRank, formatGold } from '../lib/gameHelpers';
 import { hunterService, activityLogService, equipmentService } from '../lib/supabase';
-import { deleteImageFromStorage } from '@/lib/supabaseStorage';
+import { deleteImageFromStorage, uploadImageToStorage } from '@/lib/supabaseStorage';
+import { generateHunterCombinedPrompt } from '../lib/hunterImagePrompts';
+import { generateImageWithBanana } from '@/lib/bananaService';
+import { splitHunterImage, standardizeImageSize, processAvatarImage } from '@/lib/imageUtils';
 import { canAttemptRankUp, getRankUpStatusText } from '../lib/rankUpSystem';
 import { RankUpDialog } from './RankUpDialog';
 import { EquipmentSelector } from './EquipmentSelector';
+import { ImageCropDialog } from './ImageCropDialog';
 import { useState, useEffect } from 'react';
 import type { EquipmentSlot } from '../types';
 
@@ -83,6 +89,7 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
   const expProgress = (hunter.experience / expForNextLevel) * 100;
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [activeTab, setActiveTab] = useState<'stats' | 'spells' | 'equip' | 'profile'>('stats');
   const [activityLogs, setActivityLogs] = useState<HunterActivityLog[]>([]);
@@ -90,6 +97,7 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
   const [showRankUpDialog, setShowRankUpDialog] = useState(false);
   const [showEquipmentSelector, setShowEquipmentSelector] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot>('Weapon');
+  const [cropImageType, setCropImageType] = useState<'avatar' | 'splash' | null>(null);
   const canRankUp = canAttemptRankUp(hunter);
 
   // Fetch equipped items when component mounts or equip tab is active
@@ -213,6 +221,110 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
     }
   };
 
+  const handleRefreshImages = async () => {
+    if (!confirm(`Regenerate avatar and splash art for ${hunter.name}? This will replace the current images.`)) {
+      return;
+    }
+
+    setIsRegenerating(true);
+
+    try {
+      toast({
+        title: 'Generating images...',
+        description: 'Creating new avatar and splash art',
+      });
+
+      // Generate image prompt using existing hunter data
+      const imagePrompt = generateHunterCombinedPrompt(
+        {
+          name: hunter.name,
+          rank: hunter.rank,
+          hunterClass: hunter.class
+        },
+        hunter.region || 'Unknown',
+        hunter.gender || 'Male'
+      );
+
+      // Get API key
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error('VITE_GEMINI_API_KEY is not configured');
+      }
+
+      // Generate image with Banana AI
+      const combinedBase64 = await generateImageWithBanana({
+        prompt: imagePrompt,
+        apiKey: apiKey
+      });
+
+      toast({
+        title: 'Processing images...',
+        description: 'Splitting and optimizing artwork',
+      });
+
+      // Split the combined image into avatar and splash art
+      const { avatar, splashArt } = await splitHunterImage(combinedBase64);
+
+      // Standardize splash art with tight character crop
+      const standardizedSplashArt = await standardizeImageSize(splashArt);
+
+      // Process avatar with proper portrait framing
+      const processedAvatar = await processAvatarImage(avatar);
+
+      toast({
+        title: 'Uploading images...',
+        description: 'Storing new images',
+      });
+
+      // Upload both images to storage
+      const userId = guild.user_id;
+      const [avatarUrl, splashArtUrl] = await Promise.all([
+        uploadImageToStorage(processedAvatar, userId, 'hunter-images'),
+        uploadImageToStorage(standardizedSplashArt, userId, 'hunter-images'),
+      ]);
+
+      // Delete old images from storage if they exist
+      if (hunter.avatar_url) {
+        try {
+          await deleteImageFromStorage(hunter.avatar_url);
+        } catch (err) {
+          console.error('Failed to delete old avatar:', err);
+        }
+      }
+
+      if (hunter.splash_art_url) {
+        try {
+          await deleteImageFromStorage(hunter.splash_art_url);
+        } catch (err) {
+          console.error('Failed to delete old splash art:', err);
+        }
+      }
+
+      // Update hunter record with new image URLs
+      await hunterService.updateHunter(hunter.id, {
+        avatar_url: avatarUrl,
+        splash_art_url: splashArtUrl,
+      });
+
+      toast({
+        title: 'Images Regenerated!',
+        description: 'New avatar and splash art have been created',
+      });
+
+      // Trigger refresh
+      onUpdate();
+    } catch (error) {
+      const err = error as Error;
+      toast({
+        title: 'Failed to regenerate images',
+        description: err.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
   return (
     <div className="relative flex flex-col md:flex-row">
       {/* Left Side - Splash Art */}
@@ -265,6 +377,17 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
 
         {/* Level and CP Badges */}
         <div className="absolute top-4 right-4 flex flex-col gap-2">
+          {/* Edit Splash Art Button */}
+          {hunter.splash_art_url && (
+            <button
+              onClick={() => setCropImageType('splash')}
+              className="p-2 rounded-lg bg-black/80 text-white hover:bg-purple-600 transition-colors self-end"
+              title="Edit splash art"
+              aria-label="Edit splash art"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+          )}
           <div className="bg-black/80 text-white px-3 py-1 rounded-md font-bold text-lg border-2 border-white/30">
             Lv.{hunter.level}/{maxLevel}
           </div>
@@ -295,6 +418,15 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
             aria-label="Favorite"
           >
             <Star className={`h-5 w-5 ${isFavorite ? 'fill-current' : ''}`} />
+          </button>
+          <button
+            onClick={handleRefreshImages}
+            disabled={isRegenerating}
+            className="bg-blue-600/80 hover:bg-blue-600 text-white p-2 rounded-lg transition-colors disabled:opacity-50"
+            aria-label="Regenerate images"
+            title="Regenerate avatar and splash art"
+          >
+            <RefreshCw className={`h-5 w-5 ${isRegenerating ? 'animate-spin' : ''}`} />
           </button>
           <button
             onClick={handleDelete}
@@ -894,6 +1026,18 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
         hunter={hunter}
         onEquip={handleEquipmentEquipped}
       />
+
+      {/* Image Crop Dialog */}
+      {cropImageType && (
+        <ImageCropDialog
+          open={!!cropImageType}
+          onOpenChange={(open) => !open && setCropImageType(null)}
+          hunter={hunter}
+          guild={guild}
+          onUpdate={onUpdate}
+          imageType={cropImageType}
+        />
+      )}
     </div>
   );
 }

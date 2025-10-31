@@ -664,74 +664,109 @@ const PERSONALITY_TRAITS = [
   'gentle yet fierce'
 ];
 
-const REGIONS = [
-  // Northern Empire
-  'Frostspire Peaks',
-  'Glacial Wastes',
-  'Tundra Borderlands',
-  // Eastern Dynasty
-  'Crimson Highlands',
-  'Jade River Valley',
-  'Shadow Mountains',
-  // Western Kingdom
-  'Emerald Heartlands',
-  'Silverpine Forests',
-  'Stormcoast',
-  // Southern Tribes
-  'Scorched Badlands',
-  'Savanna Territories',
-  'Red Rock Canyons',
-  // Central Republic
-  'Irongate District',
-  'Trade Routes',
-  'Coal Valleys',
-  // Mystic Enclave
-  'Aethermoor Heights',
-  'The Shadowfen',
-  'Runestone Wastes'
-];
+// Fallback hardcoded data (kept for potential future use)
+// const FALLBACK_REGIONS = [
+//   'Frostspire Peaks', 'Glacial Wastes', 'Tundra Borderlands',
+//   'Crimson Highlands', 'Jade River Valley', 'Shadow Mountains',
+//   'Emerald Heartlands', 'Silverpine Forests', 'Stormcoast',
+//   'Scorched Badlands', 'Savanna Territories', 'Red Rock Canyons',
+//   'Irongate District', 'Trade Routes', 'Coal Valleys',
+//   'Aethermoor Heights', 'The Shadowfen', 'Runestone Wastes'
+// ];
 
-// Map regions to their kingdoms
-const REGION_TO_KINGDOM: Record<string, string> = {
-  // Northern Empire
-  'Frostspire Peaks': 'Northern Empire',
-  'Glacial Wastes': 'Northern Empire',
-  'Tundra Borderlands': 'Northern Empire',
-  // Eastern Dynasty
-  'Crimson Highlands': 'Eastern Dynasty',
-  'Jade River Valley': 'Eastern Dynasty',
-  'Shadow Mountains': 'Eastern Dynasty',
-  // Western Kingdom
-  'Emerald Heartlands': 'Western Kingdom',
-  'Silverpine Forests': 'Western Kingdom',
-  'Stormcoast': 'Western Kingdom',
-  // Southern Tribes
-  'Scorched Badlands': 'Southern Tribes',
-  'Savanna Territories': 'Southern Tribes',
-  'Red Rock Canyons': 'Southern Tribes',
-  // Central Republic
-  'Irongate District': 'Central Republic',
-  'Trade Routes': 'Central Republic',
-  'Coal Valleys': 'Central Republic',
-  // Mystic Enclave
-  'Aethermoor Heights': 'Mystic Enclave',
-  'The Shadowfen': 'Mystic Enclave',
-  'Runestone Wastes': 'Mystic Enclave'
-};
+// In-memory cache of regions and kingdoms from database
+let cachedRegions: Array<{ id: string; name: string; kingdom_id: string }> = [];
+let cachedKingdoms: Array<{ id: string; name: string }> = [];
+
+// Initialize worldbuilding data from database
+export async function initializeWorldbuilding() {
+  try {
+    const { getRegions, getKingdoms } = await import('./worldbuildingService');
+    const [regions, kingdoms] = await Promise.all([getRegions(), getKingdoms()]);
+    cachedRegions = regions;
+    cachedKingdoms = kingdoms;
+  } catch (error) {
+    console.error('Failed to load worldbuilding data from database, using fallback data', error);
+  }
+}
 
 // Generate random personality trait
 export function generatePersonality(): string {
   return PERSONALITY_TRAITS[Math.floor(Math.random() * PERSONALITY_TRAITS.length)];
 }
 
-// Generate random region
-export function generateRegion(): string {
-  return REGIONS[Math.floor(Math.random() * REGIONS.length)];
+// Generate random region ID (uses database if available, fallback otherwise)
+export function generateRegionId(): string {
+  if (cachedRegions.length > 0) {
+    const randomRegion = cachedRegions[Math.floor(Math.random() * cachedRegions.length)];
+    return randomRegion.id;
+  }
+  // Fallback region IDs
+  const fallbackRegionIds = [
+    'frostspire-peaks', 'glacial-wastes', 'tundra-borderlands',
+    'crimson-highlands', 'jade-river-valley', 'shadow-mountains',
+    'emerald-heartlands', 'silverpine-forests', 'stormcoast',
+    'scorched-badlands', 'savanna-territories', 'red-rock-canyons',
+    'irongate-district', 'trade-routes', 'coal-valleys',
+    'aethermoor-heights', 'shadowfen', 'runestone-wastes'
+  ];
+  return fallbackRegionIds[Math.floor(Math.random() * fallbackRegionIds.length)];
 }
 
-// Get kingdom from region
-export function getKingdomFromRegion(region: string): string {
-  return REGION_TO_KINGDOM[region] || 'Unknown';
+// Get kingdom ID from region ID (uses database if available, fallback otherwise)
+export function getKingdomIdFromRegionId(regionId: string): string {
+  if (cachedRegions.length > 0) {
+    const regionData = cachedRegions.find(r => r.id === regionId);
+    if (regionData) {
+      return regionData.kingdom_id;
+    }
+  }
+  // Fallback to hardcoded mapping
+  const fallbackMap: Record<string, string> = {
+    'frostspire-peaks': 'northern-empire', 'glacial-wastes': 'northern-empire', 'tundra-borderlands': 'northern-empire',
+    'crimson-highlands': 'eastern-dynasty', 'jade-river-valley': 'eastern-dynasty', 'shadow-mountains': 'eastern-dynasty',
+    'emerald-heartlands': 'western-kingdom', 'silverpine-forests': 'western-kingdom', 'stormcoast': 'western-kingdom',
+    'scorched-badlands': 'southern-tribes', 'savanna-territories': 'southern-tribes', 'red-rock-canyons': 'southern-tribes',
+    'irongate-district': 'central-republic', 'trade-routes': 'central-republic', 'coal-valleys': 'central-republic',
+    'aethermoor-heights': 'mystic-enclave', 'shadowfen': 'mystic-enclave', 'runestone-wastes': 'mystic-enclave'
+  };
+  return fallbackMap[regionId] || 'unknown';
+}
+
+// Get region name from ID (synchronous helper using cache)
+export function getRegionNameFromId(regionId: string): string {
+  if (cachedRegions.length > 0) {
+    const region = cachedRegions.find(r => r.id === regionId);
+    if (region) return region.name;
+  }
+  // Fallback names
+  const fallbackNames: Record<string, string> = {
+    'frostspire-peaks': 'Frostspire Peaks', 'glacial-wastes': 'Glacial Wastes', 'tundra-borderlands': 'Tundra Borderlands',
+    'crimson-highlands': 'Crimson Highlands', 'jade-river-valley': 'Jade River Valley', 'shadow-mountains': 'Shadow Mountains',
+    'emerald-heartlands': 'Emerald Heartlands', 'silverpine-forests': 'Silverpine Forests', 'stormcoast': 'Stormcoast',
+    'scorched-badlands': 'Scorched Badlands', 'savanna-territories': 'Savanna Territories', 'red-rock-canyons': 'Red Rock Canyons',
+    'irongate-district': 'Irongate District', 'trade-routes': 'Trade Routes', 'coal-valleys': 'Coal Valleys',
+    'aethermoor-heights': 'Aethermoor Heights', 'shadowfen': 'The Shadowfen', 'runestone-wastes': 'Runestone Wastes'
+  };
+  return fallbackNames[regionId] || regionId;
+}
+
+// Get kingdom name from ID (synchronous helper using cache)
+export function getKingdomNameFromId(kingdomId: string): string {
+  if (cachedKingdoms.length > 0) {
+    const kingdom = cachedKingdoms.find(k => k.id === kingdomId);
+    if (kingdom) return kingdom.name;
+  }
+  // Fallback names
+  const fallbackNames: Record<string, string> = {
+    'northern-empire': 'Northern Empire',
+    'eastern-dynasty': 'Eastern Dynasty',
+    'western-kingdom': 'Western Kingdom',
+    'southern-tribes': 'Southern Tribes',
+    'central-republic': 'Central Republic',
+    'mystic-enclave': 'Mystic Enclave'
+  };
+  return fallbackNames[kingdomId] || kingdomId;
 }
 
 // Generate random gender

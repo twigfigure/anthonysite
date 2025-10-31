@@ -3,29 +3,36 @@ import { supabase } from './supabase';
 const BUCKET_NAME = 'kindred-images';
 
 /**
- * Uploads a base64 image to Supabase Storage
- * @param base64Image - The base64 encoded image string (with or without data:image prefix)
+ * Uploads a base64 image or Blob to Supabase Storage
+ * @param imageData - The base64 encoded image string (with or without data:image prefix) or a Blob
  * @param userId - The user's ID for organizing files
  * @param bucketName - The storage bucket name (defaults to kindred-images)
  * @returns The public URL of the uploaded image
  */
 export async function uploadImageToStorage(
-  base64Image: string,
+  imageData: string | Blob,
   userId: string,
   bucketName: string = BUCKET_NAME
 ): Promise<string> {
   try {
-    // Remove the data:image/png;base64, prefix if present
-    const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
+    let blob: Blob;
 
-    // Convert base64 to blob
-    const byteCharacters = atob(base64Data);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    // Handle both string and Blob inputs
+    if (imageData instanceof Blob) {
+      blob = imageData;
+    } else {
+      // Remove the data:image/png;base64, prefix if present
+      const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
+
+      // Convert base64 to blob
+      const byteCharacters = atob(base64Data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      blob = new Blob([byteArray], { type: 'image/png' });
     }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: 'image/png' });
 
     // Generate unique filename
     const timestamp = Date.now();
@@ -33,7 +40,7 @@ export async function uploadImageToStorage(
     const filename = `${userId}/${timestamp}-${randomStr}.png`;
 
     // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
+    const { error } = await supabase.storage
       .from(bucketName)
       .upload(filename, blob, {
         contentType: 'image/png',

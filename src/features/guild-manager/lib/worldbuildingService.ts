@@ -89,3 +89,24 @@ export function clearCache() {
   regionsCache = null;
   lastFetch = 0;
 }
+
+// Helper function to get kingdom name from ID
+export async function getKingdomNameById(kingdomId: string): Promise<string> {
+  const kingdoms = await getKingdoms();
+  const kingdom = kingdoms.find(k => k.id === kingdomId);
+  return kingdom?.name || kingdomId; // Fallback to ID if not found
+}
+
+// Helper function to get region name from ID
+export async function getRegionNameById(regionId: string): Promise<string> {
+  const regions = await getRegions();
+  const region = regions.find(r => r.id === regionId);
+  return region?.name || regionId; // Fallback to ID if not found
+}
+
+// Helper function to get kingdom ID from region ID
+export async function getKingdomIdByRegionId(regionId: string): Promise<string | null> {
+  const regions = await getRegions();
+  const region = regions.find(r => r.id === regionId);
+  return region?.kingdom_id || null;
+}

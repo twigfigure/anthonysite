@@ -87,8 +87,8 @@ export interface Hunter {
   class: HunterClass;
   level: number;
   experience: number;
-  kingdom?: string; // Kingdom origin
-  region?: string; // Region within kingdom origin
+  kingdom_id?: string; // Kingdom ID (e.g., "eastern-dynasty")
+  region_id?: string; // Region ID (e.g., "crimson-highlands")
   gender?: 'Male' | 'Female'; // Hunter's gender
   personality?: string; // Personality traits/description
   backstory?: string; // Character backstory

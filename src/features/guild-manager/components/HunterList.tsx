@@ -172,9 +172,9 @@ function HunterAvatar({ hunter, isSelected, onClick, onEdit }: HunterAvatarProps
   const isAssigned = hunter.is_assigned;
 
   return (
-    <button
+    <div
       onClick={onClick}
-      className={`relative aspect-square rounded-lg overflow-hidden transition-all hover:scale-105 hover:shadow-lg ${
+      className={`relative aspect-square rounded-lg overflow-hidden transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
         isSelected ? 'ring-4 ring-purple-500 scale-105' : 'ring-2 ring-border'
       } ${isDead ? 'opacity-50 grayscale' : ''}`}
     >
@@ -229,6 +229,6 @@ function HunterAvatar({ hunter, isSelected, onClick, onEdit }: HunterAvatarProps
           <Pencil className="h-3 w-3" />
         </button>
       )}
-    </button>
+    </div>
   );
 }
