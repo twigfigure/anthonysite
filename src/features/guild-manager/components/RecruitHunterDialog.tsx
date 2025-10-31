@@ -127,7 +127,7 @@ export function RecruitHunterDialog({
 
       // Generate personality and backstory
       const personality = generatePersonality();
-      const backstory = generateBackstory(hunterClass, rank, hunterRegion, hunterGender, personality);
+      const backstory = generateBackstory(name.trim(), hunterClass, rank, hunterRegion, hunterGender, personality);
 
       // Generate affinities based on rank
       const affinities = generateAffinities(rank);

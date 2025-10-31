@@ -741,6 +741,7 @@ export function generateGender(): 'Male' | 'Female' {
 
 // Generate backstory based on hunter attributes
 export function generateBackstory(
+  name: string,
   hunterClass: string,
   rank: HunterRank,
   region: string,
@@ -750,13 +751,18 @@ export function generateBackstory(
   const pronoun = gender === 'Male' ? 'He' : 'She';
   const possessive = gender === 'Male' ? 'his' : 'her';
   const reflexive = gender === 'Male' ? 'himself' : 'herself';
-  const verb = 'has';
+  const objective = gender === 'Male' ? 'him' : 'her';
+
+  // Parse personality traits
+  const traits = personality.split(' and ').map(t => t.trim().toLowerCase());
+  const trait1 = traits[0] || 'determined';
+  const trait2 = traits[1] || 'skilled';
 
   // Get sentence count based on rank
   const sentenceCounts: Record<HunterRank, number> = {
-    D: 1,
+    D: 2,
     C: 2,
-    B: 2,
+    B: 3,
     A: 3,
     S: 4,
     SS: 4,
@@ -766,60 +772,57 @@ export function generateBackstory(
 
   const sentences: string[] = [];
 
-  // Sentence 1: Origin and class introduction (always included)
-  const classIntros = {
-    Fighter: `Born in ${region}, this ${hunterClass.toLowerCase()} ${verb} proven ${reflexive} in countless battles.`,
-    Tank: `Hailing from ${region}, this ${hunterClass.toLowerCase()} stands as an unbreakable wall against any threat.`,
-    Mage: `A ${hunterClass.toLowerCase()} from ${region}, wielding arcane powers that few can comprehend.`,
-    Healer: `Coming from ${region}, this ${hunterClass.toLowerCase()} ${verb} saved countless lives with ${possessive} miraculous abilities.`,
-    Assassin: `From the shadows of ${region}, this ${hunterClass.toLowerCase()} strikes with deadly precision.`,
-    Ranger: `A ${hunterClass.toLowerCase()} born in ${region}, tracking prey across impossible terrain.`,
-    Support: `Originating from ${region}, this ${hunterClass.toLowerCase()} empowers allies with unmatched tactical insight.`
-  };
-  sentences.push(classIntros[hunterClass as keyof typeof classIntros] || classIntros.Fighter);
+  // Sentence 1: Specific origin story showing personality through action
+  const origins = [
+    `${name} first awakened in ${region} during a catastrophic portal breach. While others fled, ${pronoun} ${trait1 === 'brave' || trait1 === 'reckless' ? 'charged into the fray' : trait1 === 'cautious' || trait1 === 'analytical' ? 'carefully studied the monster patterns before striking' : trait1 === 'compassionate' || trait1 === 'kind' ? 'stayed behind to evacuate civilians' : 'demonstrated exceptional skill'}.`,
+    `Born in ${region}, ${name} lost ${possessive} mentor to a C-rank portal collapse. ${pronoun} ${trait1 === 'vengeful' || trait1 === 'determined' ? 'vowed that day to become strong enough that no one else would suffer the same fate' : trait1 === 'cautious' ? 'became obsessed with understanding dungeon mechanics to prevent future tragedies' : trait1 === 'optimistic' ? 'chose to honor their memory by saving others' : 'never stopped training after that day'}.`,
+    `${name} was a ${hunterClass.toLowerCase()} from ${region} who once ${trait1 === 'adventurous' || trait1 === 'reckless' ? 'volunteered for a suicide mission into an S-rank portal, returning with impossible loot and a wild grin' : trait1 === 'loyal' || trait1 === 'compassionate' ? `sacrificed ${possessive} chance at a legendary drop to save a fallen party member` : trait1 === 'greedy' || trait1 === 'ambitious' ? `betrayed ${possessive} original guild to claim a rare artifact, earning both power and infamy` : `proved ${reflexive} in the Trials of Ascension`}.`,
+    `In ${region}, ${name} earned ${possessive} awakening through an unusual ritual. ${pronoun} ${trait2 === 'creative' || trait2 === 'innovative' ? 'developed a unique fighting style that veteran hunters still study' : trait2 === 'disciplined' ? 'trained for three years without missing a single day' : trait2 === 'lucky' ? `stumbled into a hidden dungeon and emerged with an artifact that chose ${objective}` : `mastered ${possessive} craft through relentless practice`}.`
+  ];
+  sentences.push(origins[Math.floor(Math.random() * origins.length)]);
 
   if (sentenceCount >= 2) {
-    // Sentence 2: Personality and notable trait
-    const him_her = gender === 'Male' ? 'him' : 'her';
-    const personalityLines = [
-      `${pronoun} is known for being ${personality}, a trait that has both aided and endangered ${possessive} missions.`,
-      `Those who know ${him_her} describe ${him_her} as ${personality}, qualities that define ${possessive} approach to every challenge.`,
-      `${possessive.charAt(0).toUpperCase() + possessive.slice(1)} ${personality} nature has become legendary among fellow hunters.`
+    // Sentence 2: Specific action or incident showing second personality trait
+    const incidents = [
+      `During the ${region} Siege, ${pronoun} ${trait2 === 'strategic' || trait2 === 'analytical' ? 'identified a structural weakness in the boss monster and coordinated a precise strike team' : trait2 === 'selfless' || trait2 === 'brave' ? `used ${reflexive} as bait, drawing aggro while ${possessive} team escaped with critical intelligence` : trait2 === 'ruthless' || trait2 === 'pragmatic' ? 'made the hard call to seal the portal, trapping three hunters inside but saving the entire district' : 'turned the tide of battle with a single devastating combo'}.`,
+      `${pronoun} once tracked a rare boss through ${region}'s treacherous terrain for five days. ${trait2 === 'patient' || trait2 === 'persistent' ? `The hunt tested ${possessive} endurance, but ${pronoun} refused to give up until the contract was fulfilled` : trait2 === 'impulsive' || trait2 === 'aggressive' ? `When it finally appeared, ${pronoun} attacked immediately, nearly dying but claiming the bounty` : trait2 === 'clever' ? `Rather than fighting, ${pronoun} lured it into a trap using stolen bait` : 'The confrontation became legendary among local hunters'}.`,
+      `A novice guild in ${region} hired ${name} for a routine dungeon clear. ${pronoun} ${trait2 === 'protective' || trait2 === 'compassionate' ? 'spent the entire mission teaching them survival techniques, refusing payment afterward' : trait2 === 'arrogant' || trait2 === 'proud' ? `soloed the entire dungeon to prove ${possessive} superiority, embarrassing the rookies` : trait2 === 'methodical' ? 'created a detailed tactical plan that ensured zero casualties' : `impressed them with ${possessive} unconventional methods`}.`,
+      `When a corrupted A-rank portal appeared near ${region}, ${name} ${trait2 === 'fearless' || trait2 === 'reckless' ? 'was the first to volunteer for the scouting party, despite warnings from guild masters' : trait2 === 'cautious' || trait2 === 'wise' ? 'convinced the raid leader to wait for reinforcements, saving countless lives' : trait2 === 'mercenary' || trait2 === 'pragmatic' ? 'negotiated triple hazard pay before accepting the contract' : 'joined the response team without hesitation'}.`
     ];
-    sentences.push(personalityLines[Math.floor(Math.random() * personalityLines.length)]);
+    sentences.push(incidents[Math.floor(Math.random() * incidents.length)]);
   }
 
   if (sentenceCount >= 3) {
-    // Sentence 3: Achievement or defining moment
-    const achievements = [
-      `${pronoun} ${verb} survived encounters that would have claimed lesser hunters.`,
-      `${possessive.charAt(0).toUpperCase() + possessive.slice(1)} reputation was forged in the most dangerous portals.`,
-      `Many owe ${possessive} lives to ${possessive} quick thinking and decisive action.`,
-      `${pronoun} once faced a boss-level threat alone and lived to tell the tale.`
+    // Sentence 3: Reputation or notable characteristic
+    const reputations = [
+      `Other hunters from ${region} ${trait1 === 'arrogant' || trait1 === 'proud' ? `resent ${possessive} boastful attitude, but nobody can deny the results` : trait1 === 'humble' || trait1 === 'modest' ? `speak highly of ${objective}, praising ${possessive} willingness to help less experienced hunters` : trait1 === 'mysterious' || trait1 === 'secretive' ? `whisper about ${possessive} past, but ${pronoun} never discusses it` : `recognize ${objective} by reputation alone`}.`,
+      `${possessive.charAt(0).toUpperCase() + possessive.slice(1)} signature move—${hunterClass === 'Fighter' ? 'a devastating three-strike combo' : hunterClass === 'Mage' ? 'a spell-chaining technique' : hunterClass === 'Tank' ? 'an immovable defensive stance' : hunterClass === 'Assassin' ? 'a shadow-step assassination' : hunterClass === 'Ranger' ? 'a impossible long-range shot' : hunterClass === 'Healer' ? 'an area-wide regeneration field' : 'a tactical maneuver'}—has been ${trait1 === 'creative' || trait1 === 'innovative' ? 'copied by dozens of aspiring hunters' : trait1 === 'proud' || trait1 === 'arrogant' ? `patented and trademarked, with ${name} suing imitators` : 'documented in several hunter academies'}.`,
+      `${pronoun} carries ${hunterClass === 'Fighter' ? 'a notched blade' : hunterClass === 'Mage' ? 'a cracked spellbook' : hunterClass === 'Tank' ? 'a dented shield' : hunterClass === 'Assassin' ? 'twin daggers' : hunterClass === 'Ranger' ? 'a modified bow' : hunterClass === 'Healer' ? 'a ritual staff' : 'worn equipment'} from ${possessive} first successful raid in ${region}. ${pronoun} ${trait1 === 'sentimental' || trait1 === 'loyal' ? 'refuses to replace it despite offers for legendary gear' : trait1 === 'practical' || trait1 === 'pragmatic' ? 'keeps it as a backup weapon, never letting sentiment cloud judgment' : 'maintains it obsessively'}.`,
+      `Guild recruiters from ${region} ${trait1 === 'independent' || trait1 === 'stubborn' ? `have stopped approaching ${objective}—${pronoun} made it clear ${pronoun} works alone` : trait1 === 'sociable' || trait1 === 'friendly' ? `compete aggressively for ${possessive} services, knowing ${pronoun} elevates any team` : trait1 === 'mercenary' || trait1 === 'greedy' ? `bid against each other for ${possessive} contract, driving up ${possessive} rates` : `recognize ${possessive} value`}.`
     ];
-    sentences.push(achievements[Math.floor(Math.random() * achievements.length)]);
+    sentences.push(reputations[Math.floor(Math.random() * reputations.length)]);
   }
 
   if (sentenceCount >= 4) {
-    // Sentence 4: Motivation or goal
-    const motivations = [
-      `Driven by a desire to protect the innocent, ${pronoun} continues to grow stronger.`,
-      `${possessive.charAt(0).toUpperCase() + possessive.slice(1)} ultimate goal is to conquer the most perilous dungeons known to humanity.`,
-      `Seeking to prove ${reflexive}, ${pronoun} takes on increasingly difficult challenges.`,
-      `${pronoun} fights not for glory, but to ensure a safer world for future generations.`
+    // Sentence 4: Current status or recent achievement
+    const currentStatus = [
+      `Most recently, ${name} ${rank === 'S' || rank === 'SS' || rank === 'SSS' ? `cleared an SS-rank portal solo, a feat that earned ${objective} recognition from the International Hunter Association` : rank === 'A' ? 'led a successful raid against an A-rank boss that had claimed seven parties' : rank === 'B' ? 'completed seventeen consecutive contracts without a single casualty' : 'survived a portal that was misclassified as C-rank'}.`,
+      `${pronoun} currently ${trait2 === 'ambitious' || trait2 === 'driven' ? `seeks to challenge the legendary ${region} Guardian Dungeon, where even S-ranks fear to tread` : trait2 === 'methodical' || trait2 === 'patient' ? `documents every monster weakness ${pronoun} encounters, building a comprehensive bestiary` : trait2 === 'compassionate' ? 'runs a free training program for awakened hunters from disadvantaged backgrounds' : 'takes on increasingly difficult contracts'}.`,
+      `After ${rank === 'SSS' || rank === 'SS' ? 'conquering the Abyssal Spire' : rank === 'S' || rank === 'A' ? `surviving the Portal Cascade of ${region}` : `clearing ${possessive} hundredth dungeon`}, ${name} ${trait2 === 'humble' ? `returned to ${region} to mentor young hunters, refusing to let success corrupt ${objective}` : trait2 === 'ambitious' ? 'immediately signed up for the next impossible challenge' : trait2 === 'cautious' ? 'took a month to recover and analyze what went wrong' : 'celebrated for exactly one night before returning to training'}.`,
+      `${possessive.charAt(0).toUpperCase() + possessive.slice(1)} last contract in ${region} ${trait1 === 'lucky' ? `somehow succeeded despite everything going wrong—a building collapsed, ${possessive} equipment failed, and the boss mutated` : trait1 === 'strategic' ? 'became a case study in optimal resource management and risk assessment' : trait1 === 'aggressive' ? `ended three hours early because ${pronoun} speedran the entire dungeon` : 'left an impression on everyone who witnessed it'}.`
     ];
-    sentences.push(motivations[Math.floor(Math.random() * motivations.length)]);
+    sentences.push(currentStatus[Math.floor(Math.random() * currentStatus.length)]);
   }
 
   if (sentenceCount >= 5) {
-    // Sentence 5: Legacy or reputation (SSS only)
-    const legacies = [
-      `Tales of ${possessive} exploits have spread across all regions, inspiring a new generation of hunters.`,
-      `${possessive.charAt(0).toUpperCase() + possessive.slice(1)} name is whispered with reverence in hunter circles worldwide.`,
-      `Some say ${pronoun} is destined to become one of the greatest hunters in history.`,
-      `Even guild masters seek ${possessive} counsel when facing unprecedented threats.`
+    // Sentence 5: Future trajectory or philosophical stance (high ranks only)
+    const future = [
+      `Some say ${name} will eventually ${trait1 === 'ambitious' || trait1 === 'arrogant' ? 'challenge for the title of World\'s Strongest Hunter' : trait1 === 'mysterious' || trait1 === 'secretive' ? `reveal the true purpose behind ${possessive} relentless hunting` : trait1 === 'protective' || trait1 === 'heroic' ? 'become the shield that protects all of humanity' : 'reach the absolute pinnacle of power'}. ${pronoun} ${trait2 === 'determined' ? 'shows no signs of slowing down' : trait2 === 'philosophical' ? 'remains silent on the matter, focused only on the next hunt' : 'neither confirms nor denies it'}.`,
+      `When asked about ${possessive} ultimate goal, ${name} ${trait2 === 'mysterious' ? 'simply smiled and changed the subject' : trait2 === 'honest' || trait2 === 'direct' ? `said: "I hunt because I can. Someone has to."` : trait2 === 'ambitious' ? `declared ${pronoun} would conquer every SS-rank portal in existence` : trait2 === 'humble' ? `shrugged and said ${pronoun} was just doing ${possessive} job` : 'gave no answer'}.`,
+      `Legends say ${pronoun} ${trait1 === 'cursed' || trait1 === 'haunted' ? `is pursued by something from ${possessive} past, something that drives ${objective} to grow stronger` : trait1 === 'blessed' || trait1 === 'fated' ? 'was chosen by an ancient artifact that appears only once per generation' : trait1 === 'obsessed' ? `seeks something deep in the highest-ranked portals, though ${pronoun} never speaks of it` : 'will be remembered for generations'}. Whatever the truth, ${name}'s story is far from over.`,
+      `The international hunter community ${trait2 === 'controversial' ? `remains divided on ${possessive} methods, but results speak louder than ethics debates` : trait2 === 'respected' ? `universally acknowledges ${objective} as one of the finest hunters of this generation` : trait2 === 'feared' ? `whispers ${possessive} name with a mixture of awe and terror` : `watches ${possessive} career with great interest`}. ${pronoun} continues to push the boundaries of what hunters can achieve.`
     ];
-    sentences.push(legacies[Math.floor(Math.random() * legacies.length)]);
+    sentences.push(future[Math.floor(Math.random() * future.length)]);
   }
 
   return sentences.join(' ');

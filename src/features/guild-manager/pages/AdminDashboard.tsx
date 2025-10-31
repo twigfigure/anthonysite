@@ -39,8 +39,8 @@ export default function AdminDashboard() {
       }
 
       // Check if user is admin
-      const adminEmail = import.meta.env.VITE_ADMIN_EMAIL;
-      if (user.email === adminEmail) {
+      const adminEmails = import.meta.env.VITE_ADMIN_EMAIL?.split(',').map((email: string) => email.trim()) || [];
+      if (adminEmails.includes(user.email)) {
         setIsAdmin(true);
       } else {
         toast({

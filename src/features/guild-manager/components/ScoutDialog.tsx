@@ -14,6 +14,7 @@ import type { ScoutedHunter, Guild, PassiveAbility } from '../types';
 import { RANK_BG_COLORS, AFFINITY_COLORS } from '../types';
 import { scoutingService, hunterService } from '../lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { generatePersonality, generateBackstory } from '../lib/gameHelpers';
 import { generateImageWithBanana } from '@/lib/bananaService';
 import { uploadImageToStorage } from '@/lib/supabaseStorage';
 import { splitHunterImage, processAvatarImage, standardizeImageSize } from '@/lib/imageUtils';
@@ -84,8 +85,11 @@ export function ScoutDialog({ open, onOpenChange, guild, onHunterRecruited }: Sc
 
       // Generate image prompt
       const imagePrompt = generateHunterCombinedPrompt(
-        scoutedHunter.rank,
-        scoutedHunter.class,
+        {
+          name: scoutedHunter.name,
+          rank: scoutedHunter.rank,
+          hunterClass: scoutedHunter.class
+        },
         hunterRegion,
         hunterGender
       );
@@ -95,34 +99,71 @@ export function ScoutDialog({ open, onOpenChange, guild, onHunterRecruited }: Sc
         description: 'Creating avatar and splash art',
       });
 
+      // Get API key from environment
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      console.log('ScoutDialog: API key loaded:', apiKey ? `${apiKey.substring(0, 10)}...` : 'NOT FOUND');
+      if (!apiKey) {
+        throw new Error('VITE_GEMINI_API_KEY is not configured');
+      }
+
+      console.log('ScoutDialog: Prompt length:', imagePrompt.length);
+
       // Generate image with Banana AI
-      const imageBase64 = await generateImageWithBanana(imagePrompt);
+      const combinedBase64 = await generateImageWithBanana({
+        prompt: imagePrompt,
+        apiKey: apiKey
+      });
 
-      // Split into avatar and splash art
-      const { avatarBlob, splashBlob } = await splitHunterImage(imageBase64);
+      toast({
+        title: 'Processing images...',
+        description: 'Splitting, standardizing, and optimizing character artwork',
+      });
 
-      // Process avatar to be square
-      const processedAvatarBlob = await processAvatarImage(avatarBlob);
+      // Split the combined image into avatar and splash art
+      const { avatar, splashArt } = await splitHunterImage(combinedBase64);
 
-      // Standardize sizes
-      const standardizedAvatar = await standardizeImageSize(processedAvatarBlob, 512, 512);
-      const standardizedSplash = await standardizeImageSize(splashBlob, 1024, 1024);
+      // Standardize splash art with tight character crop
+      const standardizedSplashArt = await standardizeImageSize(splashArt);
 
-      // Upload images to storage
-      const avatarUrl = await uploadImageToStorage(standardizedAvatar, `hunters/${guild.id}/avatar-${Date.now()}.png`);
-      const splashArtUrl = await uploadImageToStorage(standardizedSplash, `hunters/${guild.id}/splash-${Date.now()}.png`);
+      // Process avatar with proper portrait framing (ensures head isn't cut off)
+      const processedAvatar = await processAvatarImage(avatar);
+
+      toast({
+        title: 'Uploading images...',
+        description: 'Storing hunter images',
+      });
+
+      // Upload both images to storage
+      const userId = guild.user_id;
+      const [avatarUrl, splashArtUrl] = await Promise.all([
+        uploadImageToStorage(processedAvatar, userId, 'hunter-images'),
+        uploadImageToStorage(standardizedSplashArt, userId, 'hunter-images'),
+      ]);
+
+      // Generate personality and backstory
+      const personality = generatePersonality();
+      const backstory = generateBackstory(
+        scoutedHunter.name,
+        scoutedHunter.class,
+        scoutedHunter.rank,
+        hunterRegion,
+        hunterGender,
+        personality
+      );
 
       // Recruit the hunter
       const result = await scoutingService.recruitScoutedHunter(guild.id, scoutedHunter.id);
 
       if (result.success && result.hunter_id) {
-        // Update the hunter with images, kingdom, region, and gender
+        // Update the hunter with images, kingdom, region, gender, personality, and backstory
         await hunterService.updateHunter(result.hunter_id, {
           avatar_url: avatarUrl,
           splash_art_url: splashArtUrl,
           kingdom: getKingdomFromRegion(hunterRegion),
           region: hunterRegion,
-          gender: hunterGender
+          gender: hunterGender,
+          personality,
+          backstory
         });
 
         toast({
