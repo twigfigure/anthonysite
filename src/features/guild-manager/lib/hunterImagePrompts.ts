@@ -116,18 +116,33 @@ const RANK_BACKGROUNDS: Record<HunterRank, string> = {
 };
 
 // Generate unified prompt for both avatar and splash art in one image
-export function generateHunterCombinedPrompt(params: HunterPromptParams, region?: RegionName, gender?: 'Male' | 'Female'): string {
+export function generateHunterCombinedPrompt(
+  params: HunterPromptParams,
+  paletteData?: { colors: string; theme: string; regionName: string },
+  gender?: 'Male' | 'Female'
+): string {
   const { name, rank, hunterClass } = params;
 
-  // If no region specified, pick a random one
-  const selectedRegion = region || getRandomRegion();
-  const regionData = REGION_PALETTES[selectedRegion];
+  // If palette data provided, use it; otherwise fall back to random region
+  let palette: string;
+  let culturalTheme: string;
+  let regionName: string;
+
+  if (paletteData) {
+    palette = paletteData.colors;
+    culturalTheme = paletteData.theme;
+    regionName = paletteData.regionName;
+  } else {
+    // Fallback to random region for backwards compatibility
+    const randomRegion = getRandomRegion();
+    const regionData = REGION_PALETTES[randomRegion];
+    palette = regionData.colors;
+    culturalTheme = regionData.theme;
+    regionName = randomRegion;
+  }
 
   // If no gender specified, pick a random one
   const selectedGender = gender || getRandomGender();
-
-  const palette = regionData.colors;
-  const culturalTheme = regionData.theme;
   const rankTheme = RANK_THEMES[rank];
   const appearance = CLASS_APPEARANCES[hunterClass];
   const actionPose = CLASS_ACTION_POSES[hunterClass];
@@ -176,9 +191,9 @@ CHARACTER DESIGN (MUST BE IDENTICAL ON BOTH SIDES):
 - Equipment quality: ${rankTheme}
 - Cultural style: ${culturalTheme}
 - Color palette: ${palette}
-- Equipment and clothing match ${hunterClass} class and ${selectedRegion} cultural aesthetic
+- Equipment and clothing match ${hunterClass} class and ${regionName} cultural aesthetic
 - Same facial features, hair style, and distinctive elements on both sides
-- Visual design should reflect origin from ${selectedRegion}
+- Visual design should reflect origin from ${regionName}
 
 VISUAL EFFECTS:
 - ${effects}
@@ -187,12 +202,16 @@ VISUAL EFFECTS:
 - Consistent lighting and color scheme across both views
 
 QUALITY REQUIREMENTS:
-- Ultra-high quality professional illustration
-- Sharp details and clean lines throughout
+- ULTRA-HIGH RESOLUTION: Generate at maximum resolution and quality possible
+- 4K-quality professional illustration with crisp, sharp details
+- High pixel density with no pixelation or artifacts
+- Detailed textures on armor, clothing, and character features
+- Sharp, clean lines throughout with professional anti-aliasing
+- High-fidelity color accuracy and smooth gradients
 - Seamless character consistency between both views
-- Transparent background is MANDATORY
-- No background elements, only the character
+- Studio-quality lighting and shading
 - Clear visual distinction between portrait and full-body sections
+- Professional game art quality suitable for large displays
 
 This dual-view must showcase the same ${rank}-rank ${hunterClass} hunter from both portrait and action perspectives, maintaining perfect character consistency.`;
 }

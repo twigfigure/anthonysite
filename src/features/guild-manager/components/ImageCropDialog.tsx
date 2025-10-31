@@ -36,20 +36,24 @@ export function ImageCropDialog({
   const [offsetX, setOffsetX] = useState(0);
   const [offsetY, setOffsetY] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [imageLoaded, setImageLoaded] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
+  const initialZoomRef = useRef<number>(1);
   const { toast } = useToast();
 
   const imageUrl = imageType === 'avatar' ? hunter.avatar_url : hunter.splash_art_url;
   const imageLabel = imageType === 'avatar' ? 'Avatar' : 'Splash Art';
 
-  // Canvas size based on image type
+  // Canvas size based on image type (both scaled down 35%)
   // Avatar = square, Splash art = tall vertical rectangle
-  const canvasWidth = imageType === 'avatar' ? 512 : 384;
-  const canvasHeight = imageType === 'avatar' ? 512 : 768;
+  const canvasWidth = imageType === 'avatar' ? 333 : 250; // 512 * 0.65 ≈ 333, 384 * 0.65 ≈ 250
+  const canvasHeight = imageType === 'avatar' ? 333 : 499; // 512 * 0.65 ≈ 333, 768 * 0.65 ≈ 499
 
   const drawCanvas = useCallback(() => {
-    if (!canvasRef.current || !imageRef.current) return;
+    if (!canvasRef.current || !imageRef.current || !imageLoaded) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -59,6 +63,10 @@ export function ImageCropDialog({
 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Enable high-quality image smoothing
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
 
     // Calculate dimensions
     const scale = zoom;
@@ -71,23 +79,65 @@ export function ImageCropDialog({
 
     // Draw image
     ctx.drawImage(img, x, y, drawWidth, drawHeight);
-  }, [zoom, offsetX, offsetY]);
+  }, [zoom, offsetX, offsetY, imageLoaded]);
 
   useEffect(() => {
     if (open && imageUrl) {
+      setImageLoaded(false);
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.src = imageUrl;
       img.onload = () => {
         imageRef.current = img;
-        drawCanvas();
+
+        // Calculate initial zoom to fit the entire image in the canvas
+        const fitZoom = Math.min(
+          canvasWidth / img.width,
+          canvasHeight / img.height
+        );
+
+        // Store initial zoom for reset function
+        initialZoomRef.current = fitZoom;
+
+        // Set zoom to fit image and reset offsets
+        setZoom(fitZoom);
+        setOffsetX(0);
+        setOffsetY(0);
+        setImageLoaded(true);
+      };
+      img.onerror = (error) => {
+        console.error('Failed to load image:', error);
+        setImageLoaded(false);
       };
     }
-  }, [open, imageUrl, drawCanvas]);
+  }, [open, imageUrl, canvasWidth, canvasHeight]);
 
   useEffect(() => {
     drawCanvas();
   }, [drawCanvas]);
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    setIsDragging(true);
+    setDragStart({
+      x: e.nativeEvent.offsetX - offsetX,
+      y: e.nativeEvent.offsetY - offsetY,
+    });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDragging) return;
+
+    const newOffsetX = e.nativeEvent.offsetX - dragStart.x;
+    const newOffsetY = e.nativeEvent.offsetY - dragStart.y;
+
+    // Clamp offsets to slider limits
+    setOffsetX(Math.max(-256, Math.min(256, newOffsetX)));
+    setOffsetY(Math.max(-256, Math.min(256, newOffsetY)));
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
 
   const handleSave = async () => {
     if (!canvasRef.current) return;
@@ -135,7 +185,7 @@ export function ImageCropDialog({
   };
 
   const handleReset = () => {
-    setZoom(1);
+    setZoom(initialZoomRef.current);
     setOffsetX(0);
     setOffsetY(0);
   };
@@ -160,7 +210,11 @@ export function ImageCropDialog({
                 ref={canvasRef}
                 width={canvasWidth}
                 height={canvasHeight}
-                className="border-4 border-purple-500 rounded-lg"
+                className="border-4 border-purple-500 rounded-lg cursor-move"
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
               />
               {/* Center guide crosshair */}
               <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
@@ -182,9 +236,9 @@ export function ImageCropDialog({
               <Slider
                 value={[zoom]}
                 onValueChange={([value]) => setZoom(value)}
-                min={0.5}
+                min={0.1}
                 max={3}
-                step={0.1}
+                step={0.05}
                 className="w-full"
               />
             </div>

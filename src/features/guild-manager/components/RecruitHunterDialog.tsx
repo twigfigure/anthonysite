@@ -26,6 +26,7 @@ import { generateImageWithBanana } from '@/lib/bananaService';
 import { uploadImageToStorage } from '@/lib/supabaseStorage';
 import { splitHunterImage, processAvatarImage, standardizeImageSize } from '@/lib/imageUtils';
 import type { Guild, HunterRank, HunterClass } from '../types';
+import { getKingdoms } from '../lib/worldbuildingService';
 
 interface RecruitHunterDialogProps {
   open: boolean;
@@ -75,12 +76,20 @@ export function RecruitHunterDialog({
       const hunterRegionName = getRegionNameFromId(hunterRegionId);
       const hunterGender = getRandomGender();
 
-      // Generate combined image prompt with region name and gender
+      // Fetch kingdom data for palette
+      const kingdoms = await getKingdoms();
+      const kingdom = kingdoms.find(k => k.id === hunterKingdomId);
+
+      // Generate combined image prompt with kingdom palette
       const combinedPrompt = generateHunterCombinedPrompt({
         name: name.trim(),
         rank,
         hunterClass,
-      }, hunterRegionName, hunterGender);
+      }, kingdom?.colors && kingdom?.theme ? {
+        colors: kingdom.colors,
+        theme: kingdom.theme,
+        regionName: kingdom.name
+      } : undefined, hunterGender);
 
       toast({
         title: 'Generating hunter artwork...',

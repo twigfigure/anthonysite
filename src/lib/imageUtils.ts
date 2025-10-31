@@ -165,8 +165,12 @@ export async function standardizeImageSize(imageDataUrl: string): Promise<string
         0, 0, cropWidth, cropHeight
       );
 
-      // Convert to data URL
-      resolve(canvas.toDataURL('image/png'));
+      // Convert to data URL and upscale to standard dimensions
+      const croppedDataUrl = canvas.toDataURL('image/png');
+
+      // Upscale to 1024x2048 (1:2 aspect ratio, moderate upscaling for sharp quality)
+      // Since we already enforce 1:2 ratio during cropping, stretch to fill
+      upscaleToTarget(croppedDataUrl, 1024, 2048, false).then(resolve).catch(reject);
     };
 
     img.onerror = () => {
@@ -323,11 +327,77 @@ export async function processAvatarImage(imageDataUrl: string): Promise<string> 
         0, 0, cropWidth, cropHeight
       );
 
-      resolve(canvas.toDataURL('image/png'));
+      // Convert to data URL and upscale to standard dimensions
+      const croppedDataUrl = canvas.toDataURL('image/png');
+
+      // Upscale to 1024x1024 (1:1 aspect ratio, moderate upscaling for sharp portraits)
+      upscaleToTarget(croppedDataUrl, 1024, 1024).then(resolve).catch(reject);
     };
 
     img.onerror = () => {
       reject(new Error('Failed to load avatar image'));
+    };
+
+    img.src = imageDataUrl;
+  });
+}
+
+/**
+ * Upscales an image to target dimensions using high-quality bilinear interpolation
+ * Preserves aspect ratio by fitting the image within target dimensions and centering
+ * @param imageDataUrl - The image to upscale
+ * @param targetWidth - Target width in pixels
+ * @param targetHeight - Target height in pixels
+ * @param maintainAspectRatio - If true, preserve aspect ratio with transparent padding
+ * @returns Upscaled image as data URL
+ */
+async function upscaleToTarget(
+  imageDataUrl: string,
+  targetWidth: number,
+  targetHeight: number,
+  maintainAspectRatio: boolean = true
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        resolve(imageDataUrl);
+        return;
+      }
+
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+
+      // Enable high-quality image smoothing
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      if (maintainAspectRatio) {
+        // Calculate scale to fit within target dimensions
+        const scale = Math.min(targetWidth / img.width, targetHeight / img.height);
+        const scaledWidth = img.width * scale;
+        const scaledHeight = img.height * scale;
+
+        // Center the image
+        const x = (targetWidth - scaledWidth) / 2;
+        const y = (targetHeight - scaledHeight) / 2;
+
+        // Draw scaled and centered image
+        ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+      } else {
+        // Stretch to fill target dimensions (old behavior)
+        ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+      }
+
+      resolve(canvas.toDataURL('image/png'));
+    };
+
+    img.onerror = () => {
+      reject(new Error('Failed to load image for upscaling'));
     };
 
     img.src = imageDataUrl;

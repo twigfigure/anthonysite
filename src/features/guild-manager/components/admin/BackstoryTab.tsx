@@ -36,6 +36,8 @@ interface Kingdom {
   capital: string;
   culture: string;
   government: string;
+  colors?: string; // Color palette for image generation
+  theme?: string; // Visual theme for image generation
 }
 
 interface Region {
@@ -121,7 +123,9 @@ export function BackstoryTab() {
       ruler: '',
       capital: '',
       culture: '',
-      government: ''
+      government: '',
+      colors: '',
+      theme: ''
     };
     setEditingKingdom(newKingdom);
     setIsDialogOpen(true);
@@ -150,6 +154,8 @@ export function BackstoryTab() {
             capital: editingKingdom.capital,
             culture: editingKingdom.culture,
             government: editingKingdom.government,
+            colors: editingKingdom.colors,
+            theme: editingKingdom.theme,
             updated_at: new Date().toISOString()
           })
           .eq('id', editingKingdom.id);
@@ -390,6 +396,44 @@ export function BackstoryTab() {
                     onChange={(e) => setEditingKingdom({ ...editingKingdom, government: e.target.value })}
                     placeholder="Imperial Monarchy"
                   />
+                </div>
+              </div>
+
+              {/* Visual Theme for Image Generation */}
+              <div className="border-t pt-4 space-y-4">
+                <div className="space-y-1">
+                  <h4 className="text-sm font-semibold">Visual Theme (Image Generation)</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Configure color palette and aesthetic for AI-generated hunter images from this kingdom
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="colors">Color Palette</Label>
+                  <Textarea
+                    id="colors"
+                    value={editingKingdom.colors || ''}
+                    onChange={(e) => setEditingKingdom({ ...editingKingdom, colors: e.target.value })}
+                    placeholder="deep navy blues, silver, white, and icy blues"
+                    rows={2}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    List of colors that define this kingdom's visual identity
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="theme">Visual Theme</Label>
+                  <Textarea
+                    id="theme"
+                    value={editingKingdom.theme || ''}
+                    onChange={(e) => setEditingKingdom({ ...editingKingdom, theme: e.target.value })}
+                    placeholder="cold, regal, disciplined military aesthetic"
+                    rows={2}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Aesthetic style and cultural vibe for character designs
+                  </p>
                 </div>
               </div>
             </div>

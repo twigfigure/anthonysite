@@ -41,6 +41,7 @@ import { generateImageWithBanana } from '@/lib/bananaService';
 import { splitHunterImage, standardizeImageSize, processAvatarImage } from '@/lib/imageUtils';
 import { canAttemptRankUp, getRankUpStatusText } from '../lib/rankUpSystem';
 import { RankUpDialog } from './RankUpDialog';
+import { getKingdoms } from '../lib/worldbuildingService';
 import { EquipmentSelector } from './EquipmentSelector';
 import { ImageCropDialog } from './ImageCropDialog';
 import { useState, useEffect } from 'react';
@@ -98,7 +99,25 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
   const [showEquipmentSelector, setShowEquipmentSelector] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<EquipmentSlot>('Weapon');
   const [cropImageType, setCropImageType] = useState<'avatar' | 'splash' | null>(null);
+  const [imageVersion, setImageVersion] = useState<number>(0);
   const canRankUp = canAttemptRankUp(hunter);
+
+  // Track splash art URL changes to force refresh
+  const [lastSplashUrl, setLastSplashUrl] = useState<string | null>(hunter.splash_art_url);
+
+  useEffect(() => {
+    // When hunter changes (different ID), reset version
+    setImageVersion(0);
+    setLastSplashUrl(hunter.splash_art_url);
+  }, [hunter.id]);
+
+  // When splash art URL changes for the same hunter, increment version
+  useEffect(() => {
+    if (hunter.splash_art_url !== lastSplashUrl) {
+      setImageVersion(prev => prev + 1);
+      setLastSplashUrl(hunter.splash_art_url);
+    }
+  }, [hunter.splash_art_url]);
 
   // Fetch equipped items when component mounts or equip tab is active
   useEffect(() => {
@@ -234,14 +253,22 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
         description: 'Creating new avatar and splash art',
       });
 
-      // Generate image prompt using existing hunter data
+      // Fetch kingdom data for palette
+      const kingdoms = await getKingdoms();
+      const kingdom = kingdoms.find(k => k.id === hunter.kingdom_id);
+
+      // Generate image prompt using existing hunter data with kingdom palette
       const imagePrompt = generateHunterCombinedPrompt(
         {
           name: hunter.name,
           rank: hunter.rank,
           hunterClass: hunter.class
         },
-        hunter.region || 'Unknown',
+        kingdom?.colors && kingdom?.theme ? {
+          colors: kingdom.colors,
+          theme: kingdom.theme,
+          regionName: kingdom.name
+        } : undefined,
         hunter.gender || 'Male'
       );
 
@@ -311,6 +338,9 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
         description: 'New avatar and splash art have been created',
       });
 
+      // Force image refresh by incrementing version
+      setImageVersion(prev => prev + 1);
+
       // Trigger refresh
       onUpdate();
     } catch (error) {
@@ -332,7 +362,8 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
         {/* Splash Art */}
         {hunter.splash_art_url ? (
           <img
-            src={hunter.splash_art_url}
+            key={`splash-${hunter.id}-${imageVersion}`}
+            src={imageVersion > 0 ? `${hunter.splash_art_url}?v=${imageVersion}` : hunter.splash_art_url}
             alt={`${hunter.name} splash art`}
             className="w-full h-full object-cover"
           />
@@ -377,17 +408,6 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
 
         {/* Level and CP Badges */}
         <div className="absolute top-4 right-4 flex flex-col gap-2">
-          {/* Edit Splash Art Button */}
-          {hunter.splash_art_url && (
-            <button
-              onClick={() => setCropImageType('splash')}
-              className="p-2 rounded-lg bg-black/80 text-white hover:bg-purple-600 transition-colors self-end"
-              title="Edit splash art"
-              aria-label="Edit splash art"
-            >
-              <Pencil className="h-4 w-4" />
-            </button>
-          )}
           <div className="bg-black/80 text-white px-3 py-1 rounded-md font-bold text-lg border-2 border-white/30">
             Lv.{hunter.level}/{maxLevel}
           </div>
@@ -419,6 +439,17 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
           >
             <Star className={`h-5 w-5 ${isFavorite ? 'fill-current' : ''}`} />
           </button>
+          {/* Edit Splash Art Button */}
+          {hunter.splash_art_url && (
+            <button
+              onClick={() => setCropImageType('splash')}
+              className="bg-purple-600/80 hover:bg-purple-600 text-white p-2 rounded-lg transition-colors"
+              title="Edit splash art"
+              aria-label="Edit splash art"
+            >
+              <Pencil className="h-5 w-5" />
+            </button>
+          )}
           <button
             onClick={handleRefreshImages}
             disabled={isRegenerating}

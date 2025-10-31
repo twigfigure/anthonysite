@@ -49,7 +49,12 @@ export async function generateImageWithBanana(
       {
         contents: [{
           parts: [{ text: enhancedPrompt }]
-        }]
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          // Note: Gemini 2.5 Flash Image generates images at a fixed resolution
+          // Higher quality can be requested through the prompt instead
+        }
       },
       {
         headers: {

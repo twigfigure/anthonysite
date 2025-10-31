@@ -8,6 +8,8 @@ export interface Kingdom {
   capital: string;
   culture: string;
   government: string;
+  colors?: string; // Color palette for image generation
+  theme?: string; // Visual theme for image generation
 }
 
 export interface Region {

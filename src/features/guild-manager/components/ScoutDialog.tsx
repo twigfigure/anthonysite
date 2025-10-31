@@ -19,6 +19,7 @@ import { generateImageWithBanana } from '@/lib/bananaService';
 import { uploadImageToStorage } from '@/lib/supabaseStorage';
 import { splitHunterImage, processAvatarImage, standardizeImageSize } from '@/lib/imageUtils';
 import { generateHunterCombinedPrompt, getRandomGender } from '../lib/hunterImagePrompts';
+import { getKingdoms } from '../lib/worldbuildingService';
 
 interface ScoutDialogProps {
   open: boolean;
@@ -84,14 +85,22 @@ export function ScoutDialog({ open, onOpenChange, guild, onHunterRecruited }: Sc
       const hunterRegionName = getRegionNameFromId(hunterRegionId);
       const hunterGender = getRandomGender();
 
-      // Generate image prompt (using region name for visuals)
+      // Fetch kingdom data for palette
+      const kingdoms = await getKingdoms();
+      const kingdom = kingdoms.find(k => k.id === hunterKingdomId);
+
+      // Generate image prompt with kingdom palette
       const imagePrompt = generateHunterCombinedPrompt(
         {
           name: scoutedHunter.name,
           rank: scoutedHunter.rank,
           hunterClass: scoutedHunter.class
         },
-        hunterRegionName,
+        kingdom?.colors && kingdom?.theme ? {
+          colors: kingdom.colors,
+          theme: kingdom.theme,
+          regionName: kingdom.name
+        } : undefined,
         hunterGender
       );
 
