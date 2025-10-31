@@ -84,8 +84,11 @@ export function ScoutDialog({ open, onOpenChange, guild, onHunterRecruited }: Sc
 
       // Generate image prompt
       const imagePrompt = generateHunterCombinedPrompt(
-        scoutedHunter.rank,
-        scoutedHunter.class,
+        {
+          name: scoutedHunter.name,
+          rank: scoutedHunter.rank,
+          hunterClass: scoutedHunter.class
+        },
         hunterRegion,
         hunterGender
       );
@@ -96,21 +99,24 @@ export function ScoutDialog({ open, onOpenChange, guild, onHunterRecruited }: Sc
       });
 
       // Generate image with Banana AI
-      const imageBase64 = await generateImageWithBanana(imagePrompt);
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      const imageBase64 = await generateImageWithBanana({
+        prompt: imagePrompt,
+        apiKey
+      });
 
       // Split into avatar and splash art
-      const { avatarBlob, splashBlob } = await splitHunterImage(imageBase64);
+      const { avatar, splashArt } = await splitHunterImage(imageBase64);
 
-      // Process avatar to be square
-      const processedAvatarBlob = await processAvatarImage(avatarBlob);
+      // Standardize splash art with tight character crop
+      const standardizedSplashArt = await standardizeImageSize(splashArt);
 
-      // Standardize sizes
-      const standardizedAvatar = await standardizeImageSize(processedAvatarBlob, 512, 512);
-      const standardizedSplash = await standardizeImageSize(splashBlob, 1024, 1024);
+      // Process avatar with proper portrait framing
+      const processedAvatar = await processAvatarImage(avatar);
 
       // Upload images to storage
-      const avatarUrl = await uploadImageToStorage(standardizedAvatar, `hunters/${guild.id}/avatar-${Date.now()}.png`);
-      const splashArtUrl = await uploadImageToStorage(standardizedSplash, `hunters/${guild.id}/splash-${Date.now()}.png`);
+      const avatarUrl = await uploadImageToStorage(processedAvatar, guild.user_id, 'hunter-images');
+      const splashArtUrl = await uploadImageToStorage(standardizedSplashArt, guild.user_id, 'hunter-images');
 
       // Recruit the hunter
       const result = await scoutingService.recruitScoutedHunter(guild.id, scoutedHunter.id);
