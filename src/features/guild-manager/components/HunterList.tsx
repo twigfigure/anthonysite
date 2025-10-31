@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { User, Plus } from 'lucide-react';
+import { User, Plus, Pencil } from 'lucide-react';
 import type { Guild, Hunter } from '../types';
 import { RANK_BG_COLORS } from '../types';
 import { HunterDetails } from './HunterDetails';
 import { RecruitHunterDialog } from './RecruitHunterDialog';
 import { ScoutDialog } from './ScoutDialog';
+import { ImageCropDialog } from './ImageCropDialog';
 import { scoutingService } from '../lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 
@@ -20,6 +21,7 @@ export function HunterList({ hunters, guild, onHunterUpdate }: HunterListProps) 
   const [selectedHunter, setSelectedHunter] = useState<Hunter | null>(null);
   const [showRecruitDialog, setShowRecruitDialog] = useState(false);
   const [showScoutDialog, setShowScoutDialog] = useState(false);
+  const [cropHunter, setCropHunter] = useState<Hunter | null>(null);
   const [scouting, setScouting] = useState(false);
   const { toast } = useToast();
 
@@ -103,6 +105,10 @@ export function HunterList({ hunters, guild, onHunterUpdate }: HunterListProps) 
                   hunter={hunter}
                   isSelected={selectedHunter?.id === hunter.id}
                   onClick={() => setSelectedHunter(hunter)}
+                  onEdit={(e) => {
+                    e.stopPropagation();
+                    setCropHunter(hunter);
+                  }}
                 />
               ))}
             </div>
@@ -139,6 +145,17 @@ export function HunterList({ hunters, guild, onHunterUpdate }: HunterListProps) 
         guild={guild}
         onHunterRecruited={onHunterUpdate}
       />
+
+      {/* Image Crop Dialog */}
+      {cropHunter && (
+        <ImageCropDialog
+          open={!!cropHunter}
+          onOpenChange={(open) => !open && setCropHunter(null)}
+          hunter={cropHunter}
+          guild={guild}
+          onUpdate={onHunterUpdate}
+        />
+      )}
     </div>
   );
 }
@@ -147,9 +164,10 @@ interface HunterAvatarProps {
   hunter: Hunter;
   isSelected: boolean;
   onClick: () => void;
+  onEdit: (e: React.MouseEvent) => void;
 }
 
-function HunterAvatar({ hunter, isSelected, onClick }: HunterAvatarProps) {
+function HunterAvatar({ hunter, isSelected, onClick, onEdit }: HunterAvatarProps) {
   const isDead = hunter.is_dead;
   const isAssigned = hunter.is_assigned;
 
@@ -195,11 +213,22 @@ function HunterAvatar({ hunter, isSelected, onClick }: HunterAvatarProps) {
       )}
 
       {/* Name Label */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent pt-6 pb-1 px-1">
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent pt-6 pb-1 px-1 pointer-events-none">
         <p className="text-white text-xs font-semibold truncate text-center">
           {hunter.name}
         </p>
       </div>
+
+      {/* Edit Button - Must be last to appear on top */}
+      {hunter.avatar_url && (
+        <button
+          onClick={onEdit}
+          className="absolute bottom-1 right-1 p-1.5 rounded bg-black/80 text-white hover:bg-purple-600 transition-colors z-10"
+          title="Edit avatar"
+        >
+          <Pencil className="h-3 w-3" />
+        </button>
+      )}
     </button>
   );
 }
