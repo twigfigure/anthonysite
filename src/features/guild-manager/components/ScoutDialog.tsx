@@ -14,6 +14,7 @@ import type { ScoutedHunter, Guild, PassiveAbility } from '../types';
 import { RANK_BG_COLORS, AFFINITY_COLORS } from '../types';
 import { scoutingService, hunterService } from '../lib/supabase';
 import { useToast } from '@/hooks/use-toast';
+import { generatePersonality, generateBackstory } from '../lib/gameHelpers';
 import { generateImageWithBanana } from '@/lib/bananaService';
 import { uploadImageToStorage } from '@/lib/supabaseStorage';
 import { splitHunterImage, processAvatarImage, standardizeImageSize } from '@/lib/imageUtils';
@@ -98,37 +99,71 @@ export function ScoutDialog({ open, onOpenChange, guild, onHunterRecruited }: Sc
         description: 'Creating avatar and splash art',
       });
 
-      // Generate image with Banana AI
+      // Get API key from environment
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      const imageBase64 = await generateImageWithBanana({
+      console.log('ScoutDialog: API key loaded:', apiKey ? `${apiKey.substring(0, 10)}...` : 'NOT FOUND');
+      if (!apiKey) {
+        throw new Error('VITE_GEMINI_API_KEY is not configured');
+      }
+
+      console.log('ScoutDialog: Prompt length:', imagePrompt.length);
+
+      // Generate image with Banana AI
+      const combinedBase64 = await generateImageWithBanana({
         prompt: imagePrompt,
-        apiKey
+        apiKey: apiKey
       });
 
-      // Split into avatar and splash art
-      const { avatar, splashArt } = await splitHunterImage(imageBase64);
+      toast({
+        title: 'Processing images...',
+        description: 'Splitting, standardizing, and optimizing character artwork',
+      });
+
+      // Split the combined image into avatar and splash art
+      const { avatar, splashArt } = await splitHunterImage(combinedBase64);
 
       // Standardize splash art with tight character crop
       const standardizedSplashArt = await standardizeImageSize(splashArt);
 
-      // Process avatar with proper portrait framing
+      // Process avatar with proper portrait framing (ensures head isn't cut off)
       const processedAvatar = await processAvatarImage(avatar);
 
-      // Upload images to storage
-      const avatarUrl = await uploadImageToStorage(processedAvatar, guild.user_id, 'hunter-images');
-      const splashArtUrl = await uploadImageToStorage(standardizedSplashArt, guild.user_id, 'hunter-images');
+      toast({
+        title: 'Uploading images...',
+        description: 'Storing hunter images',
+      });
+
+      // Upload both images to storage
+      const userId = guild.user_id;
+      const [avatarUrl, splashArtUrl] = await Promise.all([
+        uploadImageToStorage(processedAvatar, userId, 'hunter-images'),
+        uploadImageToStorage(standardizedSplashArt, userId, 'hunter-images'),
+      ]);
+
+      // Generate personality and backstory
+      const personality = generatePersonality();
+      const backstory = generateBackstory(
+        scoutedHunter.name,
+        scoutedHunter.class,
+        scoutedHunter.rank,
+        hunterRegion,
+        hunterGender,
+        personality
+      );
 
       // Recruit the hunter
       const result = await scoutingService.recruitScoutedHunter(guild.id, scoutedHunter.id);
 
       if (result.success && result.hunter_id) {
-        // Update the hunter with images, kingdom, region, and gender
+        // Update the hunter with images, kingdom, region, gender, personality, and backstory
         await hunterService.updateHunter(result.hunter_id, {
           avatar_url: avatarUrl,
           splash_art_url: splashArtUrl,
           kingdom: getKingdomFromRegion(hunterRegion),
           region: hunterRegion,
-          gender: hunterGender
+          gender: hunterGender,
+          personality,
+          backstory
         });
 
         toast({
