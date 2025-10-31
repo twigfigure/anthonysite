@@ -9,6 +9,7 @@ import type { AdminTab } from '../types/admin';
 import { BackstoryTab } from '../components/admin/BackstoryTab';
 import { PortalsTab } from '../components/admin/PortalsTab';
 import { GuildsTab } from '../components/admin/GuildsTab';
+import { DatabaseTab } from '../components/admin/DatabaseTab';
 
 export default function AdminDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -126,15 +127,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="database" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Database Tools</CardTitle>
-                <CardDescription>Migrations and seeding</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Coming soon...</p>
-              </CardContent>
-            </Card>
+            <DatabaseTab />
           </TabsContent>
 
           <TabsContent value="assets" className="mt-6">
