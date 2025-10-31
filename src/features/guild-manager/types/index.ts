@@ -86,6 +86,9 @@ export interface Hunter {
   level: number;
   experience: number;
   region?: string; // Kingdom/region/culture origin
+  gender?: 'Male' | 'Female'; // Hunter's gender
+  personality?: string; // Personality traits/description
+  backstory?: string; // Character backstory
   affinities: ElementalAffinity[]; // Elemental affinities
 
   // Images
@@ -374,8 +377,72 @@ export interface SkillEffects {
   [key: string]: any;
 }
 
+// Activity Log Types
+export type ActivityType =
+  | 'recruited'
+  | 'portal_started'
+  | 'portal_completed'
+  | 'portal_failed'
+  | 'died'
+  | 'respawned'
+  | 'level_up'
+  | 'rank_up'
+  | 'rank_up_attempted'
+  | 'rank_up_failed'
+  | 'skill_learned'
+  | 'equipment_equipped'
+  | 'boss_defeated';
+
+export interface HunterActivityLog {
+  id: string;
+  hunter_id: string;
+  activity_type: ActivityType;
+  description: string;
+  metadata?: Record<string, any>;
+  created_at: string;
+}
+
+// Rank-Up System Types
+export type RankUpRequirementType =
+  | 'portal_completions'    // Complete X portals of certain difficulty
+  | 'boss_defeats'          // Defeat X bosses
+  | 'skill_count'           // Learn X skills
+  | 'equipment_tier'        // Have equipment of certain rarity
+  | 'combat_power'          // Reach certain combat power
+  | 'gold_cost'             // Pay gold cost
+  | 'crystal_cost'          // Pay crystal cost
+  | 'material_cost';        // Pay materials
+
+export interface RankUpRequirement {
+  type: RankUpRequirementType;
+  description: string;
+  value: number;
+  metadata?: Record<string, any>; // For additional data like difficulty, boss_id, etc.
+}
+
+export interface RankUpConfig {
+  from_rank: HunterRank;
+  to_rank: HunterRank;
+  requirements: RankUpRequirement[];
+  success_rate: number; // 0-1 (0% to 100%)
+  failure_penalty?: {
+    lose_experience?: boolean;
+    lose_gold?: number;
+    death_chance?: number; // 0-1
+  };
+}
+
+export interface RankUpAttempt {
+  hunter_id: string;
+  from_rank: HunterRank;
+  to_rank: HunterRank;
+  success: boolean;
+  requirements_met: boolean;
+  attempted_at: string;
+}
+
 // Game Constants
-export const RANK_ORDER: HunterRank[] = ['F', 'E', 'D', 'C', 'B', 'A', 'S', 'SS', 'SSS'];
+export const RANK_ORDER: HunterRank[] = ['D', 'C', 'B', 'A', 'S', 'SS', 'SSS'];
 
 export const DIFFICULTY_ORDER: PortalDifficulty[] = [
   'Blue',
@@ -463,4 +530,20 @@ export const RARITY_COLORS: Record<EquipmentRarity, string> = {
   Epic: 'text-purple-400',
   Legendary: 'text-orange-400',
   Mythic: 'text-pink-400'
+};
+
+export const ACTIVITY_COLORS: Record<ActivityType, string> = {
+  recruited: 'text-green-400',
+  portal_started: 'text-blue-400',
+  portal_completed: 'text-green-500',
+  portal_failed: 'text-red-400',
+  died: 'text-red-500',
+  respawned: 'text-yellow-400',
+  level_up: 'text-cyan-400',
+  rank_up: 'text-purple-500',
+  rank_up_attempted: 'text-purple-400',
+  rank_up_failed: 'text-red-400',
+  skill_learned: 'text-pink-400',
+  equipment_equipped: 'text-orange-400',
+  boss_defeated: 'text-yellow-500'
 };

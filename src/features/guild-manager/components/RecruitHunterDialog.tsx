@@ -18,9 +18,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { hunterService } from '../lib/supabase';
-import { generateRandomHunterName, getStatsOnLevelUp } from '../lib/gameHelpers';
-import { generateHunterCombinedPrompt, getRandomRegion, getRandomGender, type RegionName } from '../lib/hunterImagePrompts';
+import { hunterService, activityLogService } from '../lib/supabase';
+import { generateRandomHunterName, generatePersonality, generateBackstory, generateAffinities } from '../lib/gameHelpers';
+import { generateHunterCombinedPrompt, getRandomRegion, getRandomGender } from '../lib/hunterImagePrompts';
 import { generatePassiveAbility } from '../lib/passiveAbilities';
 import { generateImageWithBanana } from '@/lib/bananaService';
 import { uploadImageToStorage } from '@/lib/supabaseStorage';
@@ -41,7 +41,7 @@ export function RecruitHunterDialog({
   onRecruit,
 }: RecruitHunterDialogProps) {
   const [name, setName] = useState('');
-  const [rank, setRank] = useState<HunterRank>('F');
+  const [rank, setRank] = useState<HunterRank>('D');
   const [hunterClass, setHunterClass] = useState<HunterClass>('Fighter');
   const [isRecruiting, setIsRecruiting] = useState(false);
   const { toast } = useToast();
@@ -123,19 +123,38 @@ export function RecruitHunterDialog({
       // Generate passive ability
       const passiveAbility = generatePassiveAbility(rank, hunterClass);
 
-      // Create hunter with images, passive ability, and region
-      await hunterService.createHunter({
+      // Generate personality and backstory
+      const personality = generatePersonality();
+      const backstory = generateBackstory(hunterClass, rank, hunterRegion, hunterGender, personality);
+
+      // Generate affinities based on rank
+      const affinities = generateAffinities(rank);
+
+      // Create hunter with images, passive ability, region, gender, personality, backstory, and affinities
+      const newHunter = await hunterService.createHunter({
         guild_id: guild.id,
         name: name.trim(),
         rank,
         class: hunterClass,
         level: 1,
         region: hunterRegion,
+        gender: hunterGender,
+        personality,
+        backstory,
+        affinities,
         avatar_url: avatarUrl,
         splash_art_url: splashArtUrl,
         innate_abilities: [JSON.stringify(passiveAbility)],
         ...baseStats,
       });
+
+      // Create recruitment log entry
+      await activityLogService.createLog(
+        newHunter.id,
+        'recruited',
+        `${name.trim()} joined the guild as a ${rank}-rank ${hunterClass} from ${hunterRegion}.`,
+        { rank, class: hunterClass, region: hunterRegion }
+      );
 
       toast({
         title: 'Hunter recruited!',
@@ -144,7 +163,7 @@ export function RecruitHunterDialog({
 
       // Reset form
       setName('');
-      setRank('F');
+      setRank('D');
       setHunterClass('Fighter');
 
       onRecruit();
@@ -196,12 +215,10 @@ export function RecruitHunterDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="F">F-Rank (Common)</SelectItem>
-                <SelectItem value="E">E-Rank (Common)</SelectItem>
-                <SelectItem value="D">D-Rank (Uncommon)</SelectItem>
+                <SelectItem value="D">D-Rank (Common)</SelectItem>
                 <SelectItem value="C">C-Rank (Uncommon)</SelectItem>
                 <SelectItem value="B">B-Rank (Rare)</SelectItem>
-                <SelectItem value="A">A-Rank (Rare)</SelectItem>
+                <SelectItem value="A">A-Rank (Epic)</SelectItem>
                 <SelectItem value="S">S-Rank (Epic)</SelectItem>
                 <SelectItem value="SS">SS-Rank (Legendary)</SelectItem>
                 <SelectItem value="SSS">SSS-Rank (Mythic)</SelectItem>
@@ -263,8 +280,6 @@ export function RecruitHunterDialog({
 // Helper function to calculate base stats
 function calculateBaseStats(rank: HunterRank, hunterClass: HunterClass) {
   const rankMultipliers: Record<HunterRank, number> = {
-    F: 0.5,
-    E: 0.7,
     D: 0.9,
     C: 1.0,
     B: 1.2,

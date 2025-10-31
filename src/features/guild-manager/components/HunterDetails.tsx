@@ -19,18 +19,26 @@ import {
   Hexagon,
   Sparkles,
   Moon,
-  FlaskConical
+  FlaskConical,
+  ShieldHalf,
+  CircleDot,
+  Footprints,
+  Hand,
+  Crown
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import type { Hunter, ElementalAffinity } from '../types';
+import type { Hunter, ElementalAffinity, HunterActivityLog, Guild } from '../types';
 import { RANK_BG_COLORS, AFFINITY_COLORS } from '../types';
 import { calculateCombatPower, getExpForLevel, getMaxLevelForRank, getMaxSpellSlotsForRank } from '../lib/gameHelpers';
-import { hunterService } from '../lib/supabase';
+import { hunterService, activityLogService } from '../lib/supabase';
 import { deleteImageFromStorage } from '@/lib/supabaseStorage';
-import { useState } from 'react';
+import { canAttemptRankUp, getRankUpStatusText } from '../lib/rankUpSystem';
+import { RankUpDialog } from './RankUpDialog';
+import { useState, useEffect } from 'react';
 
 interface HunterDetailsProps {
   hunter: Hunter;
+  guild: Guild;
   onUpdate: () => void;
 }
 
@@ -61,7 +69,7 @@ function getAffinityIcon(affinity: ElementalAffinity) {
   }
 }
 
-export function HunterDetails({ hunter, onUpdate }: HunterDetailsProps) {
+export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
   const combatPower = calculateCombatPower(hunter);
   const maxLevel = getMaxLevelForRank(hunter.rank);
   const maxSpellSlots = getMaxSpellSlotsForRank(hunter.rank);
@@ -71,6 +79,29 @@ export function HunterDetails({ hunter, onUpdate }: HunterDetailsProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [activeTab, setActiveTab] = useState<'stats' | 'spells' | 'equip' | 'profile'>('stats');
+  const [activityLogs, setActivityLogs] = useState<HunterActivityLog[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [showRankUpDialog, setShowRankUpDialog] = useState(false);
+  const canRankUp = canAttemptRankUp(hunter);
+
+  // Fetch activity logs when profile tab is active
+  useEffect(() => {
+    if (activeTab === 'profile') {
+      loadActivityLogs();
+    }
+  }, [activeTab, hunter.id]);
+
+  const loadActivityLogs = async () => {
+    setIsLoadingLogs(true);
+    try {
+      const logs = await activityLogService.getHunterLogs(hunter.id, 20);
+      setActivityLogs(logs);
+    } catch (error) {
+      console.error('Failed to load activity logs:', error);
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  };
 
   // Parse passive ability
   const passiveAbility = hunter.innate_abilities && hunter.innate_abilities.length > 0
@@ -186,6 +217,16 @@ export function HunterDetails({ hunter, onUpdate }: HunterDetailsProps) {
 
         {/* Action Buttons - Bottom Right */}
         <div className="absolute bottom-4 right-4 flex flex-col gap-2">
+          {canRankUp && (
+            <button
+              onClick={() => setShowRankUpDialog(true)}
+              className="bg-purple-600/80 hover:bg-purple-600 text-white p-2 rounded-lg transition-colors"
+              aria-label="Rank up"
+              title={getRankUpStatusText(hunter)}
+            >
+              <TrendingUp className="h-5 w-5" />
+            </button>
+          )}
           <button
             onClick={() => setIsFavorite(!isFavorite)}
             className={`${
@@ -414,17 +455,163 @@ export function HunterDetails({ hunter, onUpdate }: HunterDetailsProps) {
         )}
 
         {activeTab === 'equip' && (
-          <div className="p-8 text-center text-muted-foreground">
-            <p>Equipment content coming soon...</p>
+          <div className="space-y-2">
+            <h3 className="text-xs font-semibold text-muted-foreground">Equipment Slots</h3>
+            <div className="space-y-1.5">
+              {/* Weapon */}
+              <div className="border-2 border-dashed border-border rounded-lg p-2 flex items-center gap-2 hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors cursor-pointer">
+                <Sword className="h-5 w-5 text-muted-foreground/30 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-muted-foreground">Weapon</div>
+                </div>
+              </div>
+
+              {/* Armor */}
+              <div className="border-2 border-dashed border-border rounded-lg p-2 flex items-center gap-2 hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors cursor-pointer">
+                <ShieldHalf className="h-5 w-5 text-muted-foreground/30 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-muted-foreground">Armor</div>
+                </div>
+              </div>
+
+              {/* Helmet */}
+              <div className="border-2 border-dashed border-border rounded-lg p-2 flex items-center gap-2 hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors cursor-pointer">
+                <Crown className="h-5 w-5 text-muted-foreground/30 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-muted-foreground">Helmet</div>
+                </div>
+              </div>
+
+              {/* Boots */}
+              <div className="border-2 border-dashed border-border rounded-lg p-2 flex items-center gap-2 hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors cursor-pointer">
+                <Footprints className="h-5 w-5 text-muted-foreground/30 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-muted-foreground">Boots</div>
+                </div>
+              </div>
+
+              {/* Gloves */}
+              <div className="border-2 border-dashed border-border rounded-lg p-2 flex items-center gap-2 hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors cursor-pointer">
+                <Hand className="h-5 w-5 text-muted-foreground/30 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-muted-foreground">Gloves</div>
+                </div>
+              </div>
+
+              {/* Accessory */}
+              <div className="border-2 border-dashed border-border rounded-lg p-2 flex items-center gap-2 hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors cursor-pointer">
+                <CircleDot className="h-5 w-5 text-muted-foreground/30 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-muted-foreground">Accessory</div>
+                </div>
+              </div>
+
+              {/* Artifact */}
+              <div className="border-2 border-dashed border-border rounded-lg p-2 flex items-center gap-2 hover:border-purple-500/50 hover:bg-purple-500/5 transition-colors cursor-pointer">
+                <Sparkles className="h-5 w-5 text-muted-foreground/30 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-muted-foreground">Artifact</div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
         {activeTab === 'profile' && (
-          <div className="p-8 text-center text-muted-foreground">
-            <p>Profile content coming soon...</p>
+          <div className="p-3 space-y-3">
+            {/* Basic Info */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-bold text-purple-400">Basic Information</h3>
+              <div className="space-y-1.5">
+                {hunter.region && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Origin:</span>
+                    <span className="font-medium">{hunter.region}</span>
+                  </div>
+                )}
+                {hunter.gender && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Gender:</span>
+                    <span className="font-medium">{hunter.gender}</span>
+                  </div>
+                )}
+                {hunter.personality && (
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Personality:</span>
+                    <span className="font-medium capitalize">{hunter.personality}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Backstory */}
+            {hunter.backstory && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-bold text-purple-400">Backstory</h3>
+                <div className="bg-black/20 rounded-lg p-3">
+                  <p className="text-xs leading-relaxed text-black">
+                    {hunter.backstory}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Activity Log */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-bold text-purple-400">Activity Log</h3>
+              <div className="bg-black/20 rounded-lg p-3 max-h-64 overflow-y-auto">
+                {isLoadingLogs ? (
+                  <div className="text-center py-4">
+                    <p className="text-xs text-muted-foreground">Loading activity log...</p>
+                  </div>
+                ) : activityLogs.length > 0 ? (
+                  <div className="space-y-2">
+                    {activityLogs.map((log) => (
+                      <div key={log.id} className="border-l-2 border-purple-500/30 pl-2 py-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-xs text-black">
+                            {log.description}
+                          </p>
+                          <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                            {new Date(log.created_at).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-xs text-muted-foreground">No activities recorded yet.</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">Activities will appear here as the hunter completes missions and events.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Show placeholder if no backstory */}
+            {!hunter.backstory && !hunter.personality && (
+              <div className="py-4 text-center text-muted-foreground">
+                <p className="text-xs">No profile information available for this hunter.</p>
+                <p className="text-xs mt-1">New hunters will have backstories generated automatically.</p>
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      {/* Rank Up Dialog */}
+      <RankUpDialog
+        open={showRankUpDialog}
+        onOpenChange={setShowRankUpDialog}
+        hunter={hunter}
+        guild={guild}
+        onSuccess={onUpdate}
+      />
     </div>
   );
 }

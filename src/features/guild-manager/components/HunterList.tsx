@@ -70,7 +70,7 @@ export function HunterList({ hunters, guild, onHunterUpdate }: HunterListProps) 
       <Card className="lg:sticky lg:top-4 h-fit">
         <CardContent className="p-0">
           {selectedHunter ? (
-            <HunterDetails hunter={selectedHunter} onUpdate={onHunterUpdate} />
+            <HunterDetails hunter={selectedHunter} guild={guild} onUpdate={onHunterUpdate} />
           ) : (
             <div className="p-12 text-center">
               <User className="h-16 w-16 mx-auto text-muted-foreground mb-4" />

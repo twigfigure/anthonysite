@@ -3,17 +3,13 @@ import { supabase } from '@/lib/supabase';
 import type {
   Guild,
   Hunter,
-  Equipment,
   Portal,
   PortalTemplate,
   PortalAssignment,
   GuildBuilding,
-  Material,
   GuildMaterial,
-  SkillBook,
   HunterEquipment,
-  WorldBoss,
-  BossDefeat
+  HunterActivityLog
 } from '../types';
 
 // ============================================
@@ -469,5 +465,150 @@ export const materialService = {
 
     if (error) throw error;
     return data;
+  }
+};
+
+// ============================================
+// ACTIVITY LOG SERVICE
+// ============================================
+
+export const activityLogService = {
+  // Create a new activity log entry
+  async createLog(
+    hunterId: string,
+    activityType: string,
+    description: string,
+    metadata?: Record<string, any>
+  ) {
+    const { data, error } = await supabase
+      .from('hunter_activity_log')
+      .insert({
+        hunter_id: hunterId,
+        activity_type: activityType,
+        description,
+        metadata: metadata || {}
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  // Get activity logs for a hunter
+  async getHunterLogs(hunterId: string, limit: number = 50) {
+    const { data, error } = await supabase
+      .from('hunter_activity_log')
+      .select('*')
+      .eq('hunter_id', hunterId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return data as HunterActivityLog[];
+  },
+
+  // Get recent activity logs for all hunters in a guild
+  async getGuildLogs(guildId: string, limit: number = 100) {
+    const { data, error } = await supabase
+      .from('hunter_activity_log')
+      .select(`
+        *,
+        hunter:hunters(name, rank, class)
+      `)
+      .eq('hunters.guild_id', guildId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return data;
+  },
+
+  // Get activity logs by type
+  async getLogsByType(hunterId: string, activityType: string, limit: number = 20) {
+    const { data, error } = await supabase
+      .from('hunter_activity_log')
+      .select('*')
+      .eq('hunter_id', hunterId)
+      .eq('activity_type', activityType)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return data as HunterActivityLog[];
+  }
+};
+
+// ============================================
+// RANK-UP SERVICE
+// ============================================
+
+export const rankUpService = {
+  // Process a successful rank up
+  async processRankUp(hunterId: string, newRank: string) {
+    const { data, error } = await supabase
+      .from('hunters')
+      .update({
+        rank: newRank,
+        level: 1, // Reset to level 1 of new rank
+        experience: 0 // Reset experience
+      })
+      .eq('id', hunterId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as Hunter;
+  },
+
+  // Deduct costs from guild (gold, crystals)
+  async deductCosts(guildId: string, goldCost: number, crystalCost: number) {
+    const { data, error } = await supabase
+      .from('guilds')
+      .update({
+        gold: supabase.raw(`gold - ${goldCost}`),
+        crystals: supabase.raw(`crystals - ${crystalCost}`)
+      })
+      .eq('id', guildId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  // Apply failure penalty
+  async applyFailurePenalty(
+    hunterId: string,
+    guildId: string,
+    penalty: { lose_experience?: boolean; lose_gold?: number }
+  ) {
+    const updates: { experience?: number } = {};
+
+    if (penalty.lose_experience) {
+      updates.experience = 0;
+    }
+
+    // Update hunter
+    if (Object.keys(updates).length > 0) {
+      const { error: hunterError } = await supabase
+        .from('hunters')
+        .update(updates)
+        .eq('id', hunterId);
+
+      if (hunterError) throw hunterError;
+    }
+
+    // Deduct gold from guild if specified
+    if (penalty.lose_gold && penalty.lose_gold > 0) {
+      const { error: guildError } = await supabase
+        .from('guilds')
+        .update({
+          gold: supabase.raw(`GREATEST(0, gold - ${penalty.lose_gold})`)
+        })
+        .eq('id', guildId);
+
+      if (guildError) throw guildError;
+    }
   }
 };

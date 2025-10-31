@@ -30,14 +30,26 @@ CREATE TYPE elemental_affinity AS ENUM (
 ALTER TABLE hunters ADD COLUMN affinities elemental_affinity[] DEFAULT '{}';
 
 -- Update existing hunters with random affinities based on their rank
--- D, C, B ranks: 1 basic affinity
+-- D, C ranks: 1 basic affinity
 UPDATE hunters
 SET affinities = ARRAY[
   (ARRAY['Fire', 'Water', 'Earth', 'Wind']::elemental_affinity[])[floor(random() * 4 + 1)::int]
 ]
-WHERE rank IN ('D', 'C', 'B') AND affinities = '{}';
+WHERE rank IN ('D', 'C') AND affinities = '{}';
 
--- A rank: 2 affinities (mix of basic and occasionally special)
+-- B rank: 2 basic affinities
+UPDATE hunters
+SET affinities = (
+  SELECT ARRAY_AGG(DISTINCT aff ORDER BY aff)
+  FROM (
+    SELECT (ARRAY['Fire', 'Water', 'Earth', 'Wind']::elemental_affinity[])[floor(random() * 4 + 1)::int] as aff
+    FROM generate_series(1, 3)
+  ) sub
+  LIMIT 2
+)
+WHERE rank = 'B' AND affinities = '{}';
+
+-- A rank: 2-3 affinities (guaranteed 2, 40% chance for 3rd, can have special affinities)
 UPDATE hunters
 SET affinities = (
   SELECT ARRAY_AGG(DISTINCT aff ORDER BY aff)
@@ -46,13 +58,13 @@ SET affinities = (
       WHEN random() < 0.7 THEN (ARRAY['Fire', 'Water', 'Earth', 'Wind']::elemental_affinity[])[floor(random() * 4 + 1)::int]
       ELSE (ARRAY['Fire', 'Water', 'Earth', 'Wind', 'Ice', 'Metal', 'Holy', 'Dark', 'Lightning', 'Anima']::elemental_affinity[])[floor(random() * 10 + 1)::int]
     END) as aff
-    FROM generate_series(1, 3)
+    FROM generate_series(1, 4)
   ) sub
-  LIMIT 2
+  LIMIT (CASE WHEN random() < 0.4 THEN 3 ELSE 2 END)
 )
 WHERE rank = 'A' AND affinities = '{}';
 
--- S rank: 2 affinities (can have special affinities more commonly)
+-- S rank: 3 affinities (guaranteed 3, can have special affinities more commonly)
 UPDATE hunters
 SET affinities = (
   SELECT ARRAY_AGG(DISTINCT aff ORDER BY aff)
@@ -61,13 +73,13 @@ SET affinities = (
       WHEN random() < 0.5 THEN (ARRAY['Fire', 'Water', 'Earth', 'Wind']::elemental_affinity[])[floor(random() * 4 + 1)::int]
       ELSE (ARRAY['Fire', 'Water', 'Earth', 'Wind', 'Ice', 'Metal', 'Holy', 'Dark', 'Lightning', 'Anima']::elemental_affinity[])[floor(random() * 10 + 1)::int]
     END) as aff
-    FROM generate_series(1, 3)
+    FROM generate_series(1, 4)
   ) sub
-  LIMIT 2
+  LIMIT 3
 )
 WHERE rank = 'S' AND affinities = '{}';
 
--- SS rank: 3 affinities (very likely to have special affinities)
+-- SS rank: 3-4 affinities (guaranteed 3, 50% chance for 4th, very likely to have special affinities)
 UPDATE hunters
 SET affinities = (
   SELECT ARRAY_AGG(DISTINCT aff ORDER BY aff)
@@ -76,13 +88,13 @@ SET affinities = (
       WHEN random() < 0.3 THEN (ARRAY['Fire', 'Water', 'Earth', 'Wind']::elemental_affinity[])[floor(random() * 4 + 1)::int]
       ELSE (ARRAY['Fire', 'Water', 'Earth', 'Wind', 'Ice', 'Metal', 'Holy', 'Dark', 'Lightning', 'Anima']::elemental_affinity[])[floor(random() * 10 + 1)::int]
     END) as aff
-    FROM generate_series(1, 4)
+    FROM generate_series(1, 5)
   ) sub
-  LIMIT 3
+  LIMIT (CASE WHEN random() < 0.5 THEN 4 ELSE 3 END)
 )
 WHERE rank = 'SS' AND affinities = '{}';
 
--- SSS rank: 3 affinities (guaranteed to have at least one special affinity)
+-- SSS rank: 4 affinities (guaranteed 4, very likely to have special affinities)
 UPDATE hunters
 SET affinities = (
   SELECT ARRAY_AGG(DISTINCT aff ORDER BY aff)
@@ -91,9 +103,9 @@ SET affinities = (
       WHEN random() < 0.2 THEN (ARRAY['Fire', 'Water', 'Earth', 'Wind']::elemental_affinity[])[floor(random() * 4 + 1)::int]
       ELSE (ARRAY['Fire', 'Water', 'Earth', 'Wind', 'Ice', 'Metal', 'Holy', 'Dark', 'Lightning', 'Anima']::elemental_affinity[])[floor(random() * 10 + 1)::int]
     END) as aff
-    FROM generate_series(1, 4)
+    FROM generate_series(1, 5)
   ) sub
-  LIMIT 3
+  LIMIT 4
 )
 WHERE rank = 'SSS' AND affinities = '{}';
 

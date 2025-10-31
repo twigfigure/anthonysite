@@ -50,8 +50,8 @@ export function getRandomRegion(): RegionName {
 }
 
 // Helper to randomly determine gender
-export function getRandomGender(): 'male' | 'female' {
-  return Math.random() < 0.5 ? 'male' : 'female';
+export function getRandomGender(): 'Male' | 'Female' {
+  return Math.random() < 0.5 ? 'Male' : 'Female';
 }
 
 // Visual themes based on rank
@@ -116,7 +116,7 @@ const RANK_BACKGROUNDS: Record<HunterRank, string> = {
 };
 
 // Generate unified prompt for both avatar and splash art in one image
-export function generateHunterCombinedPrompt(params: HunterPromptParams, region?: RegionName, gender?: 'male' | 'female'): string {
+export function generateHunterCombinedPrompt(params: HunterPromptParams, region?: RegionName, gender?: 'Male' | 'Female'): string {
   const { name, rank, hunterClass } = params;
 
   // If no region specified, pick a random one
