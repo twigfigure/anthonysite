@@ -175,10 +175,10 @@ export function RecruitHunterDialog({
 
       onRecruit();
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Failed to recruit hunter',
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
         variant: 'destructive',
       });
     } finally {

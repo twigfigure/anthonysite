@@ -215,3 +215,39 @@ export function getRegionById(kingdomId: string, regionId: string): RegionData |
   const kingdom = getKingdomById(kingdomId);
   return kingdom?.regions.find(r => r.id === regionId);
 }
+
+// Name pools by kingdom for culturally appropriate hunter names
+const KINGDOM_NAMES: Record<string, { first: string[], last: string[] }> = {
+  'northern-empire': {
+    first: ['Katya', 'Viktor', 'Anya', 'Dmitri', 'Sasha', 'Erik', 'Irina', 'Nikolai', 'Svetlana', 'Boris'],
+    last: ['Volkov', 'Petrov', 'Sokolov', 'Kuznetsov', 'Ivanov', 'Frost', 'Storm', 'Iron', 'Steel', 'Winter']
+  },
+  'eastern-dynasty': {
+    first: ['Li', 'Wei', 'Chen', 'Yuki', 'Sakura', 'Kenji', 'Mei', 'Takeshi', 'Hua', 'Ryu'],
+    last: ['Zhang', 'Wang', 'Liu', 'Tanaka', 'Sato', 'Yang', 'Huang', 'Zhao', 'Suzuki', 'Wu']
+  },
+  'western-kingdom': {
+    first: ['Edmund', 'Isabella', 'Roland', 'Elise', 'Arthur', 'Margaret', 'William', 'Eleanor', 'Richard', 'Victoria'],
+    last: ['Lancaster', 'Sterling', 'Blackwood', 'Ashford', 'Thornton', 'Fairfax', 'Whitehall', 'Kingsley', 'Redford', 'Windsor']
+  },
+  'southern-tribes': {
+    first: ['Zuri', 'Kwame', 'Nia', 'Thabo', 'Amara', 'Rashid', 'Makena', 'Jabari', 'Aisha', 'Kofi'],
+    last: ['Okafor', 'Mwangi', 'Diallo', 'Khumalo', 'Nkosi', 'Tembo', 'Adeyemi', 'Kamau', 'Mensah', 'Banda']
+  },
+  'central-republic': {
+    first: ['Viktor', 'Amira', 'Jackson', 'Leyla', 'Marcus', 'Sofia', 'Arjun', 'Emma', 'Chen', 'Isabella'],
+    last: ['Steel', 'Brooks', 'Hayes', 'Rivera', 'Patel', 'Martinez', 'Anderson', 'Kim', 'Silva', 'Cohen']
+  },
+  'mystic-enclave': {
+    first: ['Indra', 'Khalid', 'Soraya', 'Ravi', 'Zara', 'Akira', 'Nyx', 'Cyrus', 'Luna', 'Theron'],
+    last: ['Shadowmere', 'Stormweaver', 'Voidcaller', 'Moonwhisper', 'Stargazer', 'Runehart', 'Spellborn', 'Nightshade', 'Arclight', 'Fateseeker']
+  }
+};
+
+// Generate a random name appropriate for the kingdom
+export function generateKingdomName(kingdomId: string): string {
+  const namePool = KINGDOM_NAMES[kingdomId] || KINGDOM_NAMES['central-republic'];
+  const firstName = namePool.first[Math.floor(Math.random() * namePool.first.length)];
+  const lastName = namePool.last[Math.floor(Math.random() * namePool.last.length)];
+  return `${firstName} ${lastName}`;
+}

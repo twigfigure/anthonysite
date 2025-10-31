@@ -140,7 +140,7 @@ export function ScoutDialog({ open, onOpenChange, guild, onHunterRecruited }: Sc
       const errorMessage = error instanceof Error
         ? error.message
         : typeof error === 'object' && error !== null && 'message' in error
-        ? String((error as any).message)
+        ? String((error as Record<string, unknown>).message)
         : 'An unknown error occurred';
       toast({
         title: 'Recruitment Failed',

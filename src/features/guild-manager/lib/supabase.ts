@@ -73,6 +73,33 @@ export const guildService = {
 
     if (error) throw error;
     return data;
+  },
+
+  // Delete guild and all associated data (hunters, assignments, etc.)
+  async deleteGuild(guildId: string) {
+    // Delete all hunters (which cascades to equipment, assignments, etc.)
+    const { error: huntersError } = await supabase
+      .from('hunters')
+      .delete()
+      .eq('guild_id', guildId);
+
+    if (huntersError) throw huntersError;
+
+    // Delete scouted hunters
+    const { error: scoutedError } = await supabase
+      .from('scouted_hunters')
+      .delete()
+      .eq('guild_id', guildId);
+
+    if (scoutedError) throw scoutedError;
+
+    // Delete the guild itself
+    const { error: guildError } = await supabase
+      .from('guilds')
+      .delete()
+      .eq('id', guildId);
+
+    if (guildError) throw guildError;
   }
 };
 
@@ -199,7 +226,7 @@ export const hunterService = {
 
 export const portalService = {
   // Get available portals for a guild's world level
-  async getAvailablePortals(guildId: string, worldLevel: number) {
+  async getAvailablePortals(guildId: string, _worldLevel: number) {
     const { data, error } = await supabase
       .from('portals')
       .select(`
@@ -291,7 +318,7 @@ export const assignmentService = {
     rewards: {
       gold: number;
       experience: number;
-      loot: any[];
+      loot: LootDrop[];
     }
   ) {
     const { data, error } = await supabase
@@ -594,7 +621,7 @@ export const activityLogService = {
     hunterId: string,
     activityType: string,
     description: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ) {
     const { data, error } = await supabase
       .from('hunter_activity_log')
@@ -925,7 +952,7 @@ export const scoutingService = {
     };
 
     const signing_fee = rankFees[selectedRank] || 500;
-    const base_salary = getWeeklyUpkeepCost(selectedRank as any);
+    const base_salary = getWeeklyUpkeepCost(selectedRank as HunterRank);
 
     // Generate name
     const firstNames = ['Aria', 'Drake', 'Luna', 'Kai', 'Nova', 'Rex', 'Zara', 'Finn', 'Sage', 'Blaze'];
@@ -933,14 +960,14 @@ export const scoutingService = {
     const name = `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
 
     // Generate affinities and passive ability based on rank
-    const affinities = generateAffinities(selectedRank as any);
-    const passiveAbility = generatePassiveAbility(selectedRank as any, selectedClass as any);
+    const affinities = generateAffinities(selectedRank as HunterRank);
+    const passiveAbility = generatePassiveAbility(selectedRank as HunterRank, selectedClass as HunterClass);
 
     return {
       guild_id: guildId,
       name,
-      rank: selectedRank as any,
-      class: selectedClass as any,
+      rank: selectedRank as HunterRank,
+      class: selectedClass as HunterClass,
       level: baseLevel,
       strength,
       agility,
