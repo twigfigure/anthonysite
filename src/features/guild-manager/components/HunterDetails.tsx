@@ -74,10 +74,11 @@ export function HunterDetails({ hunter, onUpdate }: HunterDetailsProps) {
 
       // Trigger refresh
       onUpdate();
-    } catch (error: any) {
+    } catch (error) {
+      const err = error as Error;
       toast({
         title: 'Failed to delete hunter',
-        description: error.message,
+        description: err.message,
         variant: 'destructive',
       });
     } finally {
@@ -94,7 +95,7 @@ export function HunterDetails({ hunter, onUpdate }: HunterDetailsProps) {
           <img
             src={hunter.splash_art_url}
             alt={`${hunter.name} splash art`}
-            className="w-full h-full object-contain"
+            className="w-full h-full object-cover"
           />
         ) : (
           <div className="flex items-center justify-center">

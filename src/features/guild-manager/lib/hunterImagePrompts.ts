@@ -112,7 +112,7 @@ const RANK_BACKGROUNDS: Record<HunterRank, string> = {
   A: 'purple gradient background (from deep purple to blue)',
   S: 'golden gradient background (from bright yellow to orange)',
   SS: 'vibrant pink-purple gradient background (from purple to pink to red)',
-  SSS: 'rainbow legendary gradient background (from red to orange to yellow)',
+  SSS: 'holographic galactic background with cosmic nebula effects, deep space purples, blues, and magentas with shimmering starlight, iridescent holographic shimmer overlays creating a transcendent divine atmosphere',
 };
 
 // Generate unified prompt for both avatar and splash art in one image
@@ -142,8 +142,10 @@ CRITICAL LAYOUT REQUIREMENTS:
 - LEFT HALF (50% of total width): Portrait/Avatar view ONLY - character must fit entirely within this left half
 - RIGHT HALF (50% of total width): Full-body splash art ONLY - character must fit entirely within this right half
 - Both views show the EXACT SAME CHARACTER with identical features, outfit, and design
-- BACKGROUND: ${backgroundGradient} - this is ESSENTIAL for rarity indication
-- The background gradient should be smooth and professional
+- BACKGROUND: ${backgroundGradient} - MUST fill the ENTIRE canvas from edge to edge, top to bottom
+- The gradient background MUST extend to ALL FOUR EDGES of the image canvas
+- Background should be behind the character, filling every pixel of the image
+- The gradient should be smooth, professional, and NEVER have black bars or cutoffs
 - Clear vertical line dividing the two halves at the exact center
 - The character design MUST be consistent between both sides
 - IMPORTANT: Each character must stay COMPLETELY within their respective half - no overlap across the center line

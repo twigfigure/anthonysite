@@ -128,12 +128,24 @@ export async function standardizeImageSize(imageDataUrl: string): Promise<string
       const cropMaxX = Math.min(img.width - 1, Math.ceil(maxX + paddingAmount));
       const cropMaxY = Math.min(img.height - 1, Math.ceil(maxY + paddingAmount));
 
-      const cropWidth = cropMaxX - cropMinX + 1;
+      let cropWidth = cropMaxX - cropMinX + 1;
       const cropHeight = cropMaxY - cropMinY + 1;
 
-      // Create tightly cropped canvas
+      // Force consistent narrow aspect ratio (1:2) for all splash art
+      // This ensures all characters fill the height container, with width overflow
+      const targetAspectRatio = 1 / 2; // width:height
+
+      const targetWidth = cropHeight * targetAspectRatio;
+
+      if (cropWidth > targetWidth) {
+        // Character is wider than target, aggressively crop from sides
+        cropWidth = targetWidth;
+      }
+      // If character is narrower than target, keep original width to avoid padding
+
+      // Create portrait-aspect canvas
       const canvas = document.createElement('canvas');
-      canvas.width = cropWidth;
+      canvas.width = Math.floor(cropWidth);
       canvas.height = cropHeight;
       const ctx = canvas.getContext('2d');
 
@@ -142,10 +154,14 @@ export async function standardizeImageSize(imageDataUrl: string): Promise<string
         return;
       }
 
+      // Center character horizontally if we're cropping width
+      const drawX = cropWidth < (cropMaxX - cropMinX + 1) ?
+        (cropMinX + cropMaxX) / 2 - cropWidth / 2 : cropMinX;
+
       // Draw cropped character
       ctx.drawImage(
         img,
-        cropMinX, cropMinY, cropWidth, cropHeight,
+        drawX, cropMinY, cropWidth, cropHeight,
         0, 0, cropWidth, cropHeight
       );
 
@@ -230,29 +246,68 @@ export async function processAvatarImage(imageDataUrl: string): Promise<string> 
       const isFullBody = aspectRatio > 1.5; // Tall aspect ratio = likely full body
 
       const finalMinY = minY;
-      let finalMaxY = maxY;
+      let finalMaxY;
 
       if (isFullBody) {
-        // For full-body images, aggressively crop to upper 45% (tight head + shoulders)
-        const upperBodyHeight = contentHeight * 0.45;
+        // For full-body images, crop to upper 55% (focus on head and shoulders)
+        const upperBodyHeight = contentHeight * 0.55;
         finalMaxY = Math.floor(minY + upperBodyHeight);
       } else {
-        // For portrait images, crop to upper 50% for tight close-up
-        const portraitHeight = contentHeight * 0.50;
+        // For portrait images, crop to upper 65% to show face prominently
+        const portraitHeight = contentHeight * 0.65;
         finalMaxY = Math.floor(minY + portraitHeight);
       }
 
-      // For tight portrait framing, minimal padding (8% above, 3% sides, 3% below)
-      const adjustedHeight = finalMaxY - finalMinY + 1;
-      const topPadding = adjustedHeight * 0.08;
-      const sidePadding = contentWidth * 0.03;
-      const bottomPadding = adjustedHeight * 0.03;
+      // Safety check: ensure we have at least some minimum height
+      const minAcceptableHeight = 50; // Minimum 50px height
+      if (finalMaxY - finalMinY < minAcceptableHeight) {
+        // If crop would be too small, use more of the original
+        finalMaxY = Math.min(maxY, finalMinY + Math.floor(contentHeight * 0.70));
+      }
 
-      // Calculate final crop area with padding
+      // For portrait framing focused on face (3% above for very tight headroom, 5% sides, 12% below for shoulders)
+      const adjustedHeight = finalMaxY - finalMinY + 1;
+      const topPadding = adjustedHeight * 0.03;
+      const sidePadding = contentWidth * 0.05;
+      const bottomPadding = adjustedHeight * 0.12;
+
+      // Calculate initial crop area with padding
       const cropMinX = Math.max(0, minX - sidePadding);
       const cropMaxX = Math.min(img.width - 1, maxX + sidePadding);
-      const cropMinY = Math.max(0, finalMinY - topPadding);
-      const cropMaxY = Math.min(img.height - 1, finalMaxY + bottomPadding);
+      let cropMinY = Math.max(0, finalMinY - topPadding);
+      let cropMaxY = Math.min(img.height - 1, finalMaxY + bottomPadding);
+
+      // Smart vertical centering: detect if there's excessive empty space above the character
+      // Check the top 25% of the cropped area for substantial content
+      const initialCropHeight = cropMaxY - cropMinY + 1;
+      const topCheckHeight = Math.floor(initialCropHeight * 0.25);
+      const checkWidth = Math.floor(cropMaxX - cropMinX + 1);
+
+      // Count pixels with content in top area
+      let topContentPixels = 0;
+      const totalCheckPixels = topCheckHeight * checkWidth;
+
+      for (let y = Math.floor(cropMinY); y < Math.floor(cropMinY + topCheckHeight); y++) {
+        for (let x = Math.floor(cropMinX); x < Math.floor(cropMaxX); x++) {
+          if (y >= 0 && y < img.height && x >= 0 && x < img.width) {
+            const i = (y * img.width + x) * 4;
+            const a = data[i + 3];
+            if (a > 10) {
+              topContentPixels++;
+            }
+          }
+        }
+      }
+
+      // Calculate percentage of content in top area
+      const topContentPercentage = topContentPixels / totalCheckPixels;
+
+      // If top 25% has less than 5% content, shift the crop down
+      if (topContentPercentage < 0.05 && cropMaxY < img.height - 1) {
+        const shiftAmount = Math.floor(initialCropHeight * 0.20); // Shift down by 20%
+        cropMinY = Math.min(img.height - initialCropHeight, cropMinY + shiftAmount);
+        cropMaxY = Math.min(img.height - 1, cropMinY + initialCropHeight);
+      }
 
       const cropWidth = cropMaxX - cropMinX + 1;
       const cropHeight = cropMaxY - cropMinY + 1;
