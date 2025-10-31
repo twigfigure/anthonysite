@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabase';
 import type { AdminTab } from '../types/admin';
+import { BackstoryTab } from '../components/admin/BackstoryTab';
 
 export default function AdminDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -111,15 +112,7 @@ export default function AdminDashboard() {
           </TabsList>
 
           <TabsContent value="backstory" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>World Backstory</CardTitle>
-                <CardDescription>Kingdoms, regions, and lore</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Coming soon...</p>
-              </CardContent>
-            </Card>
+            <BackstoryTab />
           </TabsContent>
 
           <TabsContent value="portals" className="mt-6">
