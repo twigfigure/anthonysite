@@ -399,13 +399,54 @@ export function compareRarities(rarity1: EquipmentRarity, rarity2: EquipmentRari
 // ============================================
 
 const FIRST_NAMES = [
-  'Jin', 'Sung', 'Min', 'Hae', 'Yuri', 'Kai', 'Aria', 'Leo', 'Nova', 'Zara',
-  'Ryu', 'Akira', 'Hana', 'Kira', 'Sora', 'Ren', 'Maya', 'Atlas', 'Luna', 'Orion'
+  // Fire Emblem inspired
+  'Eirika', 'Ephraim', 'Lysithea', 'Dimitri', 'Edelgard', 'Claude', 'Marth', 'Roy', 'Lyn', 'Hector',
+  'Celica', 'Alm', 'Ike', 'Micaiah', 'Lucina', 'Chrom', 'Robin', 'Corrin', 'Byleth', 'Soren',
+  // Final Fantasy inspired
+  'Celes', 'Terra', 'Cloud', 'Tifa', 'Aerith', 'Zidane', 'Vivi', 'Tidus', 'Yuna', 'Auron',
+  'Lightning', 'Noctis', 'Ignis', 'Prompto', 'Gladio', 'Vaan', 'Balthier', 'Fran', 'Ashe', 'Ramza',
+  // Suikoden inspired
+  'Viktor', 'Flik', 'Odessa', 'Gremio', 'Kasumi', 'Futch', 'Valeria', 'Kahn', 'Lorelai', 'Georg',
+  'Eike', 'Lazlo', 'Nanami', 'Jowy', 'Riou', 'Lucia', 'Thomas', 'Hugo', 'Chris', 'Nash',
+  // Unicorn Overlord inspired
+  'Alain', 'Scarlett', 'Clive', 'Travis', 'Berenice', 'Josef', 'Melisandre', 'Morard', 'Rosalinde', 'Yunifi',
+  'Hodrick', 'Adel', 'Primm', 'Bruno', 'Dinah', 'Lhinalagos', 'Elgor', 'Rolf', 'Virginia', 'Tatiana',
+  // Romance of the Three Kingdoms inspired (Chinese)
+  'Zhao', 'Guan', 'Zhang', 'Zhuge', 'Cao', 'Liu', 'Sun', 'Zhou', 'Xiahou', 'Sima',
+  'Lu', 'Ma', 'Huang', 'Wei', 'Gan', 'Xu', 'Dian', 'Pang', 'Jiang', 'Diao',
+  // Japanese inspired
+  'Akira', 'Haruto', 'Ren', 'Kaito', 'Yuki', 'Hana', 'Sakura', 'Mei', 'Riku', 'Sora',
+  'Takeshi', 'Kenji', 'Masato', 'Hiroshi', 'Ayame', 'Yuri', 'Hikari', 'Natsuki', 'Shinji', 'Ryota',
+  // Arabic/Persian inspired
+  'Zahir', 'Rashid', 'Soraya', 'Farah', 'Malik', 'Amira', 'Khalid', 'Leyla', 'Tariq', 'Zara',
+  // African inspired
+  'Amara', 'Kofi', 'Zuri', 'Jabari', 'Nia', 'Kwame', 'Aisha', 'Thabo', 'Imani', 'Chioma',
+  // South Asian inspired
+  'Arjun', 'Priya', 'Ravi', 'Maya', 'Vikram', 'Anjali', 'Kiran', 'Indra', 'Rohan', 'Kavya',
+  // Mesoamerican fantasy inspired
+  'Itzal', 'Xochitl', 'Tenoch', 'Citlali', 'Atl', 'Nenetl', 'Yaretzi', 'Cualli', 'Tlalli', 'Zyanya'
 ];
 
 const LAST_NAMES = [
-  'Woo', 'Kim', 'Park', 'Lee', 'Choi', 'Stone', 'Frost', 'Storm', 'Blade', 'Shadow',
-  'Steel', 'Moon', 'Star', 'Wind', 'Fire', 'Rain', 'Night', 'Dawn', 'Wild', 'Hart'
+  // Fantasy surnames inspired by the games
+  'Renais', 'Blaiddyd', 'Hresvelg', 'Riegan', 'Lowell', 'Ostia', 'Pherae', 'Caelin', 'Grado', 'Frelia',
+  'Leonster', 'Chalphy', 'Greil', 'Daein', 'Crimea', 'Valla', 'Hoshido', 'Nohr', 'Eisner', 'Galatea',
+  'Strife', 'Lockhart', 'Gainsborough', 'Tribal', 'Crescent', 'Highwind', 'Leonhart', 'Almasy', 'Trepe', 'Kinneas',
+  'Farrell', 'Beoulve', 'Ashelia', 'Bunansa', 'Nabaat', 'Caelum', 'Argentum', 'Scientia', 'Amicitia', 'Izunia',
+  'McDohl', 'Atreides', 'Silverberg', 'Blight', 'Falenas', 'Harmonia', 'Toran', 'Dunan', 'Zexen', 'Karaya',
+  'Corvin', 'Valmore', 'Rossini', 'Gloucester', 'Drakengard', 'Ironhelm', 'Elfhelm', 'Bastoria', 'Drakenhold', 'Sanctum',
+  // Chinese/Three Kingdoms inspired
+  'Yun', 'Bei', 'Liang', 'Quan', 'Meng', 'Wen', 'Long', 'Feng', 'Shan', 'Xing',
+  // Japanese inspired
+  'Hayashi', 'Tanaka', 'Fujiwara', 'Takahashi', 'Nakamura', 'Yamamoto', 'Kobayashi', 'Watanabe', 'Sato', 'Ito',
+  // Arabic/Persian inspired
+  'al-Rashid', 'al-Zahir', 'ibn-Malik', 'al-Noor', 'al-Qamar', 'al-Shams', 'ibn-Tariq', 'al-Farid', 'al-Aziz', 'ibn-Khalid',
+  // African inspired
+  'Mbeki', 'Okonkwo', 'Adeyemi', 'Nkrumah', 'Chinua', 'Tendai', 'Okoro', 'Mwangi', 'Bantu', 'Koroma',
+  // South Asian inspired
+  'Patel', 'Sharma', 'Kumar', 'Singh', 'Rao', 'Mehta', 'Gupta', 'Reddy', 'Desai', 'Varma',
+  // Mesoamerican fantasy inspired
+  'Xolotl', 'Tepeyac', 'Tonalli', 'Mixtli', 'Nahuatl', 'Coatl', 'Itzel', 'Yaotl', 'Necalli', 'Tlatoani'
 ];
 
 export function generateRandomHunterName(): string {
@@ -484,16 +525,30 @@ const PERSONALITY_TRAITS = [
 ];
 
 const REGIONS = [
-  'the Northern Tundra',
-  'the Eastern Highlands',
-  'the Southern Deserts',
-  'the Western Isles',
-  'the Imperial Capital',
-  'the Frontier Lands',
-  'the Ancient Forest Kingdom',
-  'the Coastal Cities',
-  'the Mountain Strongholds',
-  'the Merchant Republics'
+  // Northern Empire
+  'Frostspire Peaks',
+  'Glacial Wastes',
+  'Tundra Borderlands',
+  // Eastern Dynasty
+  'Crimson Highlands',
+  'Jade River Valley',
+  'Shadow Mountains',
+  // Western Kingdom
+  'Emerald Heartlands',
+  'Silverpine Forests',
+  'Stormcoast',
+  // Southern Tribes
+  'Scorched Badlands',
+  'Savanna Territories',
+  'Red Rock Canyons',
+  // Central Republic
+  'Irongate District',
+  'Trade Routes',
+  'Coal Valleys',
+  // Mystic Enclave
+  'Aethermoor Heights',
+  'The Shadowfen',
+  'Runestone Wastes'
 ];
 
 // Generate random personality trait

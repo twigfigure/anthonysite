@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 .env
+.worktrees/
 
 # OAuth credentials
 client_secret*.json

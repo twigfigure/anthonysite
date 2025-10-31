@@ -53,14 +53,21 @@ This design expands the Guild Manager game world from generic portal names to a 
 
 #### Government & Culture
 - **Type:** Militaristic Autocracy
-- **Supreme Ruler:** **Frost Marshal Valeria Ironhand** (47, Female)
+- **Supreme Ruler:** **Frost Marshal Katya Volkov** (47, Female)
+  - **Rank:** SSS
+  - **Affinities:** Ice, Metal, Wind
+  - **Innate Abilities:**
+    - **Frozen Command**: Allies within range gain +30% defense in icy terrain
+    - **Winter's Wrath**: AOE ice attack that slows all enemies by 50% for 10 seconds
+    - **Frostborn Resilience**: Immune to cold damage, regenerates HP in freezing conditions
+    - **Marshal's Authority**: Inspires nearby troops, reducing their death chance by 40%
   - Battle-scarred veteran who rose through ranks on merit
   - Lost her left eye during the Border Skirmishes 15 years ago
   - Ruthlessly efficient, believes weakness invites death
   - Famous quote: "We do not pray for survival. We fight for it."
 
 - **Capital:** Ironhold (fortress-city carved into glacial mountains)
-- **Culture:** Discipline, martial prowess, survival through strength. Citizens serve mandatory military service. Honor through battle.
+- **Culture:** Discipline, martial prowess, survival through strength. Citizens serve mandatory military service. Honor through battle. Northern European/Slavic cultural influences.
 - **Color Palette:** Deep navy blues, silver, white, icy blues
 - **Theme:** Cold, regal, disciplined military aesthetic
 
@@ -73,7 +80,13 @@ This design expands the Guild Manager game world from generic portal names to a 
 
 ##### Region 1: Frostspire Peaks
 - **Description:** Jagged mountains with eternal snow, military fortresses guard the passes
-- **Regional Leader:** **Commandant Theron Stonebreaker** (52, Male)
+- **Regional Leader:** **Commandant Erik Bjornsson** (52, Male)
+  - **Rank:** SS
+  - **Affinities:** Ice, Earth
+  - **Innate Abilities:**
+    - **Mountain's Endurance**: +50% HP when fighting at high altitude
+    - **Avalanche Strike**: Devastating area attack that buries enemies
+    - **Northern Fortitude**: Immune to exhaustion and cold weather penalties
   - Commands the Northern Watch garrison
   - Career soldier, never left the mountains his entire life
   - Known for training the empire's elite mountain troops
@@ -88,7 +101,13 @@ This design expands the Guild Manager game world from generic portal names to a 
 
 ##### Region 2: Glacial Wastes
 - **Description:** Frozen tundra containing ancient pre-empire ruins
-- **Regional Leader:** **High Warden Iskra the Cold** (61, Female)
+- **Regional Leader:** **High Warden Anya Morozova** (61, Female)
+  - **Rank:** SS
+  - **Affinities:** Ice, Dark, Anima
+  - **Innate Abilities:**
+    - **Spirit Pact**: Can summon ice spirits to fight alongside her
+    - **Ancient Knowledge**: Deciphers runes and ancient magic, gains bonus stats in ruins
+    - **Frozen Soul**: Emotions suppressed, immune to fear and charm effects
   - Former archaeologist turned military officer
   - Obsessed with uncovering pre-empire ruins
   - Cold, calculating strategist
@@ -103,7 +122,13 @@ This design expands the Guild Manager game world from generic portal names to a 
 
 ##### Region 3: Tundra Borderlands
 - **Description:** Transitional zone, contested territory with frequent skirmishes
-- **Regional Leader:** **Border Marshal Garret Frostborn** (39, Male)
+- **Regional Leader:** **Border Marshal Dmitri Stormforge** (39, Male)
+  - **Rank:** S
+  - **Affinities:** Wind, Lightning, Fire
+  - **Innate Abilities:**
+    - **Tactical Genius**: Predicts enemy movements, +40% evasion
+    - **Inspiring Presence**: Allied troops fight with increased morale and damage
+    - **Storm's Fury**: Channels lightning through his weapon for devastating strikes
   - Youngest marshal in empire history
   - Brilliant tactician, earned rank by stopping three invasions
   - Charismatic leader, inspires fierce loyalty
@@ -130,18 +155,27 @@ This design expands the Guild Manager game world from generic portal names to a 
 
 #### Government & Culture
 - **Type:** Imperial Monarchy with Bureaucratic Meritocracy
-- **Supreme Ruler:** **Celestial Empress Li Xuanying** (35, Female)
+- **Supreme Ruler:** **Celestial Empress Li Yuki** (35, Female)
+  - **Rank:** SSS
+  - **Affinities:** Fire, Lightning, Holy, Anima
+  - **Innate Abilities:**
+    - **Phoenix Rebirth**: Upon death, revives once per day with 50% HP in flames
+    - **Celestial Mandate**: All dynasty citizens fight harder in her presence (+25% all stats)
+    - **Heavenly Strike**: Her attacks ignore 50% of enemy defenses
+    - **Cultivation Mastery**: Gains experience 3x faster than normal hunters
   - 8th generation of the Golden Phoenix Dynasty
   - Martial cultivation prodigy, achieved enlightenment at age 20
   - Struggles between tradition and modernizing the dynasty
   - Known for her beauty and terrifying combat prowess
 
-- **Archmage Council (Advisors):**
-  - **Grand Scholar Wei Longwei** (73, Male) - Chief advisor, master strategist
-  - **Dragon General Zhao Feng** (56, Male) - Supreme commander of dynasty armies
+- **Imperial Council (Advisors):**
+  - **Grand Scholar Wei Tanaka** (73, Male) - Chief advisor, master strategist
+    - **Rank:** SS | **Affinities:** Water, Wind, Anima
+  - **Dragon General Zhao Nakamura** (56, Male) - Supreme commander of dynasty armies
+    - **Rank:** SSS | **Affinities:** Fire, Metal, Earth
 
 - **Capital:** Crimson Lotus City
-- **Culture:** Honor, tradition, scholarly pursuits, ancestor worship. Social mobility through imperial examinations. Martial arts and cultivation of inner power.
+- **Culture:** Honor, tradition, scholarly pursuits, ancestor worship. Social mobility through imperial examinations. Martial arts and cultivation of inner power. East Asian cultural influences blending Chinese and Japanese traditions.
 - **Color Palette:** Crimson reds, gold, black, jade greens
 - **Theme:** Elegant, traditional, honor-bound warrior aesthetic
 
@@ -155,7 +189,13 @@ This design expands the Guild Manager game world from generic portal names to a 
 
 ##### Region 1: Crimson Highlands
 - **Description:** Rolling red-clay hills dotted with ancient monasteries and temples
-- **Regional Leader:** **Governor-General Chen Ruoxi** (44, Female)
+- **Regional Leader:** **Governor-General Chen Sakura** (44, Female)
+  - **Rank:** S
+  - **Affinities:** Fire, Earth, Holy
+  - **Innate Abilities:**
+    - **Scholar's Wisdom**: Reduces corruption in her region by 80%
+    - **Crimson Blade**: Master swordswoman, dual-wields with perfect precision
+    - **Administrative Genius**: Increases resource generation in her territory by 30%
   - Highest-scoring imperial examination in 50 years
   - Master administrator, reformed corrupt provincial system
   - Secretly funds reformist movements
@@ -170,7 +210,7 @@ This design expands the Guild Manager game world from generic portal names to a 
 
 ##### Region 2: Jade River Valley
 - **Description:** Fertile farmland along the mighty Jade River, empire's breadbasket
-- **Regional Leader:** **River Magistrate Huang Shuren** (58, Male)
+- **Regional Leader:** **River Magistrate Huang Kenji** (58, Male)
   - Third-generation magistrate, family has served for 120 years
   - Kind-hearted but ineffective against corruption
   - Beloved by farmers, but criminals exploit his mercy
@@ -185,7 +225,7 @@ This design expands the Guild Manager game world from generic portal names to a 
 
 ##### Region 3: Shadow Mountains
 - **Description:** Misty mountain range where rebels and hermits hide
-- **Regional Leader:** **Mountain Warlord "Iron Fang" Liu Bao** (42, Male)
+- **Regional Leader:** **Mountain Warlord Liu "Iron Fang" Takeshi** (42, Male)
   - Former rebel who negotiated semi-autonomous status for mountain tribes
   - Only recognizes Empress's authority, not dynasty bureaucracy
   - Fierce warrior with network of spies throughout dynasty
@@ -296,18 +336,18 @@ This design expands the Guild Manager game world from generic portal names to a 
 
 #### Government & Culture
 - **Type:** Confederation of Tribal Chiefdoms
-- **Supreme Ruler:** **Sun Chieftain Amara Firewalker** (40, Female)
+- **Supreme Ruler:** **Sun Chieftain Zuri Mbeki** (40, Female)
   - Elected 3 years ago after proving her worth in tribal trials
   - Powerful shaman who can commune with ancestral spirits
   - Walks barefoot on hot coals during rituals (hence name)
   - Working to unite tribes more firmly while preserving independence
 
 - **Elder Council (Advisors):**
-  - **Elder Kito the Wise** (78, Male) - Oldest living shaman, keeper of oral histories
-  - **War Leader Jabari Spearbreaker** (45, Male) - Commands unified tribal warriors
+  - **Elder Kwame the Wise** (78, Male) - Oldest living shaman, keeper of oral histories
+  - **War Leader Jabari Okonkwo** (45, Male) - Commands unified tribal warriors
 
 - **Capital:** No fixed capital (council meets at sacred sites)
-- **Culture:** Oral tradition, spiritual connection to land and ancestors, warrior society, nomadic/semi-nomadic lifestyle. Strength and wisdom equally valued.
+- **Culture:** Oral tradition, spiritual connection to land and ancestors, warrior society, nomadic/semi-nomadic lifestyle. Strength and wisdom equally valued. African and Middle Eastern cultural influences reflecting desert and savanna peoples.
 - **Color Palette:** Warm oranges, deep browns, terracotta, bone white
 - **Theme:** Tribal, natural, primal warrior aesthetic
 
@@ -321,7 +361,7 @@ This design expands the Guild Manager game world from generic portal names to a 
 
 ##### Region 1: Scorched Badlands
 - **Description:** Desert wasteland with ancient ruins and tribal sacred sites
-- **Regional Leader:** **Chieftain Zuberi of the Burning Sands** (52, Male)
+- **Regional Leader:** **Chieftain Rashid al-Noor** (52, Male)
   - Leads the largest tribe in the confederation
   - Survived three assassination attempts by outsiders
   - Famous for riding sandworms into battle
@@ -336,7 +376,7 @@ This design expands the Guild Manager game world from generic portal names to a 
 
 ##### Region 2: Savanna Territories
 - **Description:** Vast grasslands where tribes herd and hunt
-- **Regional Leader:** **High Elder Nia Swiftfoot** (66, Female)
+- **Regional Leader:** **High Elder Nia Adeyemi** (66, Female)
   - Matriarch of the Grassland Clans
   - Master tracker, can find water anywhere
   - Gentle soul who abhors violence but pragmatic about survival
@@ -351,7 +391,7 @@ This design expands the Guild Manager game world from generic portal names to a 
 
 ##### Region 3: Red Rock Canyons
 - **Description:** Maze of towering red rock formations, tribe strongholds
-- **Regional Leader:** **War Chief Kofi Ironhide** (38, Male)
+- **Regional Leader:** **War Chief Thabo Nkrumah** (38, Male)
   - Youngest war chief, earned title by defending canyons from invasion
   - Covered in ritual scars and war paint
   - Fierce warrior, believes in strength through unity
@@ -378,20 +418,20 @@ This design expands the Guild Manager game world from generic portal names to a 
 
 #### Government & Culture
 - **Type:** Parliamentary Republic with Elected Officials
-- **Supreme Ruler:** **First Consul Marcus Ironwright** (55, Male)
+- **Supreme Ruler:** **First Consul Viktor Steelwright** (55, Male)
   - Self-made man, rose from factory worker to guild master to consul
   - Pragmatic politician who brokers deals between competing guilds
   - Believes progress justifies any cost
   - Popular with workers, but seen as corrupt by idealists
 
-- **Deputy Consul:** **Sophia Gearhart** (49, Female) - Former engineer, represents manufacturing guilds
+- **Deputy Consul:** **Amira Gearhart** (49, Female) - Former engineer, represents manufacturing guilds
 
 - **Senate Leaders:**
-  - **Senator Henrik Coalborn** (61, Male) - Represents mining interests
-  - **Senator Vera Ashwood** (43, Female) - Workers' rights advocate, thorn in Consul's side
+  - **Senator Henrik Grauberg** (61, Male) - Represents mining interests
+  - **Senator Priya Ashwood** (43, Female) - Workers' rights advocate, thorn in Consul's side
 
 - **Capital:** Irongate
-- **Culture:** Pragmatism, industrial progress, meritocracy, trade and commerce. Power through wealth and innovation rather than bloodline. Strong guild system controls industries.
+- **Culture:** Pragmatism, industrial progress, meritocracy, trade and commerce. Power through wealth and innovation rather than bloodline. Strong guild system controls industries. Diverse melting pot of cultures drawn by economic opportunity.
 - **Color Palette:** Steel grays, brass, dark blues, burgundy
 - **Theme:** Industrial, pragmatic, soldier aesthetic
 
@@ -405,7 +445,7 @@ This design expands the Guild Manager game world from generic portal names to a 
 
 ##### Region 1: Irongate District
 - **Description:** Massive industrial cityscape with factories and workshops
-- **Regional Leader:** **Lord Mayor Augustus Steelhand** (58, Male)
+- **Regional Leader:** **Lord Mayor Arjun Ironforge** (58, Male)
   - Political mastermind, controls city through guild alliances
   - Owns shares in 40% of city's factories
   - Appears benevolent, secretly crushes labor movements
@@ -420,7 +460,7 @@ This design expands the Guild Manager game world from generic portal names to a 
 
 ##### Region 2: Trade Routes
 - **Description:** Network of roads and railways connecting republic to outside world
-- **Regional Leader:** **Trade Commissioner Elena Swiftroad** (39, Female)
+- **Regional Leader:** **Trade Commissioner Leyla Swiftroad** (39, Female)
   - Former merchant caravan leader
   - Built trade commissioner position from nothing
   - Plays kingdoms against each other for profit
@@ -435,7 +475,7 @@ This design expands the Guild Manager game world from generic portal names to a 
 
 ##### Region 3: Coal Valleys
 - **Description:** Mining region providing fuel for republic's industry
-- **Regional Leader:** **Mining Overseer Gregori Blacklung** (50, Male)
+- **Regional Leader:** **Mining Overseer Klaus Steinbach** (50, Male)
   - Former miner who lost lung capacity to coal dust
   - Rose to power promising worker safety improvements
   - Now compromised by guild pressure to increase production
@@ -464,38 +504,38 @@ This design expands the Guild Manager game world from generic portal names to a 
 - **Type:** Magocracy (rule by powerful mages)
 - **Supreme Ruler:** **The Archmage Council** (5 most powerful archmages)
 
-  1. **Archmage Thalassian the Eternal** (Age Unknown, appears 40, Male)
+  1. **Archmage Indra "the Timeless"** (Age Unknown, appears 40, Male)
      - Master of time magic, possibly centuries old
      - Council chairman, tie-breaker vote
      - Calm, calculating, sees mortals as mayflies
      - Researching immortality through temporal manipulation
 
-  2. **Archmage Seraphine Voidcaller** (67, Female)
+  2. **Archmage Seraphine von Nacht** (67, Female)
      - Master of dimensional magic and summoning
      - Survived The Arcane Catastrophe firsthand
      - Paranoid about magical experimentation but hypocritically continues her own
      - Created most of the enclave's containment protocols
 
-  3. **Archmage Zephyros Stormweaver** (52, Male)
+  3. **Archmage Khalid al-Shams** (52, Male)
      - Master of elemental magic, specializes in weather control
      - Youngest council member ever appointed
      - Arrogant genius, believes magic can solve all problems
      - Secret: Caused several "natural disasters" in other kingdoms
 
-  4. **Archmage Morganna Soulbinder** (89, Female)
+  4. **Archmage Morganna Shadowthorn** (89, Female)
      - Master of necromancy and soul magic
      - Technically immortal through soul preservation
      - Cold and ruthless, values knowledge over life
      - Rumored to have caused The Arcane Catastrophe intentionally
 
-  5. **Archmage Ebon the Silent** (???, Gender Unknown)
+  5. **Archmage Ren "the Voiceless"** (???, Gender Unknown)
      - Master of shadow and illusion magic
      - Never speaks, communicates through telepathy and illusions
      - No one knows their true identity or appearance
      - Suspected to be multiple mages sharing one identity
 
 - **Capital:** The Floating Citadel of Aethermoor
-- **Culture:** Pursuit of magical knowledge above all, intellectual elitism, magical talent determines status. Non-mages serve as support staff. Experimentation and research highly valued.
+- **Culture:** Pursuit of magical knowledge above all, intellectual elitism, magical talent determines status. Non-mages serve as support staff. Experimentation and research highly valued. Draws mages from all cultures and kingdoms who seek forbidden knowledge.
 - **Color Palette:** Deep purples, midnight blues, silver, arcane cyan
 - **Theme:** Mysterious, magical, scholarly aesthetic
 
@@ -509,7 +549,7 @@ This design expands the Guild Manager game world from generic portal names to a 
 
 ##### Region 1: Aethermoor Heights
 - **Description:** Floating islands and towers suspended by magic
-- **Regional Leader:** **High Magister Aldric Skyborn** (44, Male)
+- **Regional Leader:** **High Magister Ravi Cloudweaver** (44, Male)
   - Administrator of the Floating Citadel
   - Brilliant theoretical mage, poor practical skills
   - More bureaucrat than archmage, maintains order
@@ -524,7 +564,7 @@ This design expands the Guild Manager game world from generic portal names to a 
 
 ##### Region 2: The Shadowfen
 - **Description:** Mysterious swampland used for dark magic research
-- **Regional Leader:** **Arch-Magister Lilith Corpsebinder** (58, Female)
+- **Regional Leader:** **Arch-Magister Soraya Deathmist** (58, Female)
   - Oversees forbidden magic research
   - Former student of Morganna, even more extreme
   - Created several magical plagues "for research"
@@ -539,7 +579,7 @@ This design expands the Guild Manager game world from generic portal names to a 
 
 ##### Region 3: Runestone Wastes
 - **Description:** Scarred land from magical experiments gone wrong
-- **Regional Leader:** **Warden of Containment Thaddeus Ironward** (71, Male)
+- **Regional Leader:** **Warden of Containment Gustav Eisenward** (71, Male)
   - Maintains magical barriers containing failed experiments
   - Lost his magical abilities during The Arcane Catastrophe
   - Now relies on enchanted artifacts and wards
@@ -564,14 +604,14 @@ This design expands the Guild Manager game world from generic portal names to a 
 
 ## Leadership Summary
 
-| Kingdom | Supreme Ruler | Type | Age | Key Trait |
-|---------|--------------|------|-----|-----------|
-| Northern Empire | Frost Marshal Valeria Ironhand | Military Dictator | 47 | Ruthless Pragmatism |
-| Eastern Dynasty | Celestial Empress Li Xuanying | Divine Monarch | 35 | Martial Excellence |
-| Western Kingdom | High King Edmund Valorborn III | Feudal King | 51 | Honorable Legacy |
-| Southern Tribes | Sun Chieftain Amara Firewalker | Elected Leader | 40 | Spiritual Wisdom |
-| Central Republic | First Consul Marcus Ironwright | Elected President | 55 | Industrial Progress |
-| Mystic Enclave | The Archmage Council (5 members) | Magocracy | Varies | Arcane Power |
+| Kingdom | Supreme Ruler | Cultural Influence | Type | Age | Key Trait |
+|---------|--------------|-------------------|------|-----|-----------|
+| Northern Empire | Frost Marshal Katya Volkov | Northern European/Slavic | Military Dictator | 47 | Ruthless Pragmatism |
+| Eastern Dynasty | Celestial Empress Li Yuki | East Asian (Chinese/Japanese) | Divine Monarch | 35 | Martial Excellence |
+| Western Kingdom | High King Edmund Valorborn III | Western European | Feudal King | 51 | Honorable Legacy |
+| Southern Tribes | Sun Chieftain Zuri Mbeki | African/Middle Eastern | Elected Leader | 40 | Spiritual Wisdom |
+| Central Republic | First Consul Viktor Steelwright | Diverse Melting Pot | Elected President | 55 | Industrial Progress |
+| Mystic Enclave | The Archmage Council (5 members) | Multicultural Scholars | Magocracy | Varies | Arcane Power |
 
 ---
 
@@ -641,6 +681,19 @@ This design expands the Guild Manager game world from generic portal names to a 
 
 ---
 
+## Named Character Stats
+
+For complete stats, ranks, affinities, and innate abilities of all named leaders, see:
+**[Named Character Stats & Abilities](./2025-10-31-world-building-leaders-stats.md)**
+
+This includes:
+- Ranks (SSS, SS, S, A, B) appropriate to their station
+- Elemental affinities matching their kingdom/region
+- Unique innate abilities (3-5 per character) reflecting their power and role
+- 40+ named characters total across all kingdoms
+
+---
+
 ## Summary
 
 This design establishes a rich, coherent world with:
@@ -651,3 +704,18 @@ This design establishes a rich, coherent world with:
 - **Dynamic portal system** that scales with guild world level while keeping all regions accessible
 
 The framework supports both systematic content generation (normal portals) and hand-crafted narrative experiences (boss portals), creating a world that feels alive and worth exploring.
+
+---
+
+## Implementation Status
+
+### Completed
+- ✅ **Region Names Updated** - `src/features/guild-manager/lib/gameHelpers.ts` now contains all 18 regions from the six kingdoms
+- ✅ **Kingdom Palettes** - `src/features/guild-manager/lib/hunterImagePrompts.ts` already has correct kingdom color palettes and themes
+- ✅ **Diverse Name Generation** - Hunter names now include diverse cultural influences (Fire Emblem, Final Fantasy, Romance of Three Kingdoms, Arabic, African, South Asian, Mesoamerican)
+
+### Pending Implementation
+- ⏳ **Database Schema** - Need to create kingdoms, regions, and locations tables
+- ⏳ **Portal Templates** - Update to reference regions and locations
+- ⏳ **Guild/Hunter Region References** - Connect to regions table instead of free text
+- ⏳ **Boss Portal Lore** - Implement historical boss portals with lore descriptions
