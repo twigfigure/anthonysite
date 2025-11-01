@@ -125,10 +125,11 @@ export function RecruitHunterDialog({
         description: 'Storing hunter images',
       });
 
-      // Upload both images to storage
-      const [avatarUrl, splashArtUrl] = await Promise.all([
+      // Upload both processed and original images to storage
+      const [avatarUrl, splashArtUrl, originalSplashArtUrl] = await Promise.all([
         uploadImageToStorage(processedAvatar, userId, 'hunter-images'),
         uploadImageToStorage(standardizedSplashArt, userId, 'hunter-images'),
+        uploadImageToStorage(combinedBase64, userId, 'hunter-images'), // Keep original for re-cropping
       ]);
 
       // Calculate base stats based on rank and class
@@ -162,6 +163,7 @@ export function RecruitHunterDialog({
         affinities,
         avatar_url: avatarUrl,
         splash_art_url: splashArtUrl,
+        original_splash_art_url: originalSplashArtUrl, // Save original for re-cropping
         innate_abilities: [JSON.stringify(passiveAbility)],
         upkeep_cost: upkeepCost,
         ...baseStats,

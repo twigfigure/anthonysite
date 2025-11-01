@@ -1,76 +1,54 @@
 /**
- * Splits a combined hunter image (portrait on left, splash art on right) into two separate images
- * @param base64Image - The combined base64 image
- * @returns Object with avatar and splashArt base64 strings
+ * Extracts avatar from splash art by cropping the head/upper body area
+ * @param splashArtImage - The full splash art base64 image
+ * @returns Avatar image cropped from splash art
+ */
+export async function extractAvatarFromSplash(splashArtImage: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      // Simply pass through to processAvatarImage which will detect and crop the head
+      resolve(splashArtImage);
+    };
+
+    img.onerror = () => {
+      reject(new Error('Failed to load splash art for avatar extraction'));
+    };
+
+    img.src = splashArtImage;
+  });
+}
+
+/**
+ * Legacy function for backward compatibility - now just returns the same image for both
+ * @deprecated Use extractAvatarFromSplash and use splash art directly instead
  */
 export async function splitHunterImage(base64Image: string): Promise<{
   avatar: string;
   splashArt: string;
 }> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        reject(new Error('Could not get canvas context'));
-        return;
-      }
-
-      const width = img.width;
-      const height = img.height;
-
-      // Split point: exactly 50/50 down the middle
-      const splitPoint = Math.floor(width / 2);
-
-      // Extract avatar (left 50%)
-      const avatarCanvas = document.createElement('canvas');
-      avatarCanvas.width = splitPoint;
-      avatarCanvas.height = height;
-      const avatarCtx = avatarCanvas.getContext('2d');
-      if (!avatarCtx) {
-        reject(new Error('Could not get avatar canvas context'));
-        return;
-      }
-      // Draw left half of the image (from 0 to splitPoint)
-      avatarCtx.drawImage(img, 0, 0, splitPoint, height, 0, 0, splitPoint, height);
-      const avatarBase64 = avatarCanvas.toDataURL('image/png');
-
-      // Extract splash art (right 50%)
-      const splashWidth = width - splitPoint;
-      const splashCanvas = document.createElement('canvas');
-      splashCanvas.width = splashWidth;
-      splashCanvas.height = height;
-      const splashCtx = splashCanvas.getContext('2d');
-      if (!splashCtx) {
-        reject(new Error('Could not get splash canvas context'));
-        return;
-      }
-      // Draw right half of the image (from splitPoint to end)
-      splashCtx.drawImage(img, splitPoint, 0, splashWidth, height, 0, 0, splashWidth, height);
-      const splashBase64 = splashCanvas.toDataURL('image/png');
-
-      resolve({
-        avatar: avatarBase64,
-        splashArt: splashBase64,
-      });
-    };
-
-    img.onerror = () => {
-      reject(new Error('Failed to load image for splitting'));
-    };
-
-    img.src = base64Image;
-  });
+  return {
+    avatar: base64Image,
+    splashArt: base64Image,
+  };
 }
 
 /**
- * Crops splash art to tight character bounds with minimal padding
- * This allows CSS to handle final scaling more effectively
- * @param imageDataUrl - The image to crop
- * @returns Tightly cropped image as data URL
+ * Returns splash art as-is without cropping
+ * The full image is used for splash art display
+ * @param imageDataUrl - The image to return
+ * @returns The same image as data URL
  */
 export async function standardizeImageSize(imageDataUrl: string): Promise<string> {
+  // Simply return the image as-is - we want the full splash art
+  return imageDataUrl;
+}
+
+/**
+ * Legacy cropping function - kept for reference but no longer used
+ * @deprecated No longer crops, just returns the image
+ */
+async function legacyStandardizeImageSize(imageDataUrl: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
 
@@ -253,12 +231,12 @@ export async function processAvatarImage(imageDataUrl: string): Promise<string> 
       let finalMaxY;
 
       if (isFullBody) {
-        // For full-body images, crop to upper 55% (focus on head and shoulders)
-        const upperBodyHeight = contentHeight * 0.55;
+        // For full-body images, crop to upper 25% (very tight focus on head/face only)
+        const upperBodyHeight = contentHeight * 0.25;
         finalMaxY = Math.floor(minY + upperBodyHeight);
       } else {
-        // For portrait images, crop to upper 65% to show face prominently
-        const portraitHeight = contentHeight * 0.65;
+        // For portrait images, crop to upper 35% to show face prominently
+        const portraitHeight = contentHeight * 0.35;
         finalMaxY = Math.floor(minY + portraitHeight);
       }
 
@@ -269,11 +247,11 @@ export async function processAvatarImage(imageDataUrl: string): Promise<string> 
         finalMaxY = Math.min(maxY, finalMinY + Math.floor(contentHeight * 0.70));
       }
 
-      // For portrait framing focused on face (3% above for very tight headroom, 5% sides, 12% below for shoulders)
+      // For portrait framing focused on face (20% above for headroom to capture hair/helmets, 8% sides, 25% below for shoulders/chest)
       const adjustedHeight = finalMaxY - finalMinY + 1;
-      const topPadding = adjustedHeight * 0.03;
-      const sidePadding = contentWidth * 0.05;
-      const bottomPadding = adjustedHeight * 0.12;
+      const topPadding = adjustedHeight * 0.20;
+      const sidePadding = contentWidth * 0.08;
+      const bottomPadding = adjustedHeight * 0.25;
 
       // Calculate initial crop area with padding
       const cropMinX = Math.max(0, minX - sidePadding);
@@ -306,32 +284,46 @@ export async function processAvatarImage(imageDataUrl: string): Promise<string> 
       // Calculate percentage of content in top area
       const topContentPercentage = topContentPixels / totalCheckPixels;
 
-      // If top 25% has less than 5% content, shift the crop down
-      if (topContentPercentage < 0.05 && cropMaxY < img.height - 1) {
-        const shiftAmount = Math.floor(initialCropHeight * 0.20); // Shift down by 20%
+      // If top 25% has less than 3% content, shift the crop down slightly
+      if (topContentPercentage < 0.03 && cropMaxY < img.height - 1) {
+        const shiftAmount = Math.floor(initialCropHeight * 0.10); // Shift down by 10%
         cropMinY = Math.min(img.height - initialCropHeight, cropMinY + shiftAmount);
         cropMaxY = Math.min(img.height - 1, cropMinY + initialCropHeight);
       }
 
-      const cropWidth = cropMaxX - cropMinX + 1;
-      const cropHeight = cropMaxY - cropMinY + 1;
+      let cropWidth = cropMaxX - cropMinX + 1;
+      let cropHeight = cropMaxY - cropMinY + 1;
 
-      // Create output canvas
-      canvas.width = cropWidth;
-      canvas.height = cropHeight;
+      // Apply 1.35x zoom by cropping a smaller area (1/1.35 = ~0.74 of original)
+      const zoomFactor = 1.35;
+      const zoomedWidth = cropWidth / zoomFactor;
+      const zoomedHeight = cropHeight / zoomFactor;
 
-      // Draw cropped image
+      // Center the zoomed crop area
+      const centerX = (cropMinX + cropMaxX) / 2;
+      const centerY = (cropMinY + cropMaxY) / 2;
+
+      const zoomedMinX = Math.max(0, Math.floor(centerX - zoomedWidth / 2));
+      const zoomedMaxX = Math.min(img.width - 1, Math.floor(centerX + zoomedWidth / 2));
+      const zoomedMinY = Math.max(0, Math.floor(centerY - zoomedHeight / 2));
+      const zoomedMaxY = Math.min(img.height - 1, Math.floor(centerY + zoomedHeight / 2));
+
+      const finalCropWidth = zoomedMaxX - zoomedMinX + 1;
+      const finalCropHeight = zoomedMaxY - zoomedMinY + 1;
+
+      // Create output canvas with zoomed crop dimensions
+      canvas.width = finalCropWidth;
+      canvas.height = finalCropHeight;
+
+      // Draw zoomed crop
       ctx.drawImage(
         img,
-        cropMinX, cropMinY, cropWidth, cropHeight,
-        0, 0, cropWidth, cropHeight
+        zoomedMinX, zoomedMinY, finalCropWidth, finalCropHeight,
+        0, 0, finalCropWidth, finalCropHeight
       );
 
-      // Convert to data URL and upscale to standard dimensions
-      const croppedDataUrl = canvas.toDataURL('image/png');
-
-      // Upscale to 1024x1024 (1:1 aspect ratio, moderate upscaling for sharp portraits)
-      upscaleToTarget(croppedDataUrl, 1024, 1024).then(resolve).catch(reject);
+      // Return the cropped and zoomed image - let CSS handle the display
+      resolve(canvas.toDataURL('image/png'));
     };
 
     img.onerror = () => {

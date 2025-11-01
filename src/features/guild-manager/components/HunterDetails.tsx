@@ -83,6 +83,7 @@ function getAffinityIcon(affinity: ElementalAffinity) {
 export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
   const [equippedItems, setEquippedItems] = useState<EquippedItem[]>([]);
   const [equipmentBonuses, setEquipmentBonuses] = useState<EquipmentBonuses | null>(null);
+  const [kingdomName, setKingdomName] = useState<string | null>(null);
   const combatPower = calculateCombatPower(hunter, equipmentBonuses || undefined);
   const maxLevel = getMaxLevelForRank(hunter.rank);
   const maxSpellSlots = getMaxSpellSlotsForRank(hunter.rank);
@@ -104,6 +105,25 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
 
   // Track splash art URL changes to force refresh
   const [lastSplashUrl, setLastSplashUrl] = useState<string | null>(hunter.splash_art_url);
+
+  // Load kingdom name when hunter changes
+  useEffect(() => {
+    const loadKingdomName = async () => {
+      if (hunter.kingdom_id) {
+        try {
+          const kingdoms = await getKingdoms();
+          const kingdom = kingdoms.find(k => k.id === hunter.kingdom_id);
+          setKingdomName(kingdom?.name || null);
+        } catch (error) {
+          console.error('Failed to load kingdom:', error);
+          setKingdomName(null);
+        }
+      } else {
+        setKingdomName(null);
+      }
+    };
+    loadKingdomName();
+  }, [hunter.kingdom_id]);
 
   useEffect(() => {
     // When hunter changes (different ID), reset version
@@ -303,14 +323,15 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
         description: 'Storing new images',
       });
 
-      // Upload both images to storage
+      // Upload both processed and original images to storage
       const userId = guild.user_id;
-      const [avatarUrl, splashArtUrl] = await Promise.all([
+      const [avatarUrl, splashArtUrl, originalSplashArtUrl] = await Promise.all([
         uploadImageToStorage(processedAvatar, userId, 'hunter-images'),
         uploadImageToStorage(standardizedSplashArt, userId, 'hunter-images'),
+        uploadImageToStorage(combinedBase64, userId, 'hunter-images'), // Keep original for re-cropping
       ]);
 
-      // Delete old images from storage if they exist
+      // Delete old images from storage if they exist (but keep originals)
       if (hunter.avatar_url) {
         try {
           await deleteImageFromStorage(hunter.avatar_url);
@@ -327,10 +348,20 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
         }
       }
 
+      // Delete old original if it exists
+      if (hunter.original_splash_art_url) {
+        try {
+          await deleteImageFromStorage(hunter.original_splash_art_url);
+        } catch (err) {
+          console.error('Failed to delete old original splash art:', err);
+        }
+      }
+
       // Update hunter record with new image URLs
       await hunterService.updateHunter(hunter.id, {
         avatar_url: avatarUrl,
         splash_art_url: splashArtUrl,
+        original_splash_art_url: originalSplashArtUrl,
       });
 
       toast({
@@ -380,8 +411,8 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
           <div>
             <h2 className="text-3xl font-bold text-white mb-1">{hunter.name}</h2>
             <p className="text-white/80">{hunter.class}</p>
-            {hunter.region && (
-              <p className="text-white/60 text-sm mt-1">{hunter.region}</p>
+            {kingdomName && (
+              <p className="text-white/60 text-sm mt-1">{kingdomName}</p>
             )}
           </div>
         </div>
@@ -959,10 +990,10 @@ export function HunterDetails({ hunter, guild, onUpdate }: HunterDetailsProps) {
             <div className="space-y-2">
               <h3 className="text-sm font-bold text-purple-400">Basic Information</h3>
               <div className="space-y-1.5">
-                {hunter.region && (
+                {kingdomName && (
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">Origin:</span>
-                    <span className="font-medium">{hunter.region}</span>
+                    <span className="font-medium">{kingdomName}</span>
                   </div>
                 )}
                 {hunter.gender && (

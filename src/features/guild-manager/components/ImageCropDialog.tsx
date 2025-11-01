@@ -44,13 +44,17 @@ export function ImageCropDialog({
   const initialZoomRef = useRef<number>(1);
   const { toast } = useToast();
 
-  const imageUrl = imageType === 'avatar' ? hunter.avatar_url : hunter.splash_art_url;
+  // Always load from original if available, otherwise fall back to display URL
+  const imageUrl = imageType === 'avatar'
+    ? (hunter.original_avatar_url || hunter.avatar_url)
+    : (hunter.original_splash_art_url || hunter.splash_art_url);
   const imageLabel = imageType === 'avatar' ? 'Avatar' : 'Splash Art';
 
-  // Canvas size based on image type (both scaled down 35%)
-  // Avatar = square, Splash art = tall vertical rectangle
-  const canvasWidth = imageType === 'avatar' ? 333 : 250; // 512 * 0.65 ≈ 333, 384 * 0.65 ≈ 250
-  const canvasHeight = imageType === 'avatar' ? 333 : 499; // 512 * 0.65 ≈ 333, 768 * 0.65 ≈ 499
+  // Canvas size - match display container aspect ratios
+  // Avatar = square card
+  // Splash art = tall vertical container (roughly 400-500px wide × 600px tall in display)
+  const canvasWidth = imageType === 'avatar' ? 400 : 400;
+  const canvasHeight = imageType === 'avatar' ? 400 : 600;
 
   const drawCanvas = useCallback(() => {
     if (!canvasRef.current || !imageRef.current || !imageLoaded) return;
@@ -99,7 +103,7 @@ export function ImageCropDialog({
         // Store initial zoom for reset function
         initialZoomRef.current = fitZoom;
 
-        // Set zoom to fit image and reset offsets
+        // Start with default fit zoom and centered position
         setZoom(fitZoom);
         setOffsetX(0);
         setOffsetY(0);
@@ -110,7 +114,7 @@ export function ImageCropDialog({
         setImageLoaded(false);
       };
     }
-  }, [open, imageUrl, canvasWidth, canvasHeight]);
+  }, [open, imageUrl, canvasWidth, canvasHeight, hunter, imageType]);
 
   useEffect(() => {
     drawCanvas();
@@ -140,35 +144,75 @@ export function ImageCropDialog({
   };
 
   const handleSave = async () => {
-    if (!canvasRef.current) return;
+    if (!imageRef.current) return;
 
     setSaving(true);
     try {
-      // Save exactly what's shown in the preview canvas (including zoom and position)
+      // Calculate the crop from the ORIGINAL full-resolution image
+      const img = imageRef.current;
+
+      // Calculate dimensions
+      const scale = zoom;
+      const drawWidth = img.width * scale;
+      const drawHeight = img.height * scale;
+
+      // Calculate position in original image coordinates
+      const x = (canvasWidth - drawWidth) / 2 + offsetX;
+      const y = (canvasHeight - drawHeight) / 2 + offsetY;
+
+      // Calculate what portion of the original image is visible
+      const cropX = Math.max(0, -x / scale);
+      const cropY = Math.max(0, -y / scale);
+      const cropWidth = Math.min(img.width - cropX, canvasWidth / scale);
+      const cropHeight = Math.min(img.height - cropY, canvasHeight / scale);
+
+      // Create a new canvas at the DISPLAY size for high quality
+      // Avatar = square (1024×1024)
+      // Splash art = tall vertical (same aspect as preview: 400:600 = 2:3)
+      const displayCanvas = document.createElement('canvas');
+      const targetWidth = imageType === 'avatar' ? 1024 : 1024;
+      const targetHeight = imageType === 'avatar' ? 1024 : 1536; // 2:3 ratio for splash
+      displayCanvas.width = targetWidth;
+      displayCanvas.height = targetHeight;
+      const displayCtx = displayCanvas.getContext('2d');
+
+      if (!displayCtx) {
+        throw new Error('Could not create display canvas context');
+      }
+
+      // Draw the cropped portion at full resolution
+      displayCtx.drawImage(
+        img,
+        cropX, cropY, cropWidth, cropHeight,
+        0, 0, targetWidth, targetHeight
+      );
+
+      // Convert to blob
       const blob = await new Promise<Blob>((resolve, reject) => {
-        canvasRef.current?.toBlob((blob) => {
+        displayCanvas.toBlob((blob) => {
           if (blob) resolve(blob);
           else reject(new Error('Failed to create blob'));
         }, 'image/png');
       });
 
-      // Upload to storage
-      const imageUrl = await uploadImageToStorage(
+      // Upload cropped image to storage
+      const croppedImageUrl = await uploadImageToStorage(
         blob,
         guild.user_id,
         'hunter-images'
       );
 
-      // Update hunter record
+      // Update hunter record with cropped image
+      // Original URLs stay unchanged - we always crop from the original
       const updateData = imageType === 'avatar'
-        ? { avatar_url: imageUrl }
-        : { splash_art_url: imageUrl };
+        ? { avatar_url: croppedImageUrl }
+        : { splash_art_url: croppedImageUrl };
 
       await hunterService.updateHunter(hunter.id, updateData);
 
       toast({
         title: `${imageLabel} Updated`,
-        description: `Hunter ${imageLabel.toLowerCase()} has been successfully updated.`,
+        description: `${imageLabel} has been cropped and saved at full resolution.`,
       });
 
       onUpdate();

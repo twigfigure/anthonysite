@@ -115,8 +115,8 @@ const RANK_BACKGROUNDS: Record<HunterRank, string> = {
   SSS: 'holographic galactic background with cosmic nebula effects, deep space purples, blues, and magentas with shimmering starlight, iridescent holographic shimmer overlays creating a transcendent divine atmosphere',
 };
 
-// Generate unified prompt for both avatar and splash art in one image
-export function generateHunterCombinedPrompt(
+// Generate prompt for single splash art image (avatar will be cropped from this)
+export function generateHunterSplashPrompt(
   params: HunterPromptParams,
   paletteData?: { colors: string; theme: string; regionName: string },
   gender?: 'Male' | 'Female'
@@ -149,57 +149,44 @@ export function generateHunterCombinedPrompt(
   const effects = RANK_EFFECTS[rank];
   const backgroundGradient = RANK_BACKGROUNDS[rank];
 
-  return `Create a dual-view character sheet for ${name}, a ${selectedGender} ${rank}-rank ${hunterClass} hunter. This image must contain TWO distinct views of the SAME character side-by-side.
+  return `Create epic splash art for ${name}, a ${selectedGender} ${rank}-rank ${hunterClass} hunter.
 
 CRITICAL LAYOUT REQUIREMENTS:
-- Create a WIDE horizontal image (landscape orientation, 2:1 ratio ideal)
-- Split the image EXACTLY down the middle into two equal halves
-- LEFT HALF (50% of total width): Portrait/Avatar view ONLY - character must fit entirely within this left half
-- RIGHT HALF (50% of total width): Full-body splash art ONLY - character must fit entirely within this right half
-- Both views show the EXACT SAME CHARACTER with identical features, outfit, and design
-- BACKGROUND: ${backgroundGradient} - MUST fill the ENTIRE canvas from edge to edge, top to bottom
+- VERTICAL PORTRAIT orientation - image MUST be taller than it is wide
+- ASPECT RATIO: 3:4 (width:height) - for example 1536px wide × 2048px tall
+- DO NOT create a square image - the height MUST be significantly taller than the width
+- Full-body character artwork centered in vertical frame
+- Character should be the focal point, filling most of the vertical space from top to bottom
+- BACKGROUND: ${backgroundGradient} - MUST fill the ENTIRE canvas from edge to edge
 - The gradient background MUST extend to ALL FOUR EDGES of the image canvas
 - Background should be behind the character, filling every pixel of the image
-- The gradient should be smooth, professional, and NEVER have black bars or cutoffs
-- Clear vertical line dividing the two halves at the exact center
-- The character design MUST be consistent between both sides
-- IMPORTANT: Each character must stay COMPLETELY within their respective half - no overlap across the center line
+- The gradient should be smooth and professional
 
 STYLE: Korean manhwa-inspired digital art, premium game character reveal quality
 
-LEFT HALF - PORTRAIT/AVATAR (EXACTLY 50% of image width):
-- Portrait MUST fit entirely within the LEFT 50% of the image
-- Neck-up close portrait (head and shoulders only)
-- Character facing slightly to the side (3/4 view)
-- Detailed facial features with determined expression
-- Show helmet/headgear and upper armor/clothing details
-- Sharp focus on face and character identity
-- Dramatic portrait lighting
-- Keep all parts of the portrait within the left boundary
-
-RIGHT HALF - SPLASH ART (EXACTLY 50% of image width):
-- Full body MUST fit entirely within the RIGHT 50% of the image
-- Full body character in epic action pose
+CHARACTER COMPOSITION:
+- Full body character in dynamic action pose
 - ${actionPose}
+- Character's HEAD should be in the UPPER THIRD of the image for easy cropping to avatar
+- Ensure head and face are clearly visible and well-lit
+- Face should be detailed with determined expression
 - Show complete equipment and weapons
 - Dynamic perspective and dramatic angle
 - Battle-ready heroic composition
-- Keep all parts of the character within the right boundary
 
-CHARACTER DESIGN (MUST BE IDENTICAL ON BOTH SIDES):
+CHARACTER DESIGN:
 - ${appearance}
 - Equipment quality: ${rankTheme}
 - Cultural style: ${culturalTheme}
 - Color palette: ${palette}
 - Equipment and clothing match ${hunterClass} class and ${regionName} cultural aesthetic
-- Same facial features, hair style, and distinctive elements on both sides
 - Visual design should reflect origin from ${regionName}
 
 VISUAL EFFECTS:
 - ${effects}
 - Magical or elemental effects matching ${hunterClass} abilities
-- Energy particles or aura (especially on right side)
-- Consistent lighting and color scheme across both views
+- Energy particles or aura surrounding character
+- Dramatic lighting emphasizing face and upper body
 
 QUALITY REQUIREMENTS:
 - ULTRA-HIGH RESOLUTION: Generate at maximum resolution and quality possible
@@ -208,13 +195,14 @@ QUALITY REQUIREMENTS:
 - Detailed textures on armor, clothing, and character features
 - Sharp, clean lines throughout with professional anti-aliasing
 - High-fidelity color accuracy and smooth gradients
-- Seamless character consistency between both views
 - Studio-quality lighting and shading
-- Clear visual distinction between portrait and full-body sections
 - Professional game art quality suitable for large displays
 
-This dual-view must showcase the same ${rank}-rank ${hunterClass} hunter from both portrait and action perspectives, maintaining perfect character consistency.`;
+This splash art will be used for both display and avatar cropping, so ensure the head/face area is well-composed and detailed.`;
 }
+
+// Backward compatibility - old name still works
+export const generateHunterCombinedPrompt = generateHunterSplashPrompt;
 
 // Map kingdom IDs to region names
 const KINGDOM_TO_REGION_NAME: Record<string, RegionName> = {

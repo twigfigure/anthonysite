@@ -143,11 +143,12 @@ export function ScoutDialog({ open, onOpenChange, guild, onHunterRecruited }: Sc
         description: 'Storing hunter images',
       });
 
-      // Upload both images to storage
+      // Upload both processed and original images to storage
       const userId = guild.user_id;
-      const [avatarUrl, splashArtUrl] = await Promise.all([
+      const [avatarUrl, splashArtUrl, originalSplashArtUrl] = await Promise.all([
         uploadImageToStorage(processedAvatar, userId, 'hunter-images'),
         uploadImageToStorage(standardizedSplashArt, userId, 'hunter-images'),
+        uploadImageToStorage(combinedBase64, userId, 'hunter-images'), // Keep original for re-cropping
       ]);
 
       // Generate personality and backstory (using region name for text)
@@ -169,6 +170,7 @@ export function ScoutDialog({ open, onOpenChange, guild, onHunterRecruited }: Sc
         await hunterService.updateHunter(result.hunter_id, {
           avatar_url: avatarUrl,
           splash_art_url: splashArtUrl,
+          original_splash_art_url: originalSplashArtUrl, // Save original for re-cropping
           kingdom_id: hunterKingdomId,  // Store ID
           region_id: hunterRegionId,     // Store ID
           gender: hunterGender,

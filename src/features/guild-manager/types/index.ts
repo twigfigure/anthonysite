@@ -95,8 +95,10 @@ export interface Hunter {
   affinities: ElementalAffinity[]; // Elemental affinities
 
   // Images
-  avatar_url?: string;
-  splash_art_url?: string;
+  avatar_url?: string; // Cropped/framed avatar for display
+  splash_art_url?: string; // Cropped/framed splash art for display
+  original_avatar_url?: string; // Original avatar (never modified)
+  original_splash_art_url?: string; // Original splash art (never modified)
 
   // Stats
   strength: number;
