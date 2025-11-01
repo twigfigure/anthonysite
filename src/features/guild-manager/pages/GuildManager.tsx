@@ -165,7 +165,7 @@ export default function GuildManager() {
         affinities: fighterAffinities,
         innate_abilities: [JSON.stringify(fighterPassive)],
         avatar_url: fighterAvatarUrl,
-        splash_url: fighterSplashUrl
+        splash_art_url: fighterSplashUrl
       });
 
       // Generate C-rank support with region-appropriate name
@@ -197,7 +197,7 @@ export default function GuildManager() {
         affinities: supportAffinities,
         innate_abilities: [JSON.stringify(supportPassive)],
         avatar_url: supportAvatarUrl,
-        splash_url: supportSplashUrl
+        splash_art_url: supportSplashUrl
       });
 
       toast({
