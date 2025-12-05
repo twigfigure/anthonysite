@@ -266,26 +266,92 @@ export default function ManhuaTracker() {
     }
   };
 
+  // Normalize title for comparison (lowercase, remove special chars)
+  const normalizeTitle = (title: string): string => {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  // Find existing manhua with similar title
+  const findExistingManhua = (title: string): ManhuaWithSources | undefined => {
+    const normalizedNew = normalizeTitle(title);
+    return manhuaList.find((m) => {
+      const normalizedExisting = normalizeTitle(m.title);
+      // Check if titles match or one contains the other
+      return (
+        normalizedExisting === normalizedNew ||
+        normalizedExisting.includes(normalizedNew) ||
+        normalizedNew.includes(normalizedExisting)
+      );
+    });
+  };
+
   // Handle adding from source search
   const handleAddFromSearch = (result: SearchResult) => {
     const source = getSourceByUrl(result.url);
-    const newManhua = localManhuaService.createManhua({
-      title: result.title,
-      cover_image_url: result.coverUrl,
-      status: 'plan_to_read',
-      current_chapter: 0,
-    });
+    const sourceName = source?.name || result.sourceName;
 
-    // Add as a source
-    localSourceService.addSource({
-      manhua_id: newManhua.id,
-      website_name: source?.name || result.sourceName,
-      website_url: result.url,
-      latest_chapter: result.latestChapter || 0,
-      last_updated: new Date().toISOString(),
-    });
+    // Check if manhua with similar title already exists
+    const existingManhua = findExistingManhua(result.title);
 
-    toast({ title: 'Added', description: `${result.title} added to your collection` });
+    if (existingManhua) {
+      // Check if this source URL already exists
+      const sourceExists = existingManhua.sources.some(
+        (s) => s.website_url === result.url
+      );
+
+      if (sourceExists) {
+        toast({
+          title: 'Already Added',
+          description: `${sourceName} source already exists for "${existingManhua.title}"`,
+        });
+        return;
+      }
+
+      // Add source to existing manhua
+      localSourceService.addSource({
+        manhua_id: existingManhua.id,
+        website_name: sourceName,
+        website_url: result.url,
+        latest_chapter: result.latestChapter || 0,
+        last_updated: new Date().toISOString(),
+      });
+
+      // Update cover if existing doesn't have one
+      if (!existingManhua.cover_image_url && result.coverUrl) {
+        localManhuaService.updateManhua(existingManhua.id, {
+          cover_image_url: result.coverUrl,
+        });
+      }
+
+      toast({
+        title: 'Source Added',
+        description: `${sourceName} added to "${existingManhua.title}"`,
+      });
+    } else {
+      // Create new manhua
+      const newManhua = localManhuaService.createManhua({
+        title: result.title,
+        cover_image_url: result.coverUrl,
+        status: 'plan_to_read',
+        current_chapter: 0,
+      });
+
+      // Add as a source
+      localSourceService.addSource({
+        manhua_id: newManhua.id,
+        website_name: sourceName,
+        website_url: result.url,
+        latest_chapter: result.latestChapter || 0,
+        last_updated: new Date().toISOString(),
+      });
+
+      toast({ title: 'Added', description: `${result.title} added to your collection` });
+    }
+
     loadManhua();
   };
 
