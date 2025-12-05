@@ -70,6 +70,7 @@ export const localManhuaService = {
       total_chapters: input.total_chapters || null,
       rating: input.rating || null,
       notes: input.notes || null,
+      mangadex_id: input.mangadex_id || null,
       created_at: now,
       updated_at: now,
     };

@@ -11,6 +11,7 @@ export interface Manhua {
   total_chapters: number | null;
   rating: number | null; // 1-10 scale
   notes: string | null;
+  mangadex_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -39,6 +40,7 @@ export interface CreateManhuaInput {
   total_chapters?: number | null;
   rating?: number | null;
   notes?: string | null;
+  mangadex_id?: string | null;
 }
 
 export interface UpdateManhuaInput {
@@ -50,6 +52,7 @@ export interface UpdateManhuaInput {
   total_chapters?: number | null;
   rating?: number | null;
   notes?: string | null;
+  mangadex_id?: string | null;
 }
 
 export interface CreateSourceInput {
