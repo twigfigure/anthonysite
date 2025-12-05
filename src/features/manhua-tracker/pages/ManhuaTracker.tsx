@@ -19,13 +19,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Search, BookOpen, Filter, ArrowLeft, RefreshCw, Globe } from 'lucide-react';
+import { Plus, Search, BookOpen, Filter, ArrowLeft, RefreshCw, Library } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ManhuaCard } from '../components/ManhuaCard';
 import { ManhuaDialog } from '../components/ManhuaDialog';
-import { AsuraSearch } from '../components/AsuraSearch';
+import { SourceSearch } from '../components/SourceSearch';
 import { localManhuaService, localSourceService } from '../lib/localStorage';
-import { asuraService, type AsuraSearchResult } from '../lib/asura';
+import { getLatestChapter, type SearchResult } from '../lib/multiSourceScraper';
+import { getSourceByUrl } from '../lib/sources';
 import type { ManhuaWithSources, ManhuaStatus, CreateSourceInput } from '../types';
 import { STATUS_LABELS } from '../types';
 
@@ -45,7 +46,7 @@ export default function ManhuaTracker() {
   const [editingManhua, setEditingManhua] = useState<ManhuaWithSources | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  const [asuraSearchOpen, setAsuraSearchOpen] = useState(false);
+  const [sourceSearchOpen, setSourceSearchOpen] = useState(false);
   const [checkingUpdates, setCheckingUpdates] = useState(false);
 
   useEffect(() => {
@@ -72,7 +73,6 @@ export default function ManhuaTracker() {
   const filteredAndSortedManhua = useMemo(() => {
     let result = [...manhuaList];
 
-    // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter(
@@ -82,12 +82,10 @@ export default function ManhuaTracker() {
       );
     }
 
-    // Apply status filter
     if (statusFilter !== 'all') {
       result = result.filter((m) => m.status === statusFilter);
     }
 
-    // Apply sorting
     result.sort((a, b) => {
       switch (sortBy) {
         case 'title':
@@ -268,8 +266,9 @@ export default function ManhuaTracker() {
     }
   };
 
-  // Handle adding from AsuraComic search
-  const handleAddFromAsura = (result: AsuraSearchResult) => {
+  // Handle adding from source search
+  const handleAddFromSearch = (result: SearchResult) => {
+    const source = getSourceByUrl(result.url);
     const newManhua = localManhuaService.createManhua({
       title: result.title,
       cover_image_url: result.coverUrl,
@@ -277,10 +276,10 @@ export default function ManhuaTracker() {
       current_chapter: 0,
     });
 
-    // Add AsuraComic as a source
+    // Add as a source
     localSourceService.addSource({
       manhua_id: newManhua.id,
-      website_name: 'AsuraComic',
+      website_name: source?.name || result.sourceName,
       website_url: result.url,
       latest_chapter: result.latestChapter || 0,
       last_updated: new Date().toISOString(),
@@ -290,39 +289,40 @@ export default function ManhuaTracker() {
     loadManhua();
   };
 
-  // Check for updates from AsuraComic sources
+  // Check for updates from all sources
   const handleCheckUpdates = async () => {
-    const asuraSources = manhuaList
-      .flatMap((m) =>
-        m.sources
-          .filter((s) => s.website_url.includes('asuracomic.net'))
-          .map((s) => ({ sourceId: s.id, manhuaId: m.id, url: s.website_url }))
-      );
+    const allSources = manhuaList.flatMap((m) =>
+      m.sources.map((s) => ({ sourceId: s.id, manhuaId: m.id, url: s.website_url }))
+    );
 
-    if (asuraSources.length === 0) {
+    if (allSources.length === 0) {
       toast({
         title: 'No Sources',
-        description: 'Add AsuraComic sources to check for updates',
+        description: 'Add sources to your manhua to check for updates',
       });
       return;
     }
 
     setCheckingUpdates(true);
     let updatedCount = 0;
+    let failedCount = 0;
 
     try {
-      for (const { sourceId, url } of asuraSources) {
+      for (const { sourceId, url } of allSources) {
         try {
-          const info = await asuraService.getLatestChapter(url);
-          if (info && info.chapter) {
+          const latestChapter = await getLatestChapter(url);
+          if (latestChapter !== null) {
             localSourceService.updateSource(sourceId, {
-              latest_chapter: info.chapter,
+              latest_chapter: latestChapter,
               last_updated: new Date().toISOString(),
             });
             updatedCount++;
+          } else {
+            failedCount++;
           }
         } catch (e) {
           console.warn('Failed to check:', url, e);
+          failedCount++;
         }
         // Small delay to avoid rate limiting
         await new Promise((r) => setTimeout(r, 300));
@@ -331,7 +331,7 @@ export default function ManhuaTracker() {
       loadManhua();
       toast({
         title: 'Updates Checked',
-        description: `Checked ${updatedCount} of ${asuraSources.length} sources`,
+        description: `Updated ${updatedCount} sources${failedCount > 0 ? `, ${failedCount} failed` : ''}`,
       });
     } catch (error) {
       console.error('Failed to check updates:', error);
@@ -389,10 +389,10 @@ export default function ManhuaTracker() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setAsuraSearchOpen(true)}
+                onClick={() => setSourceSearchOpen(true)}
               >
-                <Globe className="w-4 h-4 mr-2" />
-                Search Asura
+                <Library className="w-4 h-4 mr-2" />
+                Sources
               </Button>
               <Button onClick={handleAddNew}>
                 <Plus className="w-4 h-4 mr-2" />
@@ -478,12 +478,12 @@ export default function ManhuaTracker() {
               <>
                 <h2 className="text-xl font-semibold mb-2">Your collection is empty</h2>
                 <p className="text-muted-foreground mb-6">
-                  Search AsuraComic or add manhua manually to start tracking!
+                  Search manga sources or add manually to start tracking!
                 </p>
                 <div className="flex justify-center gap-3">
-                  <Button variant="outline" onClick={() => setAsuraSearchOpen(true)}>
-                    <Globe className="w-4 h-4 mr-2" />
-                    Search AsuraComic
+                  <Button variant="outline" onClick={() => setSourceSearchOpen(true)}>
+                    <Library className="w-4 h-4 mr-2" />
+                    Search Sources
                   </Button>
                   <Button onClick={handleAddNew}>
                     <Plus className="w-4 h-4 mr-2" />
@@ -527,10 +527,10 @@ export default function ManhuaTracker() {
         onDeleteSource={handleDeleteSource}
       />
 
-      <AsuraSearch
-        open={asuraSearchOpen}
-        onOpenChange={setAsuraSearchOpen}
-        onAddFromSearch={handleAddFromAsura}
+      <SourceSearch
+        open={sourceSearchOpen}
+        onOpenChange={setSourceSearchOpen}
+        onAddFromSearch={handleAddFromSearch}
       />
 
       <AlertDialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
