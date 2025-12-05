@@ -23,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 interface SourceSearchProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddFromSearch: (result: SearchResult) => void;
+  onAddFromSearch: (result: SearchResult, allResults: SearchResult[]) => void;
 }
 
 export function SourceSearch({
@@ -100,8 +100,35 @@ export function SourceSearch({
     setSelectedSources([]);
   };
 
+  // Normalize title for matching
+  const normalizeTitle = (title: string): string => {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  // Find all results with similar titles
+  const findMatchingResults = (selectedResult: SearchResult): SearchResult[] => {
+    const normalizedSelected = normalizeTitle(selectedResult.title);
+    return results.filter((r) => {
+      const normalizedTitle = normalizeTitle(r.title);
+      return (
+        normalizedTitle === normalizedSelected ||
+        normalizedTitle.includes(normalizedSelected) ||
+        normalizedSelected.includes(normalizedTitle)
+      );
+    });
+  };
+
+  // Count matching sources for a result
+  const getMatchingSourceCount = (result: SearchResult): number => {
+    return findMatchingResults(result).length;
+  };
+
   const handleSelect = (result: SearchResult) => {
-    onAddFromSearch(result);
+    onAddFromSearch(result, results);
     onOpenChange(false);
   };
 
@@ -270,14 +297,20 @@ export function SourceSearch({
 
                           {/* Action */}
                           <div className="flex-shrink-0 self-center">
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => handleSelect(result)}
-                            >
-                              <Plus className="w-4 h-4 mr-1" />
-                              Add
-                            </Button>
+                            {(() => {
+                              const matchCount = getMatchingSourceCount(result);
+                              return (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => handleSelect(result)}
+                                  title={matchCount > 1 ? `Will add ${matchCount} sources` : 'Add to collection'}
+                                >
+                                  <Plus className="w-4 h-4 mr-1" />
+                                  Add{matchCount > 1 ? ` (${matchCount})` : ''}
+                                </Button>
+                              );
+                            })()}
                           </div>
                         </div>
                       ))}

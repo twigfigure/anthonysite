@@ -289,36 +289,42 @@ export default function ManhuaTracker() {
     });
   };
 
-  // Handle adding from source search
-  const handleAddFromSearch = (result: SearchResult) => {
-    const source = getSourceByUrl(result.url);
-    const sourceName = source?.name || result.sourceName;
+  // Handle adding from source search - adds all matching sources automatically
+  const handleAddFromSearch = (result: SearchResult, allResults: SearchResult[]) => {
+    // Find all results with similar titles to add as sources
+    const normalizedSelected = normalizeTitle(result.title);
+    const matchingResults = allResults.filter((r) => {
+      const normalizedTitle = normalizeTitle(r.title);
+      return (
+        normalizedTitle === normalizedSelected ||
+        normalizedTitle.includes(normalizedSelected) ||
+        normalizedSelected.includes(normalizedTitle)
+      );
+    });
 
     // Check if manhua with similar title already exists
     const existingManhua = findExistingManhua(result.title);
 
     if (existingManhua) {
-      // Check if this source URL already exists
-      const sourceExists = existingManhua.sources.some(
-        (s) => s.website_url === result.url
-      );
+      // Add all new sources to existing manhua
+      let addedCount = 0;
+      for (const matchResult of matchingResults) {
+        const sourceExists = existingManhua.sources.some(
+          (s) => s.website_url === matchResult.url
+        );
 
-      if (sourceExists) {
-        toast({
-          title: 'Already Added',
-          description: `${sourceName} source already exists for "${existingManhua.title}"`,
-        });
-        return;
+        if (!sourceExists) {
+          const source = getSourceByUrl(matchResult.url);
+          localSourceService.addSource({
+            manhua_id: existingManhua.id,
+            website_name: source?.name || matchResult.sourceName,
+            website_url: matchResult.url,
+            latest_chapter: matchResult.latestChapter || 0,
+            last_updated: new Date().toISOString(),
+          });
+          addedCount++;
+        }
       }
-
-      // Add source to existing manhua
-      localSourceService.addSource({
-        manhua_id: existingManhua.id,
-        website_name: sourceName,
-        website_url: result.url,
-        latest_chapter: result.latestChapter || 0,
-        last_updated: new Date().toISOString(),
-      });
 
       // Update cover if existing doesn't have one
       if (!existingManhua.cover_image_url && result.coverUrl) {
@@ -327,29 +333,43 @@ export default function ManhuaTracker() {
         });
       }
 
-      toast({
-        title: 'Source Added',
-        description: `${sourceName} added to "${existingManhua.title}"`,
-      });
+      if (addedCount > 0) {
+        toast({
+          title: 'Sources Added',
+          description: `${addedCount} source${addedCount > 1 ? 's' : ''} added to "${existingManhua.title}"`,
+        });
+      } else {
+        toast({
+          title: 'Already Added',
+          description: `All sources already exist for "${existingManhua.title}"`,
+        });
+      }
     } else {
-      // Create new manhua
+      // Create new manhua with the best cover available
+      const bestCover = matchingResults.find(r => r.coverUrl)?.coverUrl || result.coverUrl;
       const newManhua = localManhuaService.createManhua({
         title: result.title,
-        cover_image_url: result.coverUrl,
+        cover_image_url: bestCover,
         status: 'plan_to_read',
         current_chapter: 0,
       });
 
-      // Add as a source
-      localSourceService.addSource({
-        manhua_id: newManhua.id,
-        website_name: sourceName,
-        website_url: result.url,
-        latest_chapter: result.latestChapter || 0,
-        last_updated: new Date().toISOString(),
-      });
+      // Add all matching results as sources
+      for (const matchResult of matchingResults) {
+        const source = getSourceByUrl(matchResult.url);
+        localSourceService.addSource({
+          manhua_id: newManhua.id,
+          website_name: source?.name || matchResult.sourceName,
+          website_url: matchResult.url,
+          latest_chapter: matchResult.latestChapter || 0,
+          last_updated: new Date().toISOString(),
+        });
+      }
 
-      toast({ title: 'Added', description: `${result.title} added to your collection` });
+      toast({
+        title: 'Added',
+        description: `${result.title} added with ${matchingResults.length} source${matchingResults.length > 1 ? 's' : ''}`,
+      });
     }
 
     loadManhua();
