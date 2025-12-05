@@ -306,7 +306,7 @@ export default function ManhuaTracker() {
               </Link>
               <div className="flex items-center gap-2">
                 <BookOpen className="w-6 h-6 text-sage" />
-                <h1 className="text-2xl font-bold">Manhua Tracker</h1>
+                <h1 className="text-2xl font-bold">PeakScroll</h1>
               </div>
             </div>
             <Button onClick={handleAddNew}>

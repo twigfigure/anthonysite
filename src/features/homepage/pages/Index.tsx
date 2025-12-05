@@ -171,6 +171,14 @@ const Index = () => {
               <div className="font-semibold mb-0.5">Guild Manager</div>
               <div className="text-xs opacity-75">Solo Leveling inspired guild game</div>
             </Link>
+            <Link
+              to="/manhua-tracker"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-teal/10 transition-colors"
+            >
+              <div className="font-semibold mb-0.5">PeakScroll</div>
+              <div className="text-xs opacity-75">Track your manhua collection</div>
+            </Link>
           </div>
 
           <a
@@ -262,10 +270,17 @@ const Index = () => {
                 </Link>
                 <Link
                   to="/guild-manager"
-                  className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-purple/10 transition-colors"
+                  className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-purple/10 transition-colors border-b border-border"
                 >
                   <div className="font-semibold mb-0.5">Guild Manager</div>
                   <div className="text-xs opacity-75">Solo Leveling inspired guild game</div>
+                </Link>
+                <Link
+                  to="/manhua-tracker"
+                  className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-teal/10 transition-colors"
+                >
+                  <div className="font-semibold mb-0.5">PeakScroll</div>
+                  <div className="text-xs opacity-75">Track your manhua collection</div>
                 </Link>
               </div>
             )}
