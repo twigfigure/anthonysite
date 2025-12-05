@@ -27,7 +27,7 @@ import { ManhuaDialog } from '../components/ManhuaDialog';
 import { manhuaService, sourceService } from '../lib/supabase';
 import type { ManhuaWithSources, ManhuaStatus, CreateSourceInput } from '../types';
 import { STATUS_LABELS } from '../types';
-import AuthModal from '@/components/AuthModal';
+import { AuthModal } from '@/components/AuthModal';
 
 type SortOption = 'updated' | 'title' | 'rating' | 'progress';
 type FilterStatus = ManhuaStatus | 'all';
@@ -467,8 +467,8 @@ export default function ManhuaTracker() {
       </AlertDialog>
 
       <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
+        open={showAuthModal}
+        onOpenChange={setShowAuthModal}
       />
     </div>
   );
