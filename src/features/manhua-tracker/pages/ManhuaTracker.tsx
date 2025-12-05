@@ -19,13 +19,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Search, BookOpen, Filter, ArrowLeft, RefreshCw, Library } from 'lucide-react';
+import { Plus, Search, BookOpen, Filter, ArrowLeft, RefreshCw, Library, Compass } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ManhuaCard } from '../components/ManhuaCard';
 import { ManhuaDialog } from '../components/ManhuaDialog';
 import { SourceSearch } from '../components/SourceSearch';
+import { DiscoveryPanel } from '../components/DiscoveryPanel';
+import { ManhuaCarousel } from '../components/ManhuaCarousel';
 import { localManhuaService, localSourceService } from '../lib/localStorage';
-import { getLatestChapter, type SearchResult } from '../lib/multiSourceScraper';
+import { getLatestChapter, searchMultipleSources, type SearchResult, type DiscoveryResult } from '../lib/multiSourceScraper';
+import { getSourcePreferences } from '../lib/sources';
 import { getSourceByUrl } from '../lib/sources';
 import type { ManhuaWithSources, ManhuaStatus, CreateSourceInput } from '../types';
 import { STATUS_LABELS } from '../types';
@@ -47,7 +50,9 @@ export default function ManhuaTracker() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const [sourceSearchOpen, setSourceSearchOpen] = useState(false);
+  const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const [checkingUpdates, setCheckingUpdates] = useState(false);
+  const [updateProgress, setUpdateProgress] = useState({ current: 0, total: 0 });
 
   useEffect(() => {
     loadManhua();
@@ -92,10 +97,11 @@ export default function ManhuaTracker() {
           return a.title.localeCompare(b.title);
         case 'rating':
           return (b.rating || 0) - (a.rating || 0);
-        case 'progress':
+        case 'progress': {
           const aProgress = a.total_chapters ? a.current_chapter / a.total_chapters : 0;
           const bProgress = b.total_chapters ? b.current_chapter / b.total_chapters : 0;
           return bProgress - aProgress;
+        }
         case 'updated':
         default:
           return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
@@ -196,6 +202,24 @@ export default function ManhuaTracker() {
     }
   };
 
+  const handleUpdateStatus = (id: string, status: ManhuaStatus) => {
+    try {
+      localManhuaService.updateManhua(id, { status });
+      setManhuaList((prev) =>
+        prev.map((m) =>
+          m.id === id ? { ...m, status, updated_at: new Date().toISOString() } : m
+        )
+      );
+    } catch (error) {
+      console.error('Failed to update status:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update status',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleAddSource = async (input: Omit<CreateSourceInput, 'manhua_id'>) => {
     if (!editingManhua) return;
     try {
@@ -275,32 +299,70 @@ export default function ManhuaTracker() {
       .trim();
   };
 
+  // Common words to ignore when matching titles
+  const STOP_WORDS = new Set(['the', 'a', 'an', 'of', 'and', 'or', 'in', 'on', 'at', 'to', 'for', 'is', 'raw', 'manga', 'manhua', 'manhwa', 'comic', 'webtoon']);
+
+  // Get significant tokens from a title (excluding stop words)
+  const getTokens = (title: string): Set<string> => {
+    const normalized = normalizeTitle(title);
+    const words = normalized.split(' ').filter(w => w.length > 1 && !STOP_WORDS.has(w));
+    return new Set(words);
+  };
+
+  // Check if two titles match using token overlap
+  const titlesMatch = (title1: string, title2: string): boolean => {
+    const normalized1 = normalizeTitle(title1);
+    const normalized2 = normalizeTitle(title2);
+
+    // Exact match after normalization
+    if (normalized1 === normalized2) return true;
+
+    // One contains the other
+    if (normalized1.includes(normalized2) || normalized2.includes(normalized1)) return true;
+
+    // Token-based matching: check if significant words overlap
+    const tokens1 = getTokens(title1);
+    const tokens2 = getTokens(title2);
+
+    if (tokens1.size === 0 || tokens2.size === 0) return false;
+
+    // Count matching tokens
+    let matches = 0;
+    for (const token of tokens1) {
+      if (tokens2.has(token)) matches++;
+    }
+
+    // Require at least 80% of the smaller set to match
+    const minSize = Math.min(tokens1.size, tokens2.size);
+    return matches >= minSize * 0.8;
+  };
+
   // Find existing manhua with similar title
   const findExistingManhua = (title: string): ManhuaWithSources | undefined => {
-    const normalizedNew = normalizeTitle(title);
-    return manhuaList.find((m) => {
-      const normalizedExisting = normalizeTitle(m.title);
-      // Check if titles match or one contains the other
-      return (
-        normalizedExisting === normalizedNew ||
-        normalizedExisting.includes(normalizedNew) ||
-        normalizedNew.includes(normalizedExisting)
-      );
-    });
+    return manhuaList.find((m) => titlesMatch(m.title, title));
   };
 
   // Handle adding from source search - adds all matching sources automatically
   const handleAddFromSearch = (result: SearchResult, allResults: SearchResult[]) => {
     // Find all results with similar titles to add as sources
-    const normalizedSelected = normalizeTitle(result.title);
-    const matchingResults = allResults.filter((r) => {
-      const normalizedTitle = normalizeTitle(r.title);
-      return (
-        normalizedTitle === normalizedSelected ||
-        normalizedTitle.includes(normalizedSelected) ||
-        normalizedSelected.includes(normalizedTitle)
-      );
-    });
+    // BUT only include one result per source (to avoid adding 20 Bato.to results)
+    const matchingResults = allResults.filter((r) => titlesMatch(r.title, result.title));
+
+    // Dedupe by source - keep the one closest in chapter count or first one
+    const seenSources = new Set<string>();
+    const dedupedResults: SearchResult[] = [];
+
+    // Always add the clicked result first
+    dedupedResults.push(result);
+    seenSources.add(result.sourceId);
+
+    // Then add one from each other source
+    for (const matchResult of matchingResults) {
+      if (!seenSources.has(matchResult.sourceId)) {
+        seenSources.add(matchResult.sourceId);
+        dedupedResults.push(matchResult);
+      }
+    }
 
     // Check if manhua with similar title already exists
     const existingManhua = findExistingManhua(result.title);
@@ -308,7 +370,7 @@ export default function ManhuaTracker() {
     if (existingManhua) {
       // Add all new sources to existing manhua
       let addedCount = 0;
-      for (const matchResult of matchingResults) {
+      for (const matchResult of dedupedResults) {
         const sourceExists = existingManhua.sources.some(
           (s) => s.website_url === matchResult.url
         );
@@ -346,7 +408,7 @@ export default function ManhuaTracker() {
       }
     } else {
       // Create new manhua with the best cover available
-      const bestCover = matchingResults.find(r => r.coverUrl)?.coverUrl || result.coverUrl;
+      const bestCover = dedupedResults.find(r => r.coverUrl)?.coverUrl || result.coverUrl;
       const newManhua = localManhuaService.createManhua({
         title: result.title,
         cover_image_url: bestCover,
@@ -354,8 +416,8 @@ export default function ManhuaTracker() {
         current_chapter: 0,
       });
 
-      // Add all matching results as sources
-      for (const matchResult of matchingResults) {
+      // Add all deduped results as sources (one per source site)
+      for (const matchResult of dedupedResults) {
         const source = getSourceByUrl(matchResult.url);
         localSourceService.addSource({
           manhua_id: newManhua.id,
@@ -368,14 +430,188 @@ export default function ManhuaTracker() {
 
       toast({
         title: 'Added',
-        description: `${result.title} added with ${matchingResults.length} source${matchingResults.length > 1 ? 's' : ''}`,
+        description: `${result.title} added with ${dedupedResults.length} source${dedupedResults.length > 1 ? 's' : ''}`,
       });
     }
 
     loadManhua();
   };
 
-  // Check for updates from all sources
+  // Handle linking search result to an existing manhua
+  const handleLinkToExisting = (result: SearchResult, existingManhuaId: string, allResults: SearchResult[]) => {
+    const existingManhua = manhuaList.find(m => m.id === existingManhuaId);
+    if (!existingManhua) return;
+
+    // Find all results with similar titles to add as sources
+    // BUT only include one result per source (to avoid adding 20 Bato.to results)
+    const matchingResults = allResults.filter((r) => titlesMatch(r.title, result.title));
+
+    // Dedupe by source - keep one per source site
+    const seenSources = new Set<string>();
+    const dedupedResults: SearchResult[] = [];
+
+    // Always add the clicked result first
+    dedupedResults.push(result);
+    seenSources.add(result.sourceId);
+
+    // Then add one from each other source
+    for (const matchResult of matchingResults) {
+      if (!seenSources.has(matchResult.sourceId)) {
+        seenSources.add(matchResult.sourceId);
+        dedupedResults.push(matchResult);
+      }
+    }
+
+    // Add all new sources to existing manhua
+    let addedCount = 0;
+    for (const matchResult of dedupedResults) {
+      const sourceExists = existingManhua.sources.some(
+        (s) => s.website_url === matchResult.url
+      );
+
+      if (!sourceExists) {
+        const source = getSourceByUrl(matchResult.url);
+        localSourceService.addSource({
+          manhua_id: existingManhua.id,
+          website_name: source?.name || matchResult.sourceName,
+          website_url: matchResult.url,
+          latest_chapter: matchResult.latestChapter || 0,
+          last_updated: new Date().toISOString(),
+        });
+        addedCount++;
+      }
+    }
+
+    // Update cover if existing doesn't have one
+    if (!existingManhua.cover_image_url && result.coverUrl) {
+      localManhuaService.updateManhua(existingManhua.id, {
+        cover_image_url: result.coverUrl,
+      });
+    }
+
+    loadManhua();
+  };
+
+  // Handle adding from discovery - searches all sources for matching titles
+  const handleAddFromDiscovery = async (result: DiscoveryResult, _allResults: DiscoveryResult[]) => {
+    // Show a toast that we're searching for sources
+    toast({
+      title: 'Searching Sources',
+      description: `Finding all sources for "${result.title}"...`,
+    });
+
+    // Search all enabled sources for this title
+    const enabledSources = getSourcePreferences();
+    const searchResults = await searchMultipleSources(result.title, enabledSources);
+
+    // Find all results with similar titles
+    const matchingResults = searchResults.filter((r) => titlesMatch(r.title, result.title));
+
+    // Also include the original discovery result if not already in matching
+    const discoveryAsSearch: SearchResult = {
+      sourceId: result.sourceId,
+      sourceName: result.sourceName,
+      title: result.title,
+      url: result.url,
+      coverUrl: result.coverUrl,
+      latestChapter: result.latestChapter,
+      status: result.status,
+    };
+
+    if (!matchingResults.some(r => r.url === result.url)) {
+      matchingResults.push(discoveryAsSearch);
+    }
+
+    // Dedupe by source - keep one per source site
+    const seenSources = new Set<string>();
+    const dedupedResults: SearchResult[] = [];
+
+    // Always add the discovery result first
+    dedupedResults.push(discoveryAsSearch);
+    seenSources.add(result.sourceId);
+
+    // Then add one from each other source
+    for (const matchResult of matchingResults) {
+      if (!seenSources.has(matchResult.sourceId)) {
+        seenSources.add(matchResult.sourceId);
+        dedupedResults.push(matchResult);
+      }
+    }
+
+    // Check if manhua with similar title already exists
+    const existingManhua = findExistingManhua(result.title);
+
+    if (existingManhua) {
+      // Add all new sources to existing manhua
+      let addedCount = 0;
+      for (const matchResult of dedupedResults) {
+        const sourceExists = existingManhua.sources.some(
+          (s) => s.website_url === matchResult.url
+        );
+
+        if (!sourceExists) {
+          const source = getSourceByUrl(matchResult.url);
+          localSourceService.addSource({
+            manhua_id: existingManhua.id,
+            website_name: source?.name || matchResult.sourceName,
+            website_url: matchResult.url,
+            latest_chapter: matchResult.latestChapter || 0,
+            last_updated: new Date().toISOString(),
+          });
+          addedCount++;
+        }
+      }
+
+      // Update cover if existing doesn't have one
+      if (!existingManhua.cover_image_url && result.coverUrl) {
+        localManhuaService.updateManhua(existingManhua.id, {
+          cover_image_url: result.coverUrl,
+        });
+      }
+
+      if (addedCount > 0) {
+        toast({
+          title: 'Sources Added',
+          description: `${addedCount} source${addedCount > 1 ? 's' : ''} added to "${existingManhua.title}"`,
+        });
+      } else {
+        toast({
+          title: 'Already Added',
+          description: `All sources already exist for "${existingManhua.title}"`,
+        });
+      }
+    } else {
+      // Create new manhua with the best cover available
+      const bestCover = dedupedResults.find(r => r.coverUrl)?.coverUrl || result.coverUrl;
+      const newManhua = localManhuaService.createManhua({
+        title: result.title,
+        cover_image_url: bestCover,
+        status: 'plan_to_read',
+        current_chapter: 0,
+      });
+
+      // Add all deduped results as sources (one per source site)
+      for (const matchResult of dedupedResults) {
+        const source = getSourceByUrl(matchResult.url);
+        localSourceService.addSource({
+          manhua_id: newManhua.id,
+          website_name: source?.name || matchResult.sourceName,
+          website_url: matchResult.url,
+          latest_chapter: matchResult.latestChapter || 0,
+          last_updated: new Date().toISOString(),
+        });
+      }
+
+      toast({
+        title: 'Added',
+        description: `${result.title} added with ${dedupedResults.length} source${dedupedResults.length > 1 ? 's' : ''}`,
+      });
+    }
+
+    loadManhua();
+  };
+
+  // Check for updates from all sources - optimized with parallel batching
   const handleCheckUpdates = async () => {
     const allSources = manhuaList.flatMap((m) =>
       m.sources.map((s) => ({ sourceId: s.id, manhuaId: m.id, url: s.website_url }))
@@ -390,28 +626,46 @@ export default function ManhuaTracker() {
     }
 
     setCheckingUpdates(true);
+    setUpdateProgress({ current: 0, total: allSources.length });
     let updatedCount = 0;
     let failedCount = 0;
+    let completedCount = 0;
 
     try {
-      for (const { sourceId, url } of allSources) {
-        try {
-          const latestChapter = await getLatestChapter(url);
-          if (latestChapter !== null) {
-            localSourceService.updateSource(sourceId, {
-              latest_chapter: latestChapter,
-              last_updated: new Date().toISOString(),
+      // Process in parallel batches of 5 to avoid overwhelming proxies
+      const BATCH_SIZE = 5;
+
+      for (let i = 0; i < allSources.length; i += BATCH_SIZE) {
+        const batch = allSources.slice(i, i + BATCH_SIZE);
+
+        const results = await Promise.allSettled(
+          batch.map(async ({ sourceId, url }) => {
+            const chapterInfo = await getLatestChapter(url);
+            return { sourceId, chapterInfo };
+          })
+        );
+
+        // Process results
+        for (const result of results) {
+          completedCount++;
+          setUpdateProgress({ current: completedCount, total: allSources.length });
+
+          if (result.status === 'fulfilled' && result.value.chapterInfo.chapter !== null) {
+            localSourceService.updateSource(result.value.sourceId, {
+              latest_chapter: result.value.chapterInfo.chapter,
+              last_updated: result.value.chapterInfo.updatedAt || undefined,
+              last_checked: new Date().toISOString(),
             });
             updatedCount++;
           } else {
             failedCount++;
           }
-        } catch (e) {
-          console.warn('Failed to check:', url, e);
-          failedCount++;
         }
-        // Small delay to avoid rate limiting
-        await new Promise((r) => setTimeout(r, 300));
+
+        // Small delay between batches to be nice to servers
+        if (i + BATCH_SIZE < allSources.length) {
+          await new Promise((r) => setTimeout(r, 100));
+        }
       }
 
       loadManhua();
@@ -428,6 +682,7 @@ export default function ManhuaTracker() {
       });
     } finally {
       setCheckingUpdates(false);
+      setUpdateProgress({ current: 0, total: 0 });
     }
   };
 
@@ -442,6 +697,35 @@ export default function ManhuaTracker() {
       return maxChapter > m.current_chapter;
     }).length;
     return { reading, completed, total, withNewChapters };
+  }, [manhuaList]);
+
+  // Reading history - recently updated manhua that user is currently reading
+  const readingHistory = useMemo(() => {
+    return manhuaList
+      .filter((m) => m.status === 'reading' && m.current_chapter > 0)
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+      .slice(0, 20);
+  }, [manhuaList]);
+
+  // New chapters - manhua with new chapters available, sorted by most recent source update
+  const newChapters = useMemo((): ManhuaWithSources[] => {
+    return manhuaList
+      .filter((m) => {
+        if (m.sources.length === 0) return false;
+        const maxChapter = Math.max(...m.sources.map((s) => s.latest_chapter));
+        return maxChapter > m.current_chapter;
+      })
+      .map((m) => {
+        // Get the most recent source update time
+        const mostRecentUpdate = m.sources.reduce((latest, source) => {
+          const sourceTime = new Date(source.last_updated || 0).getTime();
+          return sourceTime > latest ? sourceTime : latest;
+        }, 0);
+        return { manhua: m, sortTime: mostRecentUpdate };
+      })
+      .sort((a, b) => b.sortTime - a.sortTime)
+      .map(({ manhua }) => manhua)
+      .slice(0, 20);
   }, [manhuaList]);
 
   return (
@@ -470,7 +754,17 @@ export default function ManhuaTracker() {
                 disabled={checkingUpdates || manhuaList.length === 0}
               >
                 <RefreshCw className={`w-4 h-4 mr-2 ${checkingUpdates ? 'animate-spin' : ''}`} />
-                {checkingUpdates ? 'Checking...' : 'Check Updates'}
+                {checkingUpdates
+                  ? `${updateProgress.current}/${updateProgress.total}`
+                  : 'Check Updates'}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDiscoveryOpen(true)}
+              >
+                <Compass className="w-4 h-4 mr-2" />
+                Discover
               </Button>
               <Button
                 variant="outline"
@@ -478,11 +772,11 @@ export default function ManhuaTracker() {
                 onClick={() => setSourceSearchOpen(true)}
               >
                 <Library className="w-4 h-4 mr-2" />
-                Sources
+                Search
               </Button>
-              <Button onClick={handleAddNew}>
+              <Button onClick={handleAddNew} size="sm">
                 <Plus className="w-4 h-4 mr-2" />
-                Add Manual
+                Manual
               </Button>
             </div>
           </div>
@@ -509,6 +803,24 @@ export default function ManhuaTracker() {
             <div className="text-sm text-muted-foreground">With Updates</div>
           </div>
         </div>
+
+        {/* New Chapters Carousel */}
+        <ManhuaCarousel
+          title="New Chapters"
+          icon="new"
+          items={newChapters}
+          onItemClick={handleEdit}
+          emptyMessage="No new chapters available"
+        />
+
+        {/* Reading History Carousel */}
+        <ManhuaCarousel
+          title="Continue Reading"
+          icon="history"
+          items={readingHistory}
+          onItemClick={handleEdit}
+          emptyMessage="Start reading to see your history"
+        />
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -596,6 +908,7 @@ export default function ManhuaTracker() {
                 onDelete={(id) => setDeleteConfirmId(id)}
                 onUpdateChapter={handleUpdateChapter}
                 onUpdateRating={handleUpdateRating}
+                onUpdateStatus={handleUpdateStatus}
               />
             ))}
           </div>
@@ -617,6 +930,14 @@ export default function ManhuaTracker() {
         open={sourceSearchOpen}
         onOpenChange={setSourceSearchOpen}
         onAddFromSearch={handleAddFromSearch}
+        onLinkToExisting={handleLinkToExisting}
+        manhuaList={manhuaList}
+      />
+
+      <DiscoveryPanel
+        open={discoveryOpen}
+        onOpenChange={setDiscoveryOpen}
+        onAddFromDiscovery={handleAddFromDiscovery}
       />
 
       <AlertDialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
