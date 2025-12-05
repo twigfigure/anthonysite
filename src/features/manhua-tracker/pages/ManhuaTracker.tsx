@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,16 +23,14 @@ import { Plus, Search, BookOpen, Filter, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ManhuaCard } from '../components/ManhuaCard';
 import { ManhuaDialog } from '../components/ManhuaDialog';
-import { manhuaService, sourceService } from '../lib/supabase';
+import { localManhuaService, localSourceService } from '../lib/localStorage';
 import type { ManhuaWithSources, ManhuaStatus, CreateSourceInput } from '../types';
 import { STATUS_LABELS } from '../types';
-import { AuthModal } from '@/components/AuthModal';
 
 type SortOption = 'updated' | 'title' | 'rating' | 'progress';
 type FilterStatus = ManhuaStatus | 'all';
 
 export default function ManhuaTracker() {
-  const { user } = useAuth();
   const { toast } = useToast();
 
   const [manhuaList, setManhuaList] = useState<ManhuaWithSources[]>([]);
@@ -45,21 +42,15 @@ export default function ManhuaTracker() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingManhua, setEditingManhua] = useState<ManhuaWithSources | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      loadManhua();
-    } else {
-      setLoading(false);
-    }
-  }, [user]);
+    loadManhua();
+  }, []);
 
-  const loadManhua = async () => {
-    if (!user) return;
+  const loadManhua = () => {
     setLoading(true);
     try {
-      const data = await manhuaService.getAllManhua(user.id);
+      const data = localManhuaService.getAllManhua();
       setManhuaList(data);
     } catch (error) {
       console.error('Failed to load manhua:', error);
@@ -112,10 +103,6 @@ export default function ManhuaTracker() {
   }, [manhuaList, searchQuery, statusFilter, sortBy]);
 
   const handleAddNew = () => {
-    if (!user) {
-      setShowAuthModal(true);
-      return;
-    }
     setEditingManhua(null);
     setDialogOpen(true);
   };
@@ -135,17 +122,15 @@ export default function ManhuaTracker() {
     rating: number | null;
     notes: string | null;
   }) => {
-    if (!user) return;
-
     try {
       if (editingManhua) {
-        await manhuaService.updateManhua(editingManhua.id, data);
+        localManhuaService.updateManhua(editingManhua.id, data);
         toast({ title: 'Updated', description: 'Manhua updated successfully' });
       } else {
-        await manhuaService.createManhua(user.id, data);
+        localManhuaService.createManhua(data);
         toast({ title: 'Added', description: 'New manhua added to your collection' });
       }
-      await loadManhua();
+      loadManhua();
     } catch (error) {
       console.error('Failed to save manhua:', error);
       toast({
@@ -156,12 +141,12 @@ export default function ManhuaTracker() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
     try {
-      await manhuaService.deleteManhua(id);
+      localManhuaService.deleteManhua(id);
       setDeleteConfirmId(null);
       toast({ title: 'Deleted', description: 'Manhua removed from your collection' });
-      await loadManhua();
+      loadManhua();
     } catch (error) {
       console.error('Failed to delete manhua:', error);
       toast({
@@ -172,9 +157,9 @@ export default function ManhuaTracker() {
     }
   };
 
-  const handleUpdateChapter = async (id: string, chapter: number) => {
+  const handleUpdateChapter = (id: string, chapter: number) => {
     try {
-      await manhuaService.updateManhua(id, { current_chapter: chapter });
+      localManhuaService.updateManhua(id, { current_chapter: chapter });
       setManhuaList((prev) =>
         prev.map((m) =>
           m.id === id ? { ...m, current_chapter: chapter, updated_at: new Date().toISOString() } : m
@@ -190,9 +175,9 @@ export default function ManhuaTracker() {
     }
   };
 
-  const handleUpdateRating = async (id: string, rating: number) => {
+  const handleUpdateRating = (id: string, rating: number) => {
     try {
-      await manhuaService.updateManhua(id, { rating });
+      localManhuaService.updateManhua(id, { rating });
       setManhuaList((prev) =>
         prev.map((m) =>
           m.id === id ? { ...m, rating, updated_at: new Date().toISOString() } : m
@@ -211,11 +196,11 @@ export default function ManhuaTracker() {
   const handleAddSource = async (input: Omit<CreateSourceInput, 'manhua_id'>) => {
     if (!editingManhua) return;
     try {
-      await sourceService.addSource({
+      localSourceService.addSource({
         ...input,
         manhua_id: editingManhua.id,
       });
-      const updated = await manhuaService.getManhuaById(editingManhua.id);
+      const updated = localManhuaService.getManhuaById(editingManhua.id);
       if (updated) {
         setEditingManhua(updated);
         setManhuaList((prev) =>
@@ -235,9 +220,9 @@ export default function ManhuaTracker() {
 
   const handleUpdateSource = async (id: string, data: Partial<CreateSourceInput>) => {
     try {
-      await sourceService.updateSource(id, data);
+      localSourceService.updateSource(id, data);
       if (editingManhua) {
-        const updated = await manhuaService.getManhuaById(editingManhua.id);
+        const updated = localManhuaService.getManhuaById(editingManhua.id);
         if (updated) {
           setEditingManhua(updated);
           setManhuaList((prev) =>
@@ -257,9 +242,9 @@ export default function ManhuaTracker() {
 
   const handleDeleteSource = async (id: string) => {
     try {
-      await sourceService.deleteSource(id);
+      localSourceService.deleteSource(id);
       if (editingManhua) {
-        const updated = await manhuaService.getManhuaById(editingManhua.id);
+        const updated = localManhuaService.getManhuaById(editingManhua.id);
         if (updated) {
           setEditingManhua(updated);
           setManhuaList((prev) =>
@@ -319,26 +304,24 @@ export default function ManhuaTracker() {
 
       <main className="max-w-6xl mx-auto px-4 py-8">
         {/* Stats */}
-        {user && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div className="p-4 rounded-lg bg-card/50 border border-border/50">
-              <div className="text-2xl font-bold">{stats.total}</div>
-              <div className="text-sm text-muted-foreground">Total Manhua</div>
-            </div>
-            <div className="p-4 rounded-lg bg-card/50 border border-border/50">
-              <div className="text-2xl font-bold text-green-400">{stats.reading}</div>
-              <div className="text-sm text-muted-foreground">Currently Reading</div>
-            </div>
-            <div className="p-4 rounded-lg bg-card/50 border border-border/50">
-              <div className="text-2xl font-bold text-blue-400">{stats.completed}</div>
-              <div className="text-sm text-muted-foreground">Completed</div>
-            </div>
-            <div className="p-4 rounded-lg bg-card/50 border border-border/50">
-              <div className="text-2xl font-bold text-amber-400">{stats.withNewChapters}</div>
-              <div className="text-sm text-muted-foreground">With Updates</div>
-            </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="p-4 rounded-lg bg-card/50 border border-border/50">
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <div className="text-sm text-muted-foreground">Total Manhua</div>
           </div>
-        )}
+          <div className="p-4 rounded-lg bg-card/50 border border-border/50">
+            <div className="text-2xl font-bold text-green-400">{stats.reading}</div>
+            <div className="text-sm text-muted-foreground">Currently Reading</div>
+          </div>
+          <div className="p-4 rounded-lg bg-card/50 border border-border/50">
+            <div className="text-2xl font-bold text-blue-400">{stats.completed}</div>
+            <div className="text-sm text-muted-foreground">Completed</div>
+          </div>
+          <div className="p-4 rounded-lg bg-card/50 border border-border/50">
+            <div className="text-2xl font-bold text-amber-400">{stats.withNewChapters}</div>
+            <div className="text-sm text-muted-foreground">With Updates</div>
+          </div>
+        </div>
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -381,16 +364,7 @@ export default function ManhuaTracker() {
         </div>
 
         {/* Content */}
-        {!user ? (
-          <div className="text-center py-16">
-            <BookOpen className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Track Your Manhua Collection</h2>
-            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-              Sign in to start tracking your favorite manhua, rate them, and keep track of chapter updates from multiple sources.
-            </p>
-            <Button onClick={() => setShowAuthModal(true)}>Sign In to Get Started</Button>
-          </div>
-        ) : loading ? (
+        {loading ? (
           <div className="grid gap-4">
             {[1, 2, 3].map((i) => (
               <div key={i} className="h-40 rounded-lg bg-card/50 animate-pulse" />
@@ -465,11 +439,6 @@ export default function ManhuaTracker() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <AuthModal
-        open={showAuthModal}
-        onOpenChange={setShowAuthModal}
-      />
     </div>
   );
 }
