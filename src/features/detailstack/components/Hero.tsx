@@ -134,21 +134,20 @@ export default function Hero() {
             transition={{ duration: 1, delay: 0.3 }}
             className="relative hidden lg:block"
           >
-            {/* Decorative car silhouette placeholder */}
-            <div className="relative aspect-[4/3] rounded-sm overflow-hidden">
-              {/* Placeholder gradient for car image */}
-              <div className="absolute inset-0 bg-gradient-to-br from-obsidian-800 to-obsidian-900">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center space-y-4">
-                    <div className="w-32 h-32 mx-auto rounded-full bg-gradient-to-br from-champagne-500/20 to-champagne-600/10 flex items-center justify-center">
-                      <svg className="w-16 h-16 text-champagne-500/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                    <p className="text-obsidian-500 text-sm">Premium Vehicle Image</p>
-                  </div>
-                </div>
-              </div>
+            {/* Stunning vehicle showcase */}
+            <div className="relative aspect-[4/3] rounded-sm overflow-hidden group">
+              {/* Main vehicle image - Porsche in dramatic lighting */}
+              <img
+                src="https://images.unsplash.com/photo-1614162692292-7ac56d7f373e?w=1200&q=90"
+                alt="Luxury sports car with pristine finish in dramatic studio lighting"
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+
+              {/* Dramatic overlay for depth */}
+              <div className="absolute inset-0 bg-gradient-to-br from-obsidian-950/40 via-transparent to-obsidian-950/60" />
+
+              {/* Shine effect on hover */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
 
               {/* Reflection effect */}
               <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-obsidian-950 to-transparent" />
