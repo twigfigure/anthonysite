@@ -20,6 +20,7 @@ import {
   Bell,
   User,
   LineChart,
+  Target,
 } from 'lucide-react'
 
 // Mock data for demonstration
