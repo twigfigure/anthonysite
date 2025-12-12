@@ -187,6 +187,14 @@ const Index = () => {
               <div className="font-semibold mb-0.5">DetailStack</div>
               <div className="text-xs opacity-75">Premium auto detailing studio</div>
             </Link>
+            <Link
+              to="/otexam"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-amber-600/10 transition-colors"
+            >
+              <div className="font-semibold mb-0.5">OTexam</div>
+              <div className="text-xs opacity-75">NBCOT exam prep & analytics</div>
+            </Link>
           </div>
 
           <a
@@ -292,10 +300,17 @@ const Index = () => {
                 </Link>
                 <Link
                   to="/detailstack"
-                  className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-champagne-500/10 transition-colors"
+                  className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-champagne-500/10 transition-colors border-b border-border"
                 >
                   <div className="font-semibold mb-0.5">DetailStack</div>
                   <div className="text-xs opacity-75">Premium auto detailing studio</div>
+                </Link>
+                <Link
+                  to="/otexam"
+                  className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-amber-600/10 transition-colors"
+                >
+                  <div className="font-semibold mb-0.5">OTexam</div>
+                  <div className="text-xs opacity-75">NBCOT exam prep & analytics</div>
                 </Link>
               </div>
             )}
