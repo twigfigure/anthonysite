@@ -16,6 +16,7 @@ import OTexam from "./features/otexam/pages/OTexam";
 import OTexamExam from "./features/otexam/pages/Exam";
 import OTexamDashboard from "./features/otexam/pages/Dashboard";
 import OTexamStudents from "./features/otexam/pages/Students";
+import OTexamQuestions from "./features/otexam/pages/QuestionBank";
 import PortalLayout from "./features/detailstack/pages/portal/PortalLayout";
 import PortalDashboard from "./features/detailstack/pages/portal/Dashboard";
 import PortalAppointments from "./features/detailstack/pages/portal/Appointments";
@@ -60,6 +61,7 @@ const App = () => (
             <Route path="/otexam/exam" element={<OTexamExam />} />
             <Route path="/otexam/dashboard" element={<OTexamDashboard />} />
             <Route path="/otexam/students" element={<OTexamStudents />} />
+            <Route path="/otexam/questions" element={<OTexamQuestions />} />
             <Route path="/migrate-images" element={<MigrateImages />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

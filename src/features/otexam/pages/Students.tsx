@@ -331,7 +331,7 @@ export default function Students() {
             Practice Exams
           </Link>
           <Link
-            to="/otexam"
+            to="/otexam/questions"
             className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
           >
             <Brain className="w-5 h-5" />
