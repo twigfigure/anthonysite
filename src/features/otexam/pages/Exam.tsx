@@ -15,10 +15,22 @@ import {
   Home,
   RotateCcw,
   BarChart3,
+  Image as ImageIcon,
+  ExternalLink,
+  BookMarked,
+  Lightbulb,
+  AlertTriangle,
+  TrendingUp,
 } from 'lucide-react'
 import { sampleQuestions, settingDescriptions } from '../data/questions'
+import type { ExamQuestion } from '../types'
 
 type ExamState = 'intro' | 'exam' | 'review' | 'results'
+
+// Question with shuffled options for display
+interface ShuffledQuestion extends ExamQuestion {
+  shuffledOptions: ExamQuestion['options']
+}
 
 // Fisher-Yates shuffle
 function shuffleArray<T>(array: T[]): T[] {
@@ -30,6 +42,15 @@ function shuffleArray<T>(array: T[]): T[] {
   return shuffled
 }
 
+// Shuffle questions and their options
+function prepareExamQuestions(questions: ExamQuestion[]): ShuffledQuestion[] {
+  const shuffledQuestions = shuffleArray(questions)
+  return shuffledQuestions.map(q => ({
+    ...q,
+    shuffledOptions: shuffleArray(q.options)
+  }))
+}
+
 type QuestionCountOption = 5 | 10 | 15 | 'all'
 
 export default function Exam() {
@@ -38,9 +59,8 @@ export default function Exam() {
   const [answers, setAnswers] = useState<Record<string, string | null>>({})
   const [flagged, setFlagged] = useState<Set<string>>(new Set())
   const [timeElapsed, setTimeElapsed] = useState(0)
-  const [showRationale, setShowRationale] = useState(false)
   const [questionCount, setQuestionCount] = useState<QuestionCountOption>('all')
-  const [selectedQuestions, setSelectedQuestions] = useState(sampleQuestions)
+  const [selectedQuestions, setSelectedQuestions] = useState<ShuffledQuestion[]>([])
 
   const questions = selectedQuestions
   const currentQuestion = questions[currentIndex]
@@ -76,9 +96,9 @@ export default function Exam() {
   }
 
   const startExam = () => {
-    const shuffled = shuffleArray(sampleQuestions)
-    const count = questionCount === 'all' ? shuffled.length : questionCount
-    setSelectedQuestions(shuffled.slice(0, count))
+    const count = questionCount === 'all' ? sampleQuestions.length : questionCount
+    const prepared = prepareExamQuestions(sampleQuestions.slice(0, count))
+    setSelectedQuestions(prepared)
     setExamState('exam')
   }
 
@@ -253,6 +273,383 @@ export default function Exam() {
     )
   }
 
+  // Helper function to get weak areas and suggested content
+  const getWeakAreasAndSuggestions = () => {
+    const weakDomains: string[] = []
+    const weakSettings: string[] = []
+    const missedConcepts: Set<string> = new Set()
+
+    // Find weak domains (< 70% correct)
+    const results = calculateResults()
+    Object.entries(results.byDomain).forEach(([domain, data]) => {
+      if (data.total > 0 && (data.correct / data.total) < 0.7) {
+        weakDomains.push(domain)
+      }
+    })
+
+    // Find weak settings
+    Object.entries(results.bySetting).forEach(([setting, data]) => {
+      if (data.total > 0 && (data.correct / data.total) < 0.7) {
+        weakSettings.push(setting)
+      }
+    })
+
+    // Collect concepts from missed questions
+    questions.forEach(q => {
+      const selectedId = answers[q.id]
+      const isCorrect = q.options.find(o => o.id === selectedId)?.isCorrect
+      if (!isCorrect) {
+        q.concepts.forEach(c => missedConcepts.add(c))
+      }
+    })
+
+    return { weakDomains, weakSettings, missedConcepts: Array.from(missedConcepts) }
+  }
+
+  // Comprehensive review screen
+  if (examState === 'review') {
+    const results = calculateResults()
+    const { weakDomains, weakSettings, missedConcepts } = getWeakAreasAndSuggestions()
+
+    return (
+      <div className="min-h-screen bg-[#0a0f1a] text-white">
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Source+Sans+3:wght@300;400;500;600&display=swap');
+          .ot-font-display { font-family: 'Fraunces', Georgia, serif; }
+          .ot-font-body { font-family: 'Source Sans 3', system-ui, sans-serif; }
+          .ot-glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); }
+          .ot-gradient-text { background: linear-gradient(135deg, #d4a574 0%, #e8c9a0 50%, #d4a574 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        `}</style>
+
+        {/* Sticky header */}
+        <header className="sticky top-0 z-50 ot-glass border-b border-white/5">
+          <div className="max-w-5xl mx-auto px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setExamState('results')}
+                  className="text-gray-400 hover:text-white flex items-center gap-2"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span className="ot-font-body text-sm">Back to Results</span>
+                </button>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className={`ot-font-display text-xl ${
+                  results.percentage >= 75 ? 'text-emerald-400' :
+                  results.percentage >= 60 ? 'text-amber-400' : 'text-red-400'
+                }`}>
+                  {results.percentage}%
+                </span>
+                <span className="ot-font-body text-sm text-gray-400">
+                  {results.correct}/{results.total} correct
+                </span>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="max-w-5xl mx-auto px-6 py-8">
+          {/* Review header */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <h1 className="ot-font-display text-3xl mb-2">Comprehensive Review</h1>
+            <p className="ot-font-body text-gray-400">
+              Review each question with detailed rationales and recommended study areas
+            </p>
+          </motion.div>
+
+          {/* Focus Areas Summary */}
+          {(weakDomains.length > 0 || missedConcepts.length > 0) && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="ot-glass rounded-2xl p-6 mb-8"
+            >
+              <h2 className="ot-font-display text-xl mb-4 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-[#d4a574]" />
+                Suggested Focus Areas
+              </h2>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Weak Domains */}
+                {weakDomains.length > 0 && (
+                  <div>
+                    <h3 className="ot-font-body text-sm text-gray-400 uppercase tracking-wider mb-3">
+                      NBCOT Domains to Review
+                    </h3>
+                    <div className="space-y-2">
+                      {weakDomains.map(domain => (
+                        <div key={domain} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                          <AlertTriangle className="w-4 h-4 text-amber-400" />
+                          <span className="ot-font-body text-sm text-amber-300 capitalize">{domain}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Concepts to Review */}
+                {missedConcepts.length > 0 && (
+                  <div>
+                    <h3 className="ot-font-body text-sm text-gray-400 uppercase tracking-wider mb-3">
+                      Key Concepts to Study
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {missedConcepts.slice(0, 10).map(concept => (
+                        <span key={concept} className="px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 ot-font-body text-xs text-blue-300">
+                          {concept}
+                        </span>
+                      ))}
+                      {missedConcepts.length > 10 && (
+                        <span className="px-3 py-1 ot-font-body text-xs text-gray-500">
+                          +{missedConcepts.length - 10} more
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Settings to focus on */}
+              {weakSettings.length > 0 && (
+                <div className="mt-6 pt-6 border-t border-white/10">
+                  <h3 className="ot-font-body text-sm text-gray-400 uppercase tracking-wider mb-3">
+                    Practice Settings Needing Attention
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {weakSettings.map(setting => (
+                      <span key={setting} className="px-3 py-2 rounded-lg bg-purple-500/10 border border-purple-500/20 ot-font-body text-sm text-purple-300">
+                        {settingDescriptions[setting]?.name || setting}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* All Questions Review */}
+          <div className="space-y-6">
+            {questions.map((q, index) => {
+              const selectedId = answers[q.id]
+              const selectedOption = q.options.find(o => o.id === selectedId)
+              const isCorrect = selectedOption?.isCorrect
+
+              return (
+                <motion.div
+                  key={q.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + index * 0.02 }}
+                  className={`ot-glass rounded-2xl overflow-hidden ${
+                    isCorrect ? 'ring-1 ring-emerald-500/30' : 'ring-1 ring-red-500/30'
+                  }`}
+                >
+                  {/* Question header */}
+                  <div className={`px-6 py-4 border-b border-white/5 ${
+                    isCorrect ? 'bg-emerald-500/5' : 'bg-red-500/5'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                          isCorrect ? 'bg-emerald-500/20' : 'bg-red-500/20'
+                        }`}>
+                          {isCorrect ? (
+                            <CheckCircle className="w-5 h-5 text-emerald-400" />
+                          ) : (
+                            <XCircle className="w-5 h-5 text-red-400" />
+                          )}
+                        </div>
+                        <span className="ot-font-display text-lg">Question {index + 1}</span>
+                        <span className={`ot-font-body text-sm ${isCorrect ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {isCorrect ? 'Correct' : 'Incorrect'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-1 rounded bg-white/5 ot-font-body text-xs text-gray-400">
+                          {settingDescriptions[q.otSettings[0]]?.name || q.otSettings[0]}
+                        </span>
+                        <span className="px-2 py-1 rounded bg-[#d4a574]/10 ot-font-body text-xs text-[#d4a574] capitalize">
+                          {q.bloomLevel}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-6">
+                    {/* Scenario */}
+                    <div className="mb-6">
+                      <h4 className="ot-font-body text-xs text-[#d4a574] uppercase tracking-wider mb-2">
+                        Clinical Scenario
+                      </h4>
+                      <p className="ot-font-body text-gray-300 text-sm leading-relaxed">
+                        {q.scenario}
+                      </p>
+                    </div>
+
+                    {/* Question */}
+                    <div className="mb-6">
+                      <h4 className="ot-font-display text-base mb-4">{q.question}</h4>
+                    </div>
+
+                    {/* Image (if available) */}
+                    {q.image && (
+                      <div className="mb-6">
+                        <h4 className="ot-font-body text-xs text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                          <ImageIcon className="w-4 h-4" />
+                          Reference Image
+                        </h4>
+                        <img
+                          src={q.image}
+                          alt="Question reference"
+                          className="max-w-full h-auto rounded-lg border border-white/10"
+                        />
+                      </div>
+                    )}
+
+                    {/* Options with rationales */}
+                    <div className="mb-6">
+                      <h4 className="ot-font-body text-xs text-gray-400 uppercase tracking-wider mb-3">
+                        Answer Choices & Rationales
+                      </h4>
+                      <div className="space-y-3">
+                        {q.options.map((option) => {
+                          const wasSelected = selectedId === option.id
+                          let optionClass = 'border-white/10 bg-white/5'
+
+                          if (option.isCorrect) {
+                            optionClass = 'border-emerald-500/50 bg-emerald-500/10'
+                          } else if (wasSelected) {
+                            optionClass = 'border-red-500/50 bg-red-500/10'
+                          }
+
+                          return (
+                            <div
+                              key={option.id}
+                              className={`p-4 rounded-xl border ${optionClass}`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className={`w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5 ${
+                                  option.isCorrect ? 'bg-emerald-500/20' : wasSelected ? 'bg-red-500/20' : 'bg-white/10'
+                                }`}>
+                                  {option.isCorrect && <CheckCircle className="w-3 h-3 text-emerald-400" />}
+                                  {!option.isCorrect && wasSelected && <XCircle className="w-3 h-3 text-red-400" />}
+                                </div>
+                                <div className="flex-1">
+                                  <p className={`ot-font-body text-sm ${
+                                    option.isCorrect ? 'text-emerald-300' : wasSelected ? 'text-red-300' : 'text-gray-300'
+                                  }`}>
+                                    {option.text}
+                                    {wasSelected && <span className="ml-2 text-xs opacity-60">(Your answer)</span>}
+                                    {option.isCorrect && <span className="ml-2 text-xs opacity-60">(Correct answer)</span>}
+                                  </p>
+                                  <p className={`mt-2 ot-font-body text-xs leading-relaxed ${
+                                    option.isCorrect ? 'text-emerald-400/80' : 'text-gray-500'
+                                  }`}>
+                                    <span className="font-medium">Rationale: </span>{option.rationale}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Clinical Reasoning */}
+                    <div className="mb-6 p-4 rounded-xl bg-[#d4a574]/5 border border-[#d4a574]/20">
+                      <h4 className="ot-font-body text-xs text-[#d4a574] uppercase tracking-wider mb-2 flex items-center gap-2">
+                        <Lightbulb className="w-4 h-4" />
+                        Clinical Reasoning Summary
+                      </h4>
+                      <p className="ot-font-body text-sm text-gray-300 leading-relaxed">
+                        {q.clinicalReasoning}
+                      </p>
+                    </div>
+
+                    {/* Key Concepts */}
+                    <div className="mb-6">
+                      <h4 className="ot-font-body text-xs text-gray-400 uppercase tracking-wider mb-2">
+                        Key Concepts Tested
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {q.concepts.map(concept => (
+                          <span key={concept} className="px-2 py-1 rounded bg-white/5 ot-font-body text-xs text-gray-400">
+                            {concept}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Suggested Reading */}
+                    {q.suggestedReading && q.suggestedReading.length > 0 && (
+                      <div className="pt-4 border-t border-white/10">
+                        <h4 className="ot-font-body text-xs text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                          <BookMarked className="w-4 h-4" />
+                          Suggested Reading
+                        </h4>
+                        <div className="space-y-2">
+                          {q.suggestedReading.map((resource, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                              <div>
+                                <p className="ot-font-body text-sm text-gray-200">{resource.title}</p>
+                                <p className="ot-font-body text-xs text-gray-500">{resource.source}</p>
+                              </div>
+                              {resource.url && (
+                                <a
+                                  href={resource.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-2 rounded-lg hover:bg-white/10 text-[#d4a574]"
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                </a>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )
+            })}
+          </div>
+
+          {/* Bottom actions */}
+          <div className="mt-12 flex flex-wrap gap-4 justify-center">
+            <button
+              onClick={() => setExamState('results')}
+              className="px-6 py-3 rounded-xl border border-white/10 ot-font-body flex items-center gap-2 hover:bg-white/5"
+            >
+              <BarChart3 className="w-4 h-4" />
+              Back to Results
+            </button>
+            <button
+              onClick={() => {
+                setAnswers({})
+                setFlagged(new Set())
+                setTimeElapsed(0)
+                setCurrentIndex(0)
+                setSelectedQuestions([])
+                setExamState('intro')
+              }}
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#d4a574] to-[#c49a6c] text-[#0a0f1a] ot-font-body font-semibold flex items-center gap-2"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Retake Exam
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Results screen
   if (examState === 'results') {
     const results = calculateResults()
@@ -383,7 +780,7 @@ export default function Exam() {
                   setFlagged(new Set())
                   setTimeElapsed(0)
                   setCurrentIndex(0)
-                  setSelectedQuestions(sampleQuestions)
+                  setSelectedQuestions([])
                   setExamState('intro')
                 }}
                 className="px-6 py-3 rounded-xl border border-white/10 ot-font-body flex items-center gap-2 hover:bg-white/5"
@@ -405,7 +802,7 @@ export default function Exam() {
     )
   }
 
-  // Main exam/review screen
+  // Main exam screen (only for 'exam' state now)
   return (
     <div className="min-h-screen bg-[#0a0f1a] text-white flex flex-col">
       <style>{`
@@ -424,9 +821,7 @@ export default function Exam() {
               <Link to="/otexam" className="text-gray-400 hover:text-white">
                 <Home className="w-5 h-5" />
               </Link>
-              <span className="ot-font-display text-lg">
-                {examState === 'review' ? 'Review Mode' : 'Practice Exam'}
-              </span>
+              <span className="ot-font-display text-lg">Practice Exam</span>
             </div>
 
             <div className="flex items-center gap-6">
@@ -452,14 +847,7 @@ export default function Exam() {
               const isAnswered = answers[q.id] !== undefined
               const isFlagged = flagged.has(q.id)
               const isCurrent = i === currentIndex
-
-              let bgColor = 'bg-white/5'
-              if (examState === 'review') {
-                const isCorrect = q.options.find(o => o.id === answers[q.id])?.isCorrect
-                bgColor = isCorrect ? 'bg-emerald-500/20' : answers[q.id] ? 'bg-red-500/20' : 'bg-white/5'
-              } else if (isAnswered) {
-                bgColor = 'bg-[#d4a574]/20'
-              }
+              const bgColor = isAnswered ? 'bg-[#d4a574]/20' : 'bg-white/5'
 
               return (
                 <button
@@ -478,23 +866,12 @@ export default function Exam() {
             })}
           </div>
 
-          {examState === 'exam' && (
-            <button
-              onClick={() => setExamState('results')}
-              className="w-full mt-6 py-3 rounded-xl bg-gradient-to-r from-[#d4a574] to-[#c49a6c] text-[#0a0f1a] ot-font-body font-semibold"
-            >
-              Submit Exam
-            </button>
-          )}
-
-          {examState === 'review' && (
-            <button
-              onClick={() => setExamState('results')}
-              className="w-full mt-6 py-3 rounded-xl border border-white/10 ot-font-body hover:bg-white/5"
-            >
-              Back to Results
-            </button>
-          )}
+          <button
+            onClick={() => setExamState('results')}
+            className="w-full mt-6 py-3 rounded-xl bg-gradient-to-r from-[#d4a574] to-[#c49a6c] text-[#0a0f1a] ot-font-body font-semibold"
+          >
+            Submit Exam
+          </button>
         </aside>
 
         {/* Question content */}
@@ -543,18 +920,11 @@ export default function Exam() {
 
                   {/* Options */}
                   <div className="space-y-3">
-                    {currentQuestion.options.map((option) => {
+                    {currentQuestion.shuffledOptions.map((option) => {
                       const isSelected = answers[currentQuestion.id] === option.id
-                      const showCorrectness = examState === 'review' || showRationale
 
                       let optionStyle = 'border-white/10 hover:border-white/20 bg-white/5'
-                      if (showCorrectness) {
-                        if (option.isCorrect) {
-                          optionStyle = 'border-emerald-500/50 bg-emerald-500/10'
-                        } else if (isSelected && !option.isCorrect) {
-                          optionStyle = 'border-red-500/50 bg-red-500/10'
-                        }
-                      } else if (isSelected) {
+                      if (isSelected) {
                         optionStyle = 'border-[#d4a574]/50 bg-[#d4a574]/10'
                       }
 
@@ -562,32 +932,18 @@ export default function Exam() {
                         <button
                           key={option.id}
                           onClick={() => handleSelectAnswer(option.id)}
-                          disabled={examState === 'review'}
                           className={`w-full text-left p-4 rounded-xl border transition-all ${optionStyle}`}
                         >
                           <div className="flex items-start gap-4">
                             <div className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
                               isSelected ? 'border-[#d4a574] bg-[#d4a574]' : 'border-gray-600'
                             }`}>
-                              {showCorrectness && option.isCorrect && (
-                                <CheckCircle className="w-4 h-4 text-emerald-400" />
-                              )}
-                              {showCorrectness && isSelected && !option.isCorrect && (
-                                <XCircle className="w-4 h-4 text-red-400" />
-                              )}
-                              {!showCorrectness && isSelected && (
+                              {isSelected && (
                                 <div className="w-2 h-2 rounded-full bg-[#0a0f1a]" />
                               )}
                             </div>
                             <div className="flex-1">
                               <div className="ot-font-body text-gray-200">{option.text}</div>
-                              {showCorrectness && (
-                                <div className={`mt-2 ot-font-body text-sm ${
-                                  option.isCorrect ? 'text-emerald-400' : 'text-gray-500'
-                                }`}>
-                                  {option.rationale}
-                                </div>
-                              )}
                             </div>
                           </div>
                         </button>
@@ -595,25 +951,6 @@ export default function Exam() {
                     })}
                   </div>
                 </div>
-
-                {/* Clinical reasoning explanation (in review mode) */}
-                {examState === 'review' && (
-                  <div className="ot-glass rounded-xl p-6 mb-6 border-l-4 border-[#d4a574]">
-                    <div className="ot-font-body text-xs text-[#d4a574] uppercase tracking-wider mb-3">
-                      Clinical Reasoning Required
-                    </div>
-                    <p className="ot-font-body text-gray-400 leading-relaxed">
-                      {currentQuestion.clinicalReasoning}
-                    </p>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {currentQuestion.concepts.map(concept => (
-                        <span key={concept} className="px-2 py-1 rounded bg-white/5 ot-font-body text-xs text-gray-400">
-                          {concept}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </motion.div>
             </AnimatePresence>
           </div>
@@ -638,14 +975,12 @@ export default function Exam() {
               <span className="ot-font-body text-sm text-gray-400">
                 {currentIndex + 1} of {questions.length}
               </span>
-              {examState === 'exam' && (
-                <button
-                  onClick={() => setExamState('results')}
-                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#d4a574] to-[#c49a6c] text-[#0a0f1a] ot-font-body text-sm font-semibold"
-                >
-                  Submit
-                </button>
-              )}
+              <button
+                onClick={() => setExamState('results')}
+                className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#d4a574] to-[#c49a6c] text-[#0a0f1a] ot-font-body text-sm font-semibold"
+              >
+                Submit
+              </button>
             </div>
 
             <button

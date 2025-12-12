@@ -41,28 +41,28 @@ const Index = () => {
 
   return (
     <div className="min-h-screen">
-      {/* Mobile Action Buttons - Menu & Chat */}
-      <div className="lg:hidden fixed top-4 right-4 z-50 flex gap-2">
+      {/* Mobile Action Buttons - Menu & Chat - Refined floating buttons */}
+      <div className="lg:hidden fixed top-3 right-3 z-50 flex gap-1.5">
         <button
           onClick={() => setChatModalOpen(true)}
-          className="p-3 bg-sage/90 hover:bg-sage backdrop-blur-md border border-sage rounded-full shadow-lg transition-colors"
+          className="p-2.5 bg-sage/95 active:bg-sage backdrop-blur-md border border-sage/80 rounded-xl shadow-lg transition-all duration-200 active:scale-95"
         >
-          <MessageCircle className="w-5 h-5 text-white" />
+          <MessageCircle className="w-4 h-4 text-white" />
         </button>
         <button
           onClick={() => user ? signOut() : setAuthModalOpen(true)}
-          className="p-3 bg-card/80 hover:bg-card backdrop-blur-md border border-border rounded-full shadow-lg transition-colors"
+          className="p-2.5 bg-card/90 active:bg-card backdrop-blur-md border border-border/80 rounded-xl shadow-lg transition-all duration-200 active:scale-95"
         >
-          <LogIn className="w-5 h-5" />
+          <LogIn className="w-4 h-4" />
         </button>
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-3 bg-card/80 backdrop-blur-md border border-border rounded-full shadow-lg"
+          className="p-2.5 bg-card/90 active:bg-card backdrop-blur-md border border-border/80 rounded-xl shadow-lg transition-all duration-200 active:scale-95"
         >
           {mobileMenuOpen ? (
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           ) : (
-            <Menu className="w-5 h-5" />
+            <Menu className="w-4 h-4" />
           )}
         </button>
       </div>
@@ -85,125 +85,97 @@ const Index = () => {
       {/* Auth Modal */}
       <AuthModal open={authModalOpen} onOpenChange={setAuthModalOpen} />
 
-      {/* Mobile Menu Dropdown */}
+      {/* Mobile Menu Dropdown - Refined slide-in menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden fixed top-16 right-4 z-50 w-64 bg-card/95 backdrop-blur-md border border-border rounded-lg shadow-xl overflow-hidden">
-          <a
-            href="#upray4me"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-sage/10 transition-colors border-b border-border"
-          >
-            UPray4Me
-          </a>
-          <a
-            href="#ipray4u"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-sage/10 transition-colors border-b border-border"
-          >
-            IPray4U
-          </a>
-          <a
-            href="#testimony"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-sage/10 transition-colors border-b border-border"
-          >
-            Testimony
-          </a>
+        <div className="lg:hidden fixed top-14 right-3 z-50 w-56 bg-card/98 backdrop-blur-xl border border-border/60 rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-top-2 duration-200">
+          <div className="max-h-[70vh] overflow-y-auto overscroll-contain">
+            <a
+              href="#upray4me"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-4 py-3 text-sm text-muted-foreground active:text-foreground active:bg-sage/10 transition-colors border-b border-border/50"
+            >
+              UPray4Me
+            </a>
+            <a
+              href="#ipray4u"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-4 py-3 text-sm text-muted-foreground active:text-foreground active:bg-sage/10 transition-colors border-b border-border/50"
+            >
+              IPray4U
+            </a>
+            <a
+              href="#testimony"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-4 py-3 text-sm text-muted-foreground active:text-foreground active:bg-sage/10 transition-colors border-b border-border/50"
+            >
+              Testimony
+            </a>
 
-          {/* Projects Submenu - Always expanded on mobile */}
-          <div className="border-b border-border">
-            <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase bg-muted/30">
-              Projects
+            {/* Projects Submenu - Collapsible style on mobile */}
+            <div className="border-b border-border/50">
+              <div className="px-4 py-2 text-[10px] font-semibold text-sage uppercase tracking-wider bg-sage/5">
+                Projects
+              </div>
+              <div className="divide-y divide-border/30">
+                <Link
+                  to="/kindred"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-4 py-2.5 active:bg-amber/10 transition-colors"
+                >
+                  <div className="text-sm font-medium">Kindred</div>
+                  <div className="text-[10px] text-muted-foreground">Generate emotional creatures</div>
+                </Link>
+                <Link
+                  to="/fantasy-basketball"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-4 py-2.5 active:bg-orange/10 transition-colors"
+                >
+                  <div className="text-sm font-medium">Fantasy Basketball</div>
+                  <div className="text-[10px] text-muted-foreground">Auction draft tool</div>
+                </Link>
+                <Link
+                  to="/guild-manager"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-4 py-2.5 active:bg-purple/10 transition-colors"
+                >
+                  <div className="text-sm font-medium">Guild Manager</div>
+                  <div className="text-[10px] text-muted-foreground">Solo Leveling guild game</div>
+                </Link>
+                <Link
+                  to="/manhua-tracker"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-4 py-2.5 active:bg-teal/10 transition-colors"
+                >
+                  <div className="text-sm font-medium">PeakScroll</div>
+                  <div className="text-[10px] text-muted-foreground">Track your manhua</div>
+                </Link>
+                <Link
+                  to="/detailstack"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-4 py-2.5 active:bg-champagne-500/10 transition-colors"
+                >
+                  <div className="text-sm font-medium">DetailStack</div>
+                  <div className="text-[10px] text-muted-foreground">Auto detailing studio</div>
+                </Link>
+                <Link
+                  to="/otexam"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-4 py-2.5 active:bg-amber-600/10 transition-colors"
+                >
+                  <div className="text-sm font-medium">OTexam</div>
+                  <div className="text-[10px] text-muted-foreground">NBCOT exam prep</div>
+                </Link>
+              </div>
             </div>
-            <a
-              href="#short-novels"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-sage/10 transition-colors"
-            >
-              <div className="font-semibold mb-0.5">Short Novel Collection</div>
-              <div className="text-xs opacity-75">Fiction & stories</div>
-            </a>
-            <a
-              href="#bible-abridge"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-dusk/10 transition-colors"
-            >
-              <div className="font-semibold mb-0.5">Bible Abridge Project</div>
-              <div className="text-xs opacity-75">Faith & theology</div>
-            </a>
-            <a
-              href="#digital-sanctuary"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-amber/10 transition-colors"
-            >
-              <div className="font-semibold mb-0.5">Digital Sanctuary</div>
-              <div className="text-xs opacity-75">This website</div>
-            </a>
-            <a
-              href="#soundscape"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-sage/10 transition-colors"
-            >
-              <div className="font-semibold mb-0.5">Ambient Soundscape</div>
-              <div className="text-xs opacity-75">Generative audio</div>
-            </a>
-            <Link
-              to="/kindred"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-amber/10 transition-colors"
-            >
-              <div className="font-semibold mb-0.5">Kindred</div>
-              <div className="text-xs opacity-75">Generate your emotional creature</div>
-            </Link>
-            <Link
-              to="/fantasy-basketball"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-orange/10 transition-colors"
-            >
-              <div className="font-semibold mb-0.5">Fantasy Basketball Auction</div>
-              <div className="text-xs opacity-75">Dynamic auction draft tool</div>
-            </Link>
-            <Link
-              to="/guild-manager"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-purple/10 transition-colors"
-            >
-              <div className="font-semibold mb-0.5">Guild Manager</div>
-              <div className="text-xs opacity-75">Solo Leveling inspired guild game</div>
-            </Link>
-            <Link
-              to="/manhua-tracker"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-teal/10 transition-colors"
-            >
-              <div className="font-semibold mb-0.5">PeakScroll</div>
-              <div className="text-xs opacity-75">Track your manhua collection</div>
-            </Link>
-            <Link
-              to="/detailstack"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-champagne-500/10 transition-colors"
-            >
-              <div className="font-semibold mb-0.5">DetailStack</div>
-              <div className="text-xs opacity-75">Premium auto detailing studio</div>
-            </Link>
-            <Link
-              to="/otexam"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-amber-600/10 transition-colors"
-            >
-              <div className="font-semibold mb-0.5">OTexam</div>
-              <div className="text-xs opacity-75">NBCOT exam prep & analytics</div>
-            </Link>
-          </div>
 
-          <a
-            href="#boba"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-sage/10 transition-colors"
-          >
-            Buy Me Boba
-          </a>
+            <a
+              href="#boba"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-4 py-3 text-sm text-muted-foreground active:text-foreground active:bg-sage/10 transition-colors"
+            >
+              Buy Me Boba
+            </a>
+          </div>
         </div>
       )}
 
@@ -348,36 +320,36 @@ const Index = () => {
 
       <Hero />
 
-      {/* Mobile Tab Navigation */}
-      <div className="lg:hidden sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
-        <div className="max-w-[1600px] mx-auto px-4 py-3">
-          <div className="flex gap-2">
+      {/* Mobile Tab Navigation - Refined pill-style tabs */}
+      <div className="lg:hidden sticky top-0 z-40 bg-background/98 backdrop-blur-md border-b border-border/50 shadow-sm">
+        <div className="max-w-[1600px] mx-auto px-3 py-2.5">
+          <div className="flex gap-1 p-1 bg-muted/50 rounded-xl">
             <button
               onClick={() => setActiveTab('availability')}
-              className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${
+              className={`flex-1 px-3 py-2.5 text-xs font-medium rounded-lg transition-all duration-200 ${
                 activeTab === 'availability'
-                  ? 'bg-sage text-white'
-                  : 'bg-card text-muted-foreground hover:text-foreground'
+                  ? 'bg-sage text-white shadow-sm'
+                  : 'text-muted-foreground active:bg-muted/80'
               }`}
             >
               Availability
             </button>
             <button
               onClick={() => setActiveTab('feed')}
-              className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${
+              className={`flex-1 px-3 py-2.5 text-xs font-medium rounded-lg transition-all duration-200 ${
                 activeTab === 'feed'
-                  ? 'bg-sage text-white'
-                  : 'bg-card text-muted-foreground hover:text-foreground'
+                  ? 'bg-sage text-white shadow-sm'
+                  : 'text-muted-foreground active:bg-muted/80'
               }`}
             >
               Feed
             </button>
             <button
               onClick={() => setActiveTab('connect')}
-              className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${
+              className={`flex-1 px-3 py-2.5 text-xs font-medium rounded-lg transition-all duration-200 ${
                 activeTab === 'connect'
-                  ? 'bg-sage text-white'
-                  : 'bg-card text-muted-foreground hover:text-foreground'
+                  ? 'bg-sage text-white shadow-sm'
+                  : 'text-muted-foreground active:bg-muted/80'
               }`}
             >
               Connect
@@ -387,21 +359,21 @@ const Index = () => {
       </div>
 
       {/* Three-column layout */}
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-12 sm:pb-16">
-        {/* Mobile Tabbed View */}
+      <div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-8 sm:pb-16">
+        {/* Mobile Tabbed View - Smooth transitions */}
         <div className="lg:hidden">
           {activeTab === 'availability' && (
-            <div className="space-y-6">
+            <div className="space-y-4 animate-in fade-in duration-200">
               <AvailabilityCalendar />
             </div>
           )}
           {activeTab === 'feed' && (
-            <div className="space-y-6">
+            <div className="space-y-4 animate-in fade-in duration-200">
               <CreativeFeed />
             </div>
           )}
           {activeTab === 'connect' && (
-            <div className="space-y-6">
+            <div className="space-y-5 animate-in fade-in duration-200">
               <Gallery />
               <NowPlaying />
               <ContactForm />

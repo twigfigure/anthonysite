@@ -2,12 +2,10 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  BarChart3,
   TrendingUp,
   TrendingDown,
   Users,
   BookOpen,
-  Brain,
   AlertTriangle,
   ChevronRight,
   GraduationCap,
@@ -15,13 +13,13 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Download,
-  Settings,
   Search,
   Bell,
   User,
-  LineChart,
   Target,
 } from 'lucide-react'
+import { Sidebar } from '../components/Sidebar'
+import { useSidebarWidth } from '../hooks/useSidebarWidth'
 
 // Mock data for demonstration
 const overviewStats = [
@@ -77,6 +75,7 @@ const recentActivity = [
 export default function Dashboard() {
   const [selectedCohort, setSelectedCohort] = useState('all')
   const [dateRange, setDateRange] = useState('month')
+  const sidebarMargin = useSidebarWidth()
 
   return (
     <div className="min-h-screen bg-[#0a0f1a] text-white">
@@ -88,72 +87,10 @@ export default function Dashboard() {
         .ot-gradient-text { background: linear-gradient(135deg, #d4a574 0%, #e8c9a0 50%, #d4a574 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
       `}</style>
 
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 bottom-0 w-64 bg-[#0d1420] border-r border-white/5 p-6 hidden lg:block">
-        <Link to="/otexam" className="flex items-center gap-3 mb-10">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#d4a574] to-[#c49a6c] flex items-center justify-center">
-            <GraduationCap className="w-5 h-5 text-[#0a0f1a]" />
-          </div>
-          <span className="ot-font-display text-xl font-semibold">OTexam</span>
-        </Link>
-
-        <nav className="space-y-2">
-          <Link
-            to="/otexam/dashboard"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg bg-[#d4a574]/10 text-[#d4a574] ot-font-body"
-          >
-            <BarChart3 className="w-5 h-5" />
-            Dashboard
-          </Link>
-          <Link
-            to="/otexam/analysis"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <LineChart className="w-5 h-5" />
-            Analysis
-          </Link>
-          <Link
-            to="/otexam/students"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <Users className="w-5 h-5" />
-            Students
-          </Link>
-          <Link
-            to="/otexam/exam"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <BookOpen className="w-5 h-5" />
-            Practice Exams
-          </Link>
-          <Link
-            to="/otexam/questions"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <Brain className="w-5 h-5" />
-            Question Bank
-          </Link>
-          <Link
-            to="/otexam"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <Settings className="w-5 h-5" />
-            Settings
-          </Link>
-        </nav>
-
-        <div className="absolute bottom-6 left-6 right-6">
-          <Link
-            to="/"
-            className="flex items-center gap-2 text-gray-500 hover:text-gray-400 ot-font-body text-sm transition-colors"
-          >
-            ← Back to Home
-          </Link>
-        </div>
-      </aside>
+      <Sidebar activePage="dashboard" />
 
       {/* Main content */}
-      <main className="lg:ml-64">
+      <main className={`${sidebarMargin} transition-all duration-300`}>
         {/* Top header */}
         <header className="sticky top-0 z-50 ot-glass border-b border-white/5">
           <div className="px-6 py-4">
@@ -255,6 +192,75 @@ export default function Dashboard() {
               </motion.div>
             ))}
           </div>
+
+          {/* NBCOT Readiness - links to Analysis */}
+          <Link to="/otexam/analysis" className="block mb-8 group">
+            <div className="ot-glass rounded-xl p-6 hover:border-[#d4a574]/30 transition-colors">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                    <TrendingUp className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <h2 className="ot-font-display text-xl">NBCOT Readiness</h2>
+                    <p className="ot-font-body text-sm text-gray-500">Predicted pass rates by cohort</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <div className="ot-font-body text-xs text-gray-500">National Average</div>
+                    <div className="ot-font-display text-lg text-gray-400">~83%</div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-[#d4a574] group-hover:translate-x-1 transition-all" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[
+                  { name: 'Fall 2024', prediction: 92, students: 82, trend: 'up' },
+                  { name: 'Spring 2024', prediction: 78, students: 78, trend: 'stable' },
+                  { name: 'Fall 2023', prediction: 87, students: 87, trend: 'up' },
+                ].map((cohort) => (
+                  <div
+                    key={cohort.name}
+                    className="bg-white/5 rounded-xl p-4 relative overflow-hidden"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="ot-font-body text-sm text-gray-400">{cohort.name}</span>
+                      <span className="ot-font-body text-xs text-gray-500">{cohort.students} students</span>
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <span className={`ot-font-display text-3xl font-semibold ${
+                        cohort.prediction >= 85 ? 'text-emerald-400' :
+                        cohort.prediction >= 75 ? 'text-orange-400' : 'text-red-400'
+                      }`}>
+                        {cohort.prediction}%
+                      </span>
+                      {cohort.trend === 'up' && <TrendingUp className="w-4 h-4 text-emerald-400 mb-1" />}
+                      {cohort.trend === 'down' && <TrendingDown className="w-4 h-4 text-red-400 mb-1" />}
+                      {cohort.trend === 'stable' && <Activity className="w-4 h-4 text-gray-400 mb-1" />}
+                    </div>
+                    <div className="mt-3 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${
+                          cohort.prediction >= 85 ? 'bg-emerald-500' :
+                          cohort.prediction >= 75 ? 'bg-orange-500' : 'bg-red-500'
+                        }`}
+                        style={{ width: `${cohort.prediction}%` }}
+                      />
+                    </div>
+                    <div className="mt-2 flex items-center gap-1">
+                      {cohort.prediction >= 83 ? (
+                        <span className="ot-font-body text-xs text-emerald-400">Above national avg</span>
+                      ) : (
+                        <span className="ot-font-body text-xs text-orange-400">Below national avg</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Link>
 
           <div className="grid lg:grid-cols-3 gap-6 mb-8">
             {/* At-risk students */}
@@ -359,24 +365,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Link to Analysis */}
-          <Link
-            to="/otexam/analysis"
-            className="ot-glass rounded-xl p-6 flex items-center justify-between group hover:border-[#d4a574]/30 transition-colors"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#d4a574]/20 to-[#c49a6c]/10 flex items-center justify-center">
-                <LineChart className="w-6 h-6 text-[#d4a574]" />
-              </div>
-              <div>
-                <h3 className="ot-font-display text-lg">Program Analysis</h3>
-                <p className="ot-font-body text-sm text-gray-500">
-                  Deep dive into domain performance, cohort comparison, and NBCOT readiness metrics
-                </p>
-              </div>
-            </div>
-            <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-[#d4a574] group-hover:translate-x-1 transition-all" />
-          </Link>
         </div>
       </main>
     </div>

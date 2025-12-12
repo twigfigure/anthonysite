@@ -15,10 +15,6 @@ import {
   AlertTriangle,
   CheckCircle,
   GraduationCap,
-  BarChart3,
-  BookOpen,
-  Brain,
-  Settings,
   Bell,
   User,
   Eye,
@@ -30,13 +26,11 @@ import {
   Target,
   ChevronDown,
   ChevronUp,
-  LineChart,
 } from 'lucide-react'
-import {
-  getRemediationQueue,
-  advisorAlerts,
-} from '../data/analytics'
-import type { AdvisorAlert, RemediationTier } from '../types'
+import { Sidebar } from '../components/Sidebar'
+import { useSidebarWidth } from '../hooks/useSidebarWidth'
+import { getRemediationQueue, getDomainScores, getStudentCheckpoints, getStudentRemediation, programMilestones } from '../data/analytics'
+import type { RemediationTier, NBCOTDomain } from '../types'
 
 interface Student {
   id: string
@@ -46,7 +40,7 @@ interface Student {
   enrollmentDate: string
   examsCompleted: number
   avgScore: number
-  lastActive: string
+  faculty: string
   trend: 'up' | 'down' | 'stable'
   status: 'excellent' | 'on-track' | 'improving' | 'at-risk' | 'critical'
   weakAreas: string[]
@@ -70,7 +64,7 @@ const initialStudents: Student[] = [
     enrollmentDate: '2024-08-15',
     examsCompleted: 12,
     avgScore: 82,
-    lastActive: '2 hours ago',
+    faculty: 'K.Kadowaki',
     trend: 'up',
     status: 'on-track',
     weakAreas: ['Management'],
@@ -84,7 +78,7 @@ const initialStudents: Student[] = [
     enrollmentDate: '2024-08-15',
     examsCompleted: 8,
     avgScore: 52,
-    lastActive: '1 day ago',
+    faculty: 'M.Persson',
     trend: 'down',
     status: 'at-risk',
     weakAreas: ['Intervention', 'Management'],
@@ -98,7 +92,7 @@ const initialStudents: Student[] = [
     enrollmentDate: '2024-08-15',
     examsCompleted: 6,
     avgScore: 55,
-    lastActive: '3 hours ago',
+    faculty: 'K.Kadowaki',
     trend: 'stable',
     status: 'at-risk',
     weakAreas: ['Evaluation'],
@@ -112,7 +106,7 @@ const initialStudents: Student[] = [
     enrollmentDate: '2024-08-15',
     examsCompleted: 15,
     avgScore: 78,
-    lastActive: '5 hours ago',
+    faculty: 'S.Mitchell',
     trend: 'up',
     status: 'on-track',
     weakAreas: ['Hand Therapy'],
@@ -126,7 +120,7 @@ const initialStudents: Student[] = [
     enrollmentDate: '2024-01-10',
     examsCompleted: 22,
     avgScore: 48,
-    lastActive: '6 hours ago',
+    faculty: 'J.Chen',
     trend: 'down',
     status: 'critical',
     weakAreas: ['Management', 'Competency', 'Intervention'],
@@ -140,7 +134,7 @@ const initialStudents: Student[] = [
     enrollmentDate: '2024-08-15',
     examsCompleted: 10,
     avgScore: 68,
-    lastActive: '4 hours ago',
+    faculty: 'M.Persson',
     trend: 'up',
     status: 'improving',
     weakAreas: ['Physical Disabilities'],
@@ -154,7 +148,7 @@ const initialStudents: Student[] = [
     enrollmentDate: '2024-01-10',
     examsCompleted: 9,
     avgScore: 91,
-    lastActive: '1 hour ago',
+    faculty: 'S.Mitchell',
     trend: 'up',
     status: 'excellent',
     weakAreas: [],
@@ -168,7 +162,7 @@ const initialStudents: Student[] = [
     enrollmentDate: '2023-08-15',
     examsCompleted: 18,
     avgScore: 75,
-    lastActive: '2 days ago',
+    faculty: 'J.Chen',
     trend: 'stable',
     status: 'on-track',
     weakAreas: ['Geriatrics'],
@@ -197,12 +191,20 @@ const tierColors: Record<RemediationTier, { bg: string; text: string; border: st
   3: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/30', label: 'Tier 3' },
 }
 
-// Alert type mapping
-const alertTypeIcons: Record<string, { color: string; bg: string }> = {
-  'tier-change': { color: 'text-orange-400', bg: 'bg-orange-500/10' },
-  'milestone-failed': { color: 'text-red-400', bg: 'bg-red-500/10' },
-  'remediation-complete': { color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-  'deadline-approaching': { color: 'text-amber-400', bg: 'bg-amber-500/10' },
+// Domain color mapping
+const domainColors: Record<NBCOTDomain, { bg: string; text: string; bar: string }> = {
+  evaluation: { bg: 'bg-blue-500/10', text: 'text-blue-400', bar: 'bg-blue-500' },
+  intervention: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', bar: 'bg-emerald-500' },
+  management: { bg: 'bg-amber-500/10', text: 'text-amber-400', bar: 'bg-amber-500' },
+  competency: { bg: 'bg-violet-500/10', text: 'text-violet-400', bar: 'bg-violet-500' },
+}
+
+// Domain labels
+const domainLabels: Record<NBCOTDomain, string> = {
+  evaluation: 'Evaluation & Assessment',
+  intervention: 'Intervention',
+  management: 'Management of Services',
+  competency: 'Professional Competency',
 }
 
 // Tier Badge Component
@@ -216,7 +218,7 @@ function TierBadge({ tier }: { tier: RemediationTier }) {
 }
 
 // Remediation Queue Component
-function RemediationQueue({ onSelectStudent }: { onSelectStudent: (studentId: string) => void }) {
+function RemediationQueue({ onSelectStudent, studentNotes }: { onSelectStudent: (studentId: string, openModal: boolean) => void; studentNotes: Record<string, string> }) {
   const queue = getRemediationQueue()
   const [expanded, setExpanded] = useState(true)
 
@@ -250,7 +252,7 @@ function RemediationQueue({ onSelectStudent }: { onSelectStudent: (studentId: st
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="p-3 space-y-2 max-h-[400px] overflow-y-auto">
+            <div className="p-3 space-y-2 overflow-y-auto">
               {queue.map((item) => {
                 const colors = tierColors[item.tier]
                 const daysUntilDue = Math.ceil((new Date(item.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
@@ -261,7 +263,7 @@ function RemediationQueue({ onSelectStudent }: { onSelectStudent: (studentId: st
                     key={item.id}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    onClick={() => onSelectStudent(item.studentId)}
+                    onClick={() => onSelectStudent(item.studentId, true)}
                     className={`w-full text-left p-3 rounded-lg border ${colors.border} ${colors.bg} hover:bg-white/10 transition-colors`}
                   >
                     <div className="flex items-start justify-between mb-2">
@@ -284,6 +286,15 @@ function RemediationQueue({ onSelectStudent }: { onSelectStudent: (studentId: st
                         </span>
                       ))}
                     </div>
+
+                    {/* Faculty Note Preview */}
+                    {studentNotes[item.studentId] && (
+                      <div className="mb-2 p-2 bg-white/5 rounded border border-white/10">
+                        <p className="ot-font-body text-[10px] text-gray-400 line-clamp-2">
+                          {studentNotes[item.studentId]}
+                        </p>
+                      </div>
+                    )}
 
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1">
@@ -322,55 +333,6 @@ function RemediationQueue({ onSelectStudent }: { onSelectStudent: (studentId: st
   )
 }
 
-// Alert Banner Component
-function AlertBanner({ alerts, onDismiss }: { alerts: AdvisorAlert[]; onDismiss: (id: string) => void }) {
-  const unreadAlerts = alerts.filter(a => !a.read)
-
-  if (unreadAlerts.length === 0) return null
-
-  return (
-    <div className="space-y-2 mb-6">
-      {unreadAlerts.slice(0, 3).map((alert) => {
-        const style = alertTypeIcons[alert.type] || alertTypeIcons['tier-change']
-
-        return (
-          <motion.div
-            key={alert.id}
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className={`flex items-center justify-between p-3 rounded-lg ${style.bg} border border-white/5`}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-lg ${style.bg} flex items-center justify-center`}>
-                <Bell className={`w-4 h-4 ${style.color}`} />
-              </div>
-              <div>
-                <p className="ot-font-body text-sm">{alert.message}</p>
-                <p className="ot-font-body text-[10px] text-gray-500">
-                  {new Date(alert.createdAt).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => onDismiss(alert.id)}
-              className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
-            >
-              <X className="w-4 h-4 text-gray-400" />
-            </button>
-          </motion.div>
-        )
-      })}
-
-      {unreadAlerts.length > 3 && (
-        <button className="w-full py-2 text-center ot-font-body text-xs text-[#d4a574] hover:underline">
-          View {unreadAlerts.length - 3} more alerts
-        </button>
-      )}
-    </div>
-  )
-}
-
 // Student-to-remediation mapping (mock - in real app, derive from data)
 const studentRemediationTiers: Record<string, RemediationTier> = {
   's4': 2, // Jordan Williams
@@ -392,8 +354,18 @@ export default function Students() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [showCohortManager, setShowCohortManager] = useState(false)
   const [showAddCohort, setShowAddCohort] = useState(false)
+  const [showFullProfile, setShowFullProfile] = useState(false)
   const [editingStudent, setEditingStudent] = useState<Student | null>(null)
   const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null)
+
+  // Faculty notes per student
+  const [studentNotes, setStudentNotes] = useState<Record<string, string>>({
+    's4': 'Scheduled meeting for Dec 15 to discuss intervention strategies. Parent contacted.',
+    's8': 'Referred to academic support. Follow up needed on study plan compliance.',
+  })
+
+  // Sidebar margin from shared component
+  const sidebarMargin = useSidebarWidth()
 
   // Form state
   const [studentForm, setStudentForm] = useState({
@@ -406,12 +378,6 @@ export default function Students() {
     startDate: '',
   })
 
-  // Alerts state
-  const [alerts, setAlerts] = useState<AdvisorAlert[]>(advisorAlerts)
-  const handleDismissAlert = (id: string) => {
-    setAlerts(alerts.map(a => a.id === id ? { ...a, read: true } : a))
-  }
-
   // CRUD handlers
   const handleAddStudent = () => {
     if (!studentForm.name || !studentForm.email) return
@@ -423,7 +389,7 @@ export default function Students() {
       enrollmentDate: new Date().toISOString().split('T')[0],
       examsCompleted: 0,
       avgScore: 0,
-      lastActive: 'Just now',
+      faculty: 'K.Kadowaki',
       trend: 'stable',
       status: 'on-track',
       weakAreas: [],
@@ -503,72 +469,10 @@ export default function Students() {
         .ot-gradient-text { background: linear-gradient(135deg, #d4a574 0%, #e8c9a0 50%, #d4a574 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
       `}</style>
 
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 bottom-0 w-64 bg-[#0d1420] border-r border-white/5 p-6 hidden lg:block">
-        <Link to="/otexam" className="flex items-center gap-3 mb-10">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#d4a574] to-[#c49a6c] flex items-center justify-center">
-            <GraduationCap className="w-5 h-5 text-[#0a0f1a]" />
-          </div>
-          <span className="ot-font-display text-xl font-semibold">OTexam</span>
-        </Link>
-
-        <nav className="space-y-2">
-          <Link
-            to="/otexam/dashboard"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <BarChart3 className="w-5 h-5" />
-            Dashboard
-          </Link>
-          <Link
-            to="/otexam/analysis"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <LineChart className="w-5 h-5" />
-            Analysis
-          </Link>
-          <Link
-            to="/otexam/students"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg bg-[#d4a574]/10 text-[#d4a574] ot-font-body"
-          >
-            <Users className="w-5 h-5" />
-            Students
-          </Link>
-          <Link
-            to="/otexam/exam"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <BookOpen className="w-5 h-5" />
-            Practice Exams
-          </Link>
-          <Link
-            to="/otexam/questions"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <Brain className="w-5 h-5" />
-            Question Bank
-          </Link>
-          <Link
-            to="/otexam"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <Settings className="w-5 h-5" />
-            Settings
-          </Link>
-        </nav>
-
-        <div className="absolute bottom-6 left-6 right-6">
-          <Link
-            to="/"
-            className="flex items-center gap-2 text-gray-500 hover:text-gray-400 ot-font-body text-sm transition-colors"
-          >
-            ← Back to Home
-          </Link>
-        </div>
-      </aside>
+      <Sidebar activePage="students" />
 
       {/* Main content */}
-      <main className="lg:ml-64">
+      <main className={`${sidebarMargin} transition-all duration-300`}>
         {/* Top header */}
         <header className="sticky top-0 z-50 ot-glass border-b border-white/5">
           <div className="px-6 py-4">
@@ -601,13 +505,6 @@ export default function Students() {
         <div className="p-6 lg:p-8">
           {/* Page header with actions */}
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-8">
-            <div>
-              <h1 className="ot-font-display text-3xl lg:hidden">Student Management</h1>
-              <p className="ot-font-body text-gray-400 mt-1">
-                Manage students and track individual performance
-              </p>
-            </div>
-
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowAddStudent(true)}
@@ -628,18 +525,17 @@ export default function Students() {
                 Export
               </button>
             </div>
+
+            <div>
+              <h1 className="ot-font-display text-3xl lg:hidden">Student Management</h1>
+              <p className="ot-font-body text-gray-400">
+                Manage students and track individual performance
+              </p>
+            </div>
           </div>
 
-          {/* Alert Notifications */}
-          <AlertBanner alerts={alerts} onDismiss={handleDismissAlert} />
-
-          {/* Two-column layout: Remediation Queue + Main Content */}
-          <div className="flex gap-6">
-            {/* Left sidebar: Remediation Queue */}
-            <div className="hidden xl:block w-80 flex-shrink-0">
-              <RemediationQueue onSelectStudent={(studentId) => setSelectedStudent(studentId)} />
-            </div>
-
+          {/* Two-column layout: Main Content + Remediation Queue */}
+          <div className="flex gap-6 items-start">
             {/* Main content area */}
             <div className="flex-1 min-w-0">
           {/* Filters */}
@@ -747,7 +643,7 @@ export default function Students() {
                     <th className="text-left py-4 px-6 ot-font-body text-xs text-gray-500 uppercase tracking-wider">Trend</th>
                     <th className="text-left py-4 px-6 ot-font-body text-xs text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="text-left py-4 px-6 ot-font-body text-xs text-gray-500 uppercase tracking-wider">Tier</th>
-                    <th className="text-left py-4 px-6 ot-font-body text-xs text-gray-500 uppercase tracking-wider">Last Active</th>
+                    <th className="text-left py-4 px-6 ot-font-body text-xs text-gray-500 uppercase tracking-wider">Faculty</th>
                     <th className="text-left py-4 px-6 ot-font-body text-xs text-gray-500 uppercase tracking-wider"></th>
                   </tr>
                 </thead>
@@ -757,10 +653,7 @@ export default function Students() {
                     return (
                       <tr
                         key={student.id}
-                        className={`border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer ${
-                          selectedStudent === student.id ? 'bg-white/5' : ''
-                        }`}
-                        onClick={() => setSelectedStudent(selectedStudent === student.id ? null : student.id)}
+                        className="border-b border-white/5 hover:bg-white/5 transition-colors"
                       >
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-3">
@@ -768,7 +661,15 @@ export default function Students() {
                               {student.name.split(' ').map(n => n[0]).join('')}
                             </div>
                             <div>
-                              <div className="ot-font-body font-medium">{student.name}</div>
+                              <button
+                                onClick={() => {
+                                  setSelectedStudent(student.id)
+                                  setShowFullProfile(true)
+                                }}
+                                className="ot-font-body font-medium hover:text-[#d4a574] transition-colors text-left"
+                              >
+                                {student.name}
+                              </button>
                               <div className="ot-font-body text-xs text-gray-500">{student.email}</div>
                             </div>
                           </div>
@@ -800,25 +701,38 @@ export default function Students() {
                             <span className="ot-font-body text-xs text-gray-600">—</span>
                           )}
                         </td>
-                        <td className="py-4 px-6 ot-font-body text-sm text-gray-500">{student.lastActive}</td>
+                        <td className="py-4 px-6 ot-font-body text-sm text-gray-400">{student.faculty}</td>
                         <td className="py-4 px-6">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
                             <button
-                              onClick={(e) => { e.stopPropagation(); setSelectedStudent(student.id); }}
+                              onClick={() => {
+                                setSelectedStudent(student.id)
+                                setShowFullProfile(true)
+                              }}
                               className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-                              title="View Details"
+                              title="View Full Profile"
                             >
                               <Eye className="w-4 h-4 text-gray-400" />
                             </button>
                             <button
-                              onClick={(e) => { e.stopPropagation(); openEditModal(student); }}
+                              onClick={() => {
+                                // TODO: Implement send report functionality
+                                alert(`Sending report for ${student.name}`)
+                              }}
+                              className="p-2 rounded-lg hover:bg-blue-500/10 transition-colors"
+                              title="Send Report"
+                            >
+                              <Mail className="w-4 h-4 text-blue-400" />
+                            </button>
+                            <button
+                              onClick={() => openEditModal(student)}
                               className="p-2 rounded-lg hover:bg-white/10 transition-colors"
                               title="Edit Student"
                             >
                               <Edit className="w-4 h-4 text-gray-400" />
                             </button>
                             <button
-                              onClick={(e) => { e.stopPropagation(); openDeleteConfirm(student.id); }}
+                              onClick={() => openDeleteConfirm(student.id)}
                               className="p-2 rounded-lg hover:bg-red-500/10 transition-colors"
                               title="Delete Student"
                             >
@@ -841,84 +755,6 @@ export default function Students() {
             )}
           </div>
 
-          {/* Student detail panel */}
-          {selectedStudentData && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-6 ot-glass rounded-xl p-6"
-            >
-              <div className="flex items-start justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-600 to-gray-700 flex items-center justify-center text-xl font-medium">
-                    {selectedStudentData.name.split(' ').map(n => n[0]).join('')}
-                  </div>
-                  <div>
-                    <h3 className="ot-font-display text-2xl">{selectedStudentData.name}</h3>
-                    <p className="ot-font-body text-gray-400">{selectedStudentData.email}</p>
-                    <p className="ot-font-body text-sm text-gray-500">{selectedStudentData.cohort} • Enrolled {selectedStudentData.enrollmentDate}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg ot-font-body text-sm flex items-center gap-2 hover:bg-white/10 transition-colors">
-                    <Mail className="w-4 h-4" />
-                    Send Report
-                  </button>
-                  <Link
-                    to={`/otexam/pathway/${selectedStudentData.id}`}
-                    className="px-4 py-2 bg-gradient-to-r from-[#d4a574] to-[#c49a6c] text-[#0a0f1a] rounded-lg ot-font-body text-sm font-medium"
-                  >
-                    View Full Profile
-                  </Link>
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-4 gap-6">
-                <div className="bg-white/5 rounded-xl p-4">
-                  <div className="ot-font-body text-xs text-gray-500 uppercase tracking-wider mb-2">Average Score</div>
-                  <div className={`ot-font-display text-3xl ${
-                    selectedStudentData.avgScore >= 75 ? 'text-emerald-400' :
-                    selectedStudentData.avgScore >= 60 ? 'text-amber-400' : 'text-red-400'
-                  }`}>
-                    {selectedStudentData.avgScore}%
-                  </div>
-                </div>
-                <div className="bg-white/5 rounded-xl p-4">
-                  <div className="ot-font-body text-xs text-gray-500 uppercase tracking-wider mb-2">Exams Completed</div>
-                  <div className="ot-font-display text-3xl">{selectedStudentData.examsCompleted}</div>
-                </div>
-                <div className="bg-white/5 rounded-xl p-4">
-                  <div className="ot-font-body text-xs text-gray-500 uppercase tracking-wider mb-2">Weak Areas</div>
-                  <div className="flex flex-wrap gap-1">
-                    {selectedStudentData.weakAreas.length > 0 ? (
-                      selectedStudentData.weakAreas.map(area => (
-                        <span key={area} className="px-2 py-1 rounded bg-red-500/10 text-red-400 text-xs">
-                          {area}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-gray-500 text-sm">None identified</span>
-                    )}
-                  </div>
-                </div>
-                <div className="bg-white/5 rounded-xl p-4">
-                  <div className="ot-font-body text-xs text-gray-500 uppercase tracking-wider mb-2">Strong Areas</div>
-                  <div className="flex flex-wrap gap-1">
-                    {selectedStudentData.strongAreas.length > 0 ? (
-                      selectedStudentData.strongAreas.map(area => (
-                        <span key={area} className="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs">
-                          {area}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-gray-500 text-sm">Building proficiency</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
           {/* Pagination */}
           <div className="flex items-center justify-between mt-6">
             <div className="ot-font-body text-sm text-gray-500">
@@ -934,6 +770,17 @@ export default function Students() {
               </button>
             </div>
           </div>
+            </div>
+
+            {/* Right sidebar: Remediation Queue */}
+            <div className="hidden xl:block w-80 flex-shrink-0 sticky top-24 self-start">
+              <RemediationQueue
+                studentNotes={studentNotes}
+                onSelectStudent={(studentId, openModal) => {
+                  setSelectedStudent(studentId)
+                  if (openModal) setShowFullProfile(true)
+                }}
+              />
             </div>
           </div>
         </div>
@@ -1257,6 +1104,279 @@ export default function Students() {
             </motion.div>
           </motion.div>
         )}
+      </AnimatePresence>
+
+      {/* Full Profile Modal */}
+      <AnimatePresence>
+        {showFullProfile && selectedStudentData && (() => {
+          // Get analytics data for the selected student
+          const domainScores = getDomainScores(selectedStudentData.id)
+          const checkpoints = getStudentCheckpoints(selectedStudentData.id)
+          const remediation = getStudentRemediation(selectedStudentData.id)
+
+          // Calculate readiness score
+          const passedMilestones = checkpoints.filter(cp => cp.status === 'passed').length
+          const avgDomainScore = Object.values(domainScores).reduce((a, b) => a + b, 0) / 4
+          const readinessScore = Math.round(passedMilestones / 4 * 40 + avgDomainScore * 0.6)
+
+          // Get current milestone
+          const currentCheckpoint = checkpoints.find(cp => cp.status === 'in-progress' || cp.status === 'remediation')
+            || checkpoints.filter(cp => cp.status === 'passed').slice(-1)[0]
+            || checkpoints[0]
+          const currentMilestone = currentCheckpoint ? programMilestones.find(m => m.id === currentCheckpoint.milestoneId) : null
+
+          return (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowFullProfile(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#0d1420] border border-white/10 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+            >
+              {/* Modal Header */}
+              <div className="sticky top-0 bg-[#0d1420] border-b border-white/10 p-6 z-10">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-600 to-gray-700 flex items-center justify-center text-xl font-medium">
+                      {selectedStudentData.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="ot-font-display text-2xl">{selectedStudentData.name}</h3>
+                        {/* Status & Tier Badges */}
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs ot-font-body ${statusColors[selectedStudentData.status].bg} ${statusColors[selectedStudentData.status].text}`}>
+                          {statusColors[selectedStudentData.status].label}
+                        </span>
+                        {studentRemediationTiers[selectedStudentData.id] && (
+                          <TierBadge tier={studentRemediationTiers[selectedStudentData.id]} />
+                        )}
+                        {/* Current Milestone */}
+                        {currentMilestone && (
+                          <span className="px-2 py-0.5 rounded-full text-xs bg-[#d4a574]/10 text-[#d4a574] border border-[#d4a574]/20">
+                            {currentMilestone.name}
+                          </span>
+                        )}
+                        {/* Trend Indicator */}
+                        <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${
+                          selectedStudentData.trend === 'up' ? 'bg-emerald-500/10 text-emerald-400' :
+                          selectedStudentData.trend === 'down' ? 'bg-red-500/10 text-red-400' :
+                          'bg-gray-500/10 text-gray-400'
+                        }`}>
+                          {selectedStudentData.trend === 'up' && <TrendingUp className="w-3 h-3" />}
+                          {selectedStudentData.trend === 'down' && <TrendingDown className="w-3 h-3" />}
+                          {selectedStudentData.trend === 'stable' && <Activity className="w-3 h-3" />}
+                          <span>{selectedStudentData.trend === 'up' ? 'Improving' : selectedStudentData.trend === 'down' ? 'Declining' : 'Stable'}</span>
+                        </div>
+                      </div>
+                      <p className="ot-font-body text-gray-400">{selectedStudentData.email}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="ot-font-body text-sm text-gray-500">{selectedStudentData.cohort}</span>
+                        <span className="text-gray-600">•</span>
+                        <span className="ot-font-body text-sm text-gray-500">Enrolled {selectedStudentData.enrollmentDate}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {/* Readiness Score */}
+                    <div className="text-right mr-2">
+                      <div className="ot-font-body text-[10px] text-gray-500 uppercase tracking-wider">Readiness</div>
+                      <div className="ot-font-display text-2xl font-semibold">
+                        <span className={readinessScore >= 70 ? 'text-emerald-400' : readinessScore >= 50 ? 'text-amber-400' : 'text-red-400'}>
+                          {readinessScore}
+                        </span>
+                        <span className="text-gray-500 text-sm">/100</span>
+                      </div>
+                    </div>
+                    <button onClick={() => setShowFullProfile(false)} className="p-2 hover:bg-white/5 rounded-lg">
+                      <X className="w-5 h-5 text-gray-400" />
+                    </button>
+                  </div>
+                </div>
+                {/* Faculty Notes */}
+                <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="ot-font-body text-[10px] text-gray-500 uppercase tracking-wider">Faculty Notes</span>
+                    <span className="ot-font-body text-[10px] text-gray-600">Auto-saved</span>
+                  </div>
+                  <textarea
+                    value={studentNotes[selectedStudentData.id] || ''}
+                    onChange={(e) => setStudentNotes(prev => ({
+                      ...prev,
+                      [selectedStudentData.id]: e.target.value
+                    }))}
+                    placeholder="Add notes about this student (actions needed, follow-ups, reminders...)"
+                    className="w-full bg-transparent text-sm ot-font-body text-gray-300 placeholder:text-gray-600 resize-none focus:outline-none min-h-[60px]"
+                    rows={2}
+                  />
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 space-y-6">
+                {/* Stats Grid */}
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="bg-white/5 rounded-xl p-4">
+                    <div className="ot-font-body text-[10px] text-gray-500 uppercase tracking-wider mb-1">Average Score</div>
+                    <div className={`ot-font-display text-2xl ${
+                      selectedStudentData.avgScore >= 75 ? 'text-emerald-400' :
+                      selectedStudentData.avgScore >= 60 ? 'text-amber-400' : 'text-red-400'
+                    }`}>
+                      {selectedStudentData.avgScore}%
+                    </div>
+                  </div>
+                  <div className="bg-white/5 rounded-xl p-4">
+                    <div className="ot-font-body text-[10px] text-gray-500 uppercase tracking-wider mb-1">Exams Completed</div>
+                    <div className="ot-font-display text-2xl">{selectedStudentData.examsCompleted}</div>
+                  </div>
+                  <div className="bg-white/5 rounded-xl p-4">
+                    <div className="ot-font-body text-[10px] text-gray-500 uppercase tracking-wider mb-1">Milestones Passed</div>
+                    <div className="ot-font-display text-2xl">
+                      <span className="text-emerald-400">{passedMilestones}</span>
+                      <span className="text-gray-500 text-sm">/4</span>
+                    </div>
+                  </div>
+                  <div className="bg-white/5 rounded-xl p-4">
+                    <div className="ot-font-body text-[10px] text-gray-500 uppercase tracking-wider mb-1">Faculty Advisor</div>
+                    <div className="ot-font-body text-sm text-gray-300 mt-1">{selectedStudentData.faculty}</div>
+                  </div>
+                </div>
+
+                {/* Domain Competency */}
+                <div className="bg-white/5 rounded-xl p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="ot-font-display text-base">NBCOT Domain Competency</h4>
+                    <span className="ot-font-body text-xs text-gray-500">Threshold: 70%</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {(Object.keys(domainColors) as NBCOTDomain[]).map((domain) => {
+                      const score = domainScores[domain]
+                      const colors = domainColors[domain]
+                      const isAboveThreshold = score >= 70
+                      return (
+                        <div key={domain} className={`p-3 rounded-lg border ${colors.bg} ${isAboveThreshold ? 'border-white/5' : 'border-red-500/20'}`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="ot-font-body text-sm capitalize">{domainLabels[domain]}</span>
+                            <span className={`ot-font-display font-semibold ${isAboveThreshold ? colors.text : 'text-red-400'}`}>
+                              {score}%
+                            </span>
+                          </div>
+                          <div className="relative h-2 bg-white/10 rounded-full overflow-visible">
+                            <div
+                              className={`absolute inset-y-0 left-0 rounded-full transition-all ${isAboveThreshold ? colors.bar : 'bg-red-500'}`}
+                              style={{ width: `${Math.min(score, 100)}%` }}
+                            />
+                            {/* Threshold marker */}
+                            <div className="absolute top-1/2 -translate-y-1/2 w-0.5 h-3 bg-white/40" style={{ left: '70%' }} />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Weak & Strong Areas */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white/5 rounded-xl p-4">
+                    <div className="ot-font-body text-xs text-gray-500 uppercase tracking-wider mb-3">Weak Areas</div>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedStudentData.weakAreas.length > 0 ? (
+                        selectedStudentData.weakAreas.map(area => (
+                          <span key={area} className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 text-sm border border-red-500/20">
+                            {area}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-gray-500 text-sm">None identified</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="bg-white/5 rounded-xl p-4">
+                    <div className="ot-font-body text-xs text-gray-500 uppercase tracking-wider mb-3">Strong Areas</div>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedStudentData.strongAreas.length > 0 ? (
+                        selectedStudentData.strongAreas.map(area => (
+                          <span key={area} className="px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 text-sm border border-emerald-500/20">
+                            {area}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-gray-500 text-sm">Building proficiency</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Active Remediation Alert */}
+                {remediation && (
+                  <div className={`p-4 rounded-xl border ${tierColors[remediation.tier].border} ${tierColors[remediation.tier].bg}`}>
+                    <div className="flex items-start gap-3">
+                      <div className={`w-10 h-10 rounded-lg ${tierColors[remediation.tier].bg} border ${tierColors[remediation.tier].border} flex items-center justify-center flex-shrink-0`}>
+                        <Target className={`w-5 h-5 ${tierColors[remediation.tier].text}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="ot-font-display text-sm">Active Remediation</h4>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${tierColors[remediation.tier].bg} ${tierColors[remediation.tier].text} border ${tierColors[remediation.tier].border}`}>
+                            {tierColors[remediation.tier].label}
+                          </span>
+                        </div>
+                        <p className="ot-font-body text-sm text-gray-400 mb-2">{remediation.reason}</p>
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full ${tierColors[remediation.tier].text.replace('text-', 'bg-')}`}
+                                style={{ width: `${(remediation.questionsCompleted / remediation.assignedQuestions.length) * 100}%` }}
+                              />
+                            </div>
+                            <span className="ot-font-body text-xs text-gray-500">
+                              {remediation.questionsCompleted}/{remediation.assignedQuestions.length} questions
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 text-gray-500">
+                            <Clock className="w-3 h-3" />
+                            <span className="ot-font-body text-xs">
+                              Due {new Date(remediation.dueDate).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="sticky bottom-0 bg-[#0d1420] border-t border-white/10 p-6 flex gap-3 z-10">
+                <button
+                  onClick={() => {
+                    alert(`Sending report for ${selectedStudentData.name}`)
+                  }}
+                  className="flex-1 py-3 bg-white/5 border border-white/10 rounded-lg ot-font-body flex items-center justify-center gap-2 hover:bg-white/10 transition-colors"
+                >
+                  <Mail className="w-4 h-4" />
+                  Send Report
+                </button>
+                <Link
+                  to={`/otexam/pathway/${selectedStudentData.id}`}
+                  onClick={() => setShowFullProfile(false)}
+                  className="flex-1 py-3 bg-gradient-to-r from-[#d4a574] to-[#c49a6c] text-[#0a0f1a] rounded-lg ot-font-body font-semibold flex items-center justify-center gap-2"
+                >
+                  <Eye className="w-4 h-4" />
+                  View Full Learning Pathway
+                </Link>
+              </div>
+            </motion.div>
+          </motion.div>
+          )
+        })()}
       </AnimatePresence>
     </div>
   )

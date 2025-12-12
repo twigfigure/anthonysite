@@ -22,6 +22,14 @@ export type OTSetting =
   | 'mental-health'
   | 'wellness'
   | 'hand-therapy'
+  | 'burns'
+  | 'lymphedema'
+  | 'ergonomics'
+  | 'driving-rehab'
+  | 'neuro-rehab'
+  | 'orthopedics'
+  | 'home-health'
+  | 'acute-care'
 
 // Question structure
 export interface ExamQuestion {
@@ -40,6 +48,12 @@ export interface ExamQuestion {
   difficulty: 1 | 2 | 3 | 4 | 5
   concepts: string[] // OT concepts being tested
   clinicalReasoning: string // Explanation of the clinical reasoning required
+  image?: string // Optional image URL for the question
+  suggestedReading?: {
+    title: string
+    source: string
+    url?: string
+  }[] // Suggested resources for review
 }
 
 // Student answer

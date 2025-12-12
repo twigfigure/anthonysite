@@ -2,25 +2,23 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  BarChart3,
   TrendingUp,
-  Users,
-  BookOpen,
   Target,
-  Brain,
   AlertTriangle,
   CheckCircle,
   GraduationCap,
   Download,
-  Settings,
   Search,
   Bell,
   User,
+  Users,
   Calendar,
   Layers,
   Clock,
-  LineChart,
+  Brain,
 } from 'lucide-react'
+import { Sidebar } from '../components/Sidebar'
+import { useSidebarWidth } from '../hooks/useSidebarWidth'
 import {
   programMilestones,
   cohorts,
@@ -37,7 +35,7 @@ const cohortPerformance = [
 const domainPerformance = [
   { domain: 'Evaluation', avgScore: 78, questions: 342, color: 'bg-blue-500' },
   { domain: 'Intervention', avgScore: 72, questions: 580, color: 'bg-emerald-500' },
-  { domain: 'Management', avgScore: 68, questions: 198, color: 'bg-amber-500' },
+  { domain: 'Management', avgScore: 68, questions: 198, color: 'bg-orange-500' },
   { domain: 'Competency', avgScore: 81, questions: 176, color: 'bg-violet-500' },
 ]
 
@@ -46,7 +44,7 @@ const settingPerformance = [
   { setting: 'Geriatrics', avgScore: 72, color: 'from-purple-500 to-violet-500' },
   { setting: 'Physical Disabilities', avgScore: 78, color: 'from-blue-500 to-cyan-500' },
   { setting: 'Mental Health', avgScore: 69, color: 'from-emerald-500 to-teal-500' },
-  { setting: 'Wellness', avgScore: 82, color: 'from-amber-500 to-orange-500' },
+  { setting: 'Wellness', avgScore: 82, color: 'from-yellow-400 to-orange-400' },
   { setting: 'Hand Therapy', avgScore: 71, color: 'from-red-500 to-pink-500' },
 ]
 
@@ -55,9 +53,31 @@ type GanttView = 'single' | 'multi' | 'forecast'
 
 // Helper to get milestone progress color
 function getMilestoneColor(passRate: number): string {
-  if (passRate >= 90) return 'bg-emerald-500'
-  if (passRate >= 75) return 'bg-amber-500'
+  if (passRate >= 95) return 'bg-emerald-500'
+  if (passRate >= 75) return 'bg-orange-500'
   return 'bg-red-500'
+}
+
+// Mock forecast data for 12-month view
+const forecastData: Record<string, Record<string, { passRate: number; projected: boolean }>> = {
+  'c1': { // Fall 2024
+    'm1': { passRate: 83, projected: false },
+    'm2': { passRate: 88, projected: true },
+    'm3': { passRate: 91, projected: true },
+    'm4': { passRate: 96, projected: true },
+  },
+  'c2': { // Spring 2024
+    'm1': { passRate: 87, projected: false },
+    'm2': { passRate: 82, projected: false },
+    'm3': { passRate: 85, projected: true },
+    'm4': { passRate: 89, projected: true },
+  },
+  'c3': { // Fall 2023
+    'm1': { passRate: 91, projected: false },
+    'm2': { passRate: 88, projected: false },
+    'm3': { passRate: 95, projected: false },
+    'm4': { passRate: 97, projected: true },
+  },
 }
 
 // Gantt Timeline Component
@@ -122,6 +142,11 @@ function GanttTimeline({
                 const isFutureMilestone = programMilestones.findIndex(m => m.id === cohort.currentMilestoneId) <
                                           programMilestones.findIndex(m => m.id === milestone.id)
 
+                // Use forecast data when in forecast view
+                const forecast = view === 'forecast' ? forecastData[cohort.id]?.[milestone.id] : null
+                const displayPassRate = forecast ? forecast.passRate : progress.passRate
+                const isProjected = forecast?.projected ?? false
+
                 return (
                   <div
                     key={milestone.id}
@@ -131,36 +156,44 @@ function GanttTimeline({
                       className={`
                         relative h-10 rounded-lg overflow-hidden cursor-pointer
                         transition-all duration-200
-                        ${isCurrentMilestone ? 'ring-2 ring-[#d4a574] ring-offset-2 ring-offset-[#0a0f1a]' : ''}
-                        ${isFutureMilestone ? 'opacity-40' : ''}
+                        ${isCurrentMilestone && view !== 'forecast' ? 'ring-2 ring-[#d4a574] ring-offset-2 ring-offset-[#0a0f1a]' : ''}
+                        ${isFutureMilestone && view !== 'forecast' ? 'opacity-40' : ''}
+                        ${isProjected ? 'opacity-70' : ''}
                         bg-white/5 hover:bg-white/10
                       `}
                     >
                       {/* Progress fill */}
                       <motion.div
                         initial={{ width: 0 }}
-                        animate={{ width: `${progress.passRate}%` }}
+                        animate={{ width: `${displayPassRate}%` }}
                         transition={{ duration: 0.8, delay: cohortIdx * 0.1 + 0.2 }}
-                        className={`absolute inset-y-0 left-0 ${getMilestoneColor(progress.passRate)}`}
+                        className={`absolute inset-y-0 left-0 ${getMilestoneColor(displayPassRate)} ${isProjected ? 'opacity-60' : ''}`}
                       />
 
                       {/* Overlay info */}
                       <div className="absolute inset-0 flex items-center justify-center">
-                        {isPastMilestone || isCurrentMilestone ? (
+                        {view === 'forecast' ? (
+                          <div className="flex flex-col items-center">
+                            <span className="ot-font-body text-xs font-medium text-white drop-shadow-lg">
+                              {displayPassRate}%
+                            </span>
+                            {isProjected && (
+                              <span className="ot-font-body text-[9px] text-white/70 italic">
+                                projected
+                              </span>
+                            )}
+                          </div>
+                        ) : isPastMilestone || isCurrentMilestone ? (
                           <div className="flex items-center gap-2">
                             <span className="ot-font-body text-xs font-medium text-white drop-shadow-lg">
                               {progress.passed}/{progress.total}
                             </span>
                             {progress.remediation > 0 && (
-                              <span className="px-1.5 py-0.5 rounded bg-amber-500/80 text-[10px] text-white">
+                              <span className="px-1.5 py-0.5 rounded bg-orange-500/80 text-[10px] text-white">
                                 {progress.remediation} rem
                               </span>
                             )}
                           </div>
-                        ) : view === 'forecast' ? (
-                          <span className="ot-font-body text-[10px] text-gray-500 italic">
-                            Projected
-                          </span>
                         ) : null}
                       </div>
                     </div>
@@ -176,11 +209,11 @@ function GanttTimeline({
       <div className="flex items-center justify-center gap-6 pt-4 border-t border-white/5">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded bg-emerald-500" />
-          <span className="ot-font-body text-xs text-gray-400">90%+ Pass</span>
+          <span className="ot-font-body text-xs text-gray-400">95%+ Pass</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-amber-500" />
-          <span className="ot-font-body text-xs text-gray-400">75-89% Pass</span>
+          <div className="w-3 h-3 rounded bg-orange-500" />
+          <span className="ot-font-body text-xs text-gray-400">75-94% Pass</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded bg-red-500" />
@@ -207,7 +240,7 @@ function DomainExposure() {
   const domainColors = {
     evaluation: 'bg-blue-500',
     intervention: 'bg-emerald-500',
-    management: 'bg-amber-500',
+    management: 'bg-orange-500',
     competency: 'bg-violet-500',
   }
 
@@ -241,6 +274,7 @@ export default function Analysis() {
   const [selectedCohort, setSelectedCohort] = useState('all')
   const [dateRange, setDateRange] = useState('month')
   const [ganttView, setGanttView] = useState<GanttView>('multi')
+  const sidebarMargin = useSidebarWidth()
 
   return (
     <div className="min-h-screen bg-[#0a0f1a] text-white">
@@ -252,72 +286,10 @@ export default function Analysis() {
         .ot-gradient-text { background: linear-gradient(135deg, #d4a574 0%, #e8c9a0 50%, #d4a574 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
       `}</style>
 
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 bottom-0 w-64 bg-[#0d1420] border-r border-white/5 p-6 hidden lg:block">
-        <Link to="/otexam" className="flex items-center gap-3 mb-10">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#d4a574] to-[#c49a6c] flex items-center justify-center">
-            <GraduationCap className="w-5 h-5 text-[#0a0f1a]" />
-          </div>
-          <span className="ot-font-display text-xl font-semibold">OTexam</span>
-        </Link>
-
-        <nav className="space-y-2">
-          <Link
-            to="/otexam/dashboard"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <BarChart3 className="w-5 h-5" />
-            Dashboard
-          </Link>
-          <Link
-            to="/otexam/analysis"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg bg-[#d4a574]/10 text-[#d4a574] ot-font-body"
-          >
-            <LineChart className="w-5 h-5" />
-            Analysis
-          </Link>
-          <Link
-            to="/otexam/students"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <Users className="w-5 h-5" />
-            Students
-          </Link>
-          <Link
-            to="/otexam/exam"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <BookOpen className="w-5 h-5" />
-            Practice Exams
-          </Link>
-          <Link
-            to="/otexam/questions"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <Brain className="w-5 h-5" />
-            Question Bank
-          </Link>
-          <Link
-            to="/otexam"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <Settings className="w-5 h-5" />
-            Settings
-          </Link>
-        </nav>
-
-        <div className="absolute bottom-6 left-6 right-6">
-          <Link
-            to="/"
-            className="flex items-center gap-2 text-gray-500 hover:text-gray-400 ot-font-body text-sm transition-colors"
-          >
-            ← Back to Home
-          </Link>
-        </div>
-      </aside>
+      <Sidebar activePage="analysis" />
 
       {/* Main content */}
-      <main className="lg:ml-64">
+      <main className={`${sidebarMargin} transition-all duration-300`}>
         {/* Top header */}
         <header className="sticky top-0 z-50 ot-glass border-b border-white/5">
           <div className="px-6 py-4">
@@ -370,9 +342,9 @@ export default function Analysis() {
                 className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg ot-font-body text-sm focus:outline-none focus:border-[#d4a574]/50"
               >
                 <option value="all">All Cohorts</option>
-                <option value="fall-2024">Fall 2024</option>
-                <option value="spring-2024">Spring 2024</option>
-                <option value="fall-2023">Fall 2023</option>
+                {cohorts.map((cohort) => (
+                  <option key={cohort.id} value={cohort.id}>{cohort.name}</option>
+                ))}
               </select>
 
               <select
@@ -515,7 +487,7 @@ export default function Analysis() {
                             className={`absolute inset-y-0 left-0 ${
                               prediction >= 90 ? 'bg-emerald-500' :
                               prediction >= 80 ? 'bg-emerald-500/80' :
-                              prediction >= 70 ? 'bg-amber-500' : 'bg-red-500'
+                              prediction >= 70 ? 'bg-orange-500' : 'bg-red-500'
                             }`}
                           />
                           <div className="absolute inset-0 flex items-center justify-end pr-3">
@@ -529,7 +501,7 @@ export default function Analysis() {
                       </div>
                       <div className={`flex items-center gap-1 text-xs ${
                         prediction >= 85 ? 'text-emerald-400' :
-                        prediction >= 70 ? 'text-amber-400' : 'text-red-400'
+                        prediction >= 70 ? 'text-orange-400' : 'text-red-400'
                       }`}>
                         {prediction >= 85 ? (
                           <>
@@ -680,7 +652,7 @@ export default function Analysis() {
                       <td className="py-4 px-4">
                         <span className={`ot-font-body font-medium ${
                           cohort.avgScore >= 75 ? 'text-emerald-400' :
-                          cohort.avgScore >= 60 ? 'text-amber-400' : 'text-red-400'
+                          cohort.avgScore >= 60 ? 'text-orange-400' : 'text-red-400'
                         }`}>
                           {cohort.avgScore}%
                         </span>
@@ -691,7 +663,7 @@ export default function Analysis() {
                             <div
                               className={`h-full rounded-full ${
                                 cohort.passRate >= 90 ? 'bg-emerald-500' :
-                                cohort.passRate >= 80 ? 'bg-amber-500' : 'bg-red-500'
+                                cohort.passRate >= 80 ? 'bg-orange-500' : 'bg-red-500'
                               }`}
                               style={{ width: `${cohort.passRate}%` }}
                             />
@@ -702,7 +674,7 @@ export default function Analysis() {
                       <td className="py-4 px-4">
                         <span className={`px-2 py-1 rounded text-xs ot-font-body ${
                           cohort.atRisk > 10 ? 'bg-red-500/10 text-red-400' :
-                          cohort.atRisk > 5 ? 'bg-amber-500/10 text-amber-400' :
+                          cohort.atRisk > 5 ? 'bg-orange-500/10 text-orange-400' :
                           'bg-emerald-500/10 text-emerald-400'
                         }`}>
                           {cohort.atRisk} students

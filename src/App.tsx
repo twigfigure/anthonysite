@@ -18,6 +18,7 @@ import OTexamDashboard from "./features/otexam/pages/Dashboard";
 import OTexamStudents from "./features/otexam/pages/Students";
 import OTexamQuestions from "./features/otexam/pages/QuestionBank";
 import OTexamAnalysis from "./features/otexam/pages/Analysis";
+import OTexamAlerts from "./features/otexam/pages/Alerts";
 import StudentPathway from "./features/otexam/pages/StudentPathway";
 import PortalLayout from "./features/detailstack/pages/portal/PortalLayout";
 import PortalDashboard from "./features/detailstack/pages/portal/Dashboard";
@@ -65,6 +66,7 @@ const App = () => (
             <Route path="/otexam/students" element={<OTexamStudents />} />
             <Route path="/otexam/questions" element={<OTexamQuestions />} />
             <Route path="/otexam/analysis" element={<OTexamAnalysis />} />
+            <Route path="/otexam/alerts" element={<OTexamAlerts />} />
             <Route path="/otexam/pathway/:studentId" element={<StudentPathway />} />
             <Route path="/migrate-images" element={<MigrateImages />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

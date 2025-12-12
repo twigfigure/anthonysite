@@ -143,99 +143,99 @@ const CreativeFeed = () => {
 
   return (
     <div>
-      {/* Toggle Pills */}
-      <div className="flex gap-3 mb-6 flex-wrap">
+      {/* Toggle Pills - Horizontal scroll on mobile */}
+      <div className="flex gap-2 sm:gap-3 mb-4 sm:mb-6 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-none sm:flex-wrap sm:overflow-visible">
         <button
           onClick={() => setActiveTab('thoughts')}
-          className={`flex items-center justify-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 w-[110px] ${
+          className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-full text-[11px] sm:text-xs font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
             activeTab === 'thoughts'
               ? "bg-foreground/10 border border-foreground/20 text-foreground"
-              : "bg-transparent border border-border text-muted-foreground hover:text-foreground"
+              : "bg-transparent border border-border text-muted-foreground active:text-foreground"
           }`}
         >
-          <Sparkles className="w-3.5 h-3.5" />
+          <Sparkles className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
           Thoughts
         </button>
         <button
           onClick={() => setActiveTab('prayers')}
-          className={`flex items-center justify-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 w-[110px] ${
+          className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-full text-[11px] sm:text-xs font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
             activeTab === 'prayers'
               ? "bg-foreground/10 border border-foreground/20 text-foreground"
-              : "bg-transparent border border-border text-muted-foreground hover:text-foreground"
+              : "bg-transparent border border-border text-muted-foreground active:text-foreground"
           }`}
         >
-          <Heart className="w-3.5 h-3.5" />
+          <Heart className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
           Prayers
         </button>
         <button
           onClick={() => setActiveTab('projects')}
-          className={`flex items-center justify-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 w-[110px] ${
+          className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-full text-[11px] sm:text-xs font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
             activeTab === 'projects'
               ? "bg-foreground/10 border border-foreground/20 text-foreground"
-              : "bg-transparent border border-border text-muted-foreground hover:text-foreground"
+              : "bg-transparent border border-border text-muted-foreground active:text-foreground"
           }`}
         >
-          <Briefcase className="w-3.5 h-3.5" />
+          <Briefcase className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
           Projects
         </button>
         <button
           onClick={() => setActiveTab('bookmarks')}
-          className={`flex items-center justify-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 w-[110px] ${
+          className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-full text-[11px] sm:text-xs font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
             activeTab === 'bookmarks'
               ? "bg-foreground/10 border border-foreground/20 text-foreground"
-              : "bg-transparent border border-border text-muted-foreground hover:text-foreground"
+              : "bg-transparent border border-border text-muted-foreground active:text-foreground"
           }`}
         >
-          <Bookmark className="w-3.5 h-3.5" />
+          <Bookmark className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
           Bookmarks
         </button>
       </div>
 
       {activeTab === 'thoughts' ? (
         <>
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold mb-2">
+          <div className="mb-4 sm:mb-6">
+            <h2 className="text-xl sm:text-2xl font-bold mb-1.5 sm:mb-2">
               Notes from the Cabin
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Updates, experiments, and observations
             </p>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {posts.map((post, index) => (
           <Card
             key={index}
-            className="group p-4 bg-card border-border hover:border-sage/30 transition-all duration-300 hover:shadow-md hover:shadow-sage/10 cursor-pointer"
+            className="group p-3 sm:p-4 bg-card border-border active:border-sage/30 sm:hover:border-sage/30 transition-all duration-200 sm:hover:shadow-md sm:hover:shadow-sage/10 cursor-pointer"
           >
-            <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
-              <Calendar className="w-3 h-3" />
+            <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2 text-[10px] sm:text-xs text-muted-foreground">
+              <Calendar className="w-2.5 sm:w-3 h-2.5 sm:h-3" />
               <span className="font-mono">{post.date}</span>
               <span className="w-1 h-1 rounded-full bg-sage" />
               <span className="text-sage font-medium">{post.type}</span>
             </div>
 
-            <h3 className="text-base font-semibold mb-2 group-hover:text-sage transition-colors duration-300">
+            <h3 className="text-sm sm:text-base font-semibold mb-1.5 sm:mb-2 group-active:text-sage sm:group-hover:text-sage transition-colors duration-200">
               {post.title}
             </h3>
 
-            <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed mb-2 sm:mb-3">
               {post.excerpt}
             </p>
 
             <div className="flex items-center justify-between">
-              <div className="flex gap-1.5 flex-wrap">
+              <div className="flex gap-1 sm:gap-1.5 flex-wrap">
                 {post.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="text-xs px-1.5 py-0.5 bg-muted rounded font-mono text-muted-foreground"
+                    className="text-[10px] sm:text-xs px-1.5 py-0.5 bg-muted rounded font-mono text-muted-foreground"
                   >
                     {tag}
                   </span>
                 ))}
               </div>
 
-              <ArrowRight className="w-4 h-4 text-sage opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <ArrowRight className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-sage opacity-50 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200" />
             </div>
           </Card>
         ))}
@@ -243,49 +243,49 @@ const CreativeFeed = () => {
         </>
       ) : activeTab === 'prayers' ? (
         <>
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold mb-2">
+          <div className="mb-4 sm:mb-6">
+            <h2 className="text-xl sm:text-2xl font-bold mb-1.5 sm:mb-2">
               Prayers
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Prayers, gratitude, and seeking guidance
             </p>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {prayerRequests.map((prayer, index) => (
               <Card
                 key={index}
-                className="group p-4 bg-card border-border hover:border-dusk/30 transition-all duration-300 hover:shadow-md hover:shadow-dusk/10 cursor-pointer"
+                className="group p-3 sm:p-4 bg-card border-border active:border-dusk/30 sm:hover:border-dusk/30 transition-all duration-200 sm:hover:shadow-md sm:hover:shadow-dusk/10 cursor-pointer"
               >
-                <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
-                  <Calendar className="w-3 h-3" />
+                <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2 text-[10px] sm:text-xs text-muted-foreground">
+                  <Calendar className="w-2.5 sm:w-3 h-2.5 sm:h-3" />
                   <span className="font-mono">{prayer.date}</span>
                   <span className="w-1 h-1 rounded-full bg-dusk" />
                   <span className="text-dusk font-medium">{prayer.category}</span>
                 </div>
 
-                <h3 className="text-base font-semibold mb-2 group-hover:text-dusk transition-colors duration-300">
+                <h3 className="text-sm sm:text-base font-semibold mb-1.5 sm:mb-2 group-active:text-dusk sm:group-hover:text-dusk transition-colors duration-200">
                   {prayer.title}
                 </h3>
 
-                <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed mb-2 sm:mb-3">
                   {prayer.request}
                 </p>
 
                 <div className="flex items-center justify-between">
-                  <div className="flex gap-1.5 flex-wrap">
+                  <div className="flex gap-1 sm:gap-1.5 flex-wrap">
                     {prayer.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="text-xs px-1.5 py-0.5 bg-muted rounded font-mono text-muted-foreground"
+                        className="text-[10px] sm:text-xs px-1.5 py-0.5 bg-muted rounded font-mono text-muted-foreground"
                       >
                         {tag}
                       </span>
                     ))}
                   </div>
 
-                  <ArrowRight className="w-4 h-4 text-dusk opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <ArrowRight className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-dusk opacity-50 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200" />
                 </div>
               </Card>
             ))}
@@ -293,43 +293,43 @@ const CreativeFeed = () => {
         </>
       ) : activeTab === 'projects' ? (
         <>
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold mb-2">
+          <div className="mb-4 sm:mb-6">
+            <h2 className="text-xl sm:text-2xl font-bold mb-1.5 sm:mb-2">
               Projects
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Things I'm building and working on
             </p>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {projects.map((project, index) => (
               <Card
                 key={index}
-                className="group p-4 bg-card border-border hover:border-amber/30 transition-all duration-300 hover:shadow-md hover:shadow-amber/10 cursor-pointer"
+                className="group p-3 sm:p-4 bg-card border-border active:border-amber/30 sm:hover:border-amber/30 transition-all duration-200 sm:hover:shadow-md sm:hover:shadow-amber/10 cursor-pointer"
               >
-                <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
-                  <Calendar className="w-3 h-3" />
+                <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2 text-[10px] sm:text-xs text-muted-foreground">
+                  <Calendar className="w-2.5 sm:w-3 h-2.5 sm:h-3" />
                   <span className="font-mono">{project.date}</span>
                   <span className="w-1 h-1 rounded-full bg-amber" />
                   <span className="text-amber font-medium">{project.status}</span>
                 </div>
 
-                <h3 className="text-base font-semibold mb-2 group-hover:text-amber transition-colors duration-300">
+                <h3 className="text-sm sm:text-base font-semibold mb-1.5 sm:mb-2 group-active:text-amber sm:group-hover:text-amber transition-colors duration-200">
                   {project.title}
                 </h3>
 
-                <p className="text-sm text-muted-foreground leading-relaxed mb-3">
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed mb-2 sm:mb-3">
                   {project.description}
                 </p>
 
                 {/* Progress Bar */}
-                <div className="mb-3">
+                <div className="mb-2 sm:mb-3">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-muted-foreground">Progress</span>
-                    <span className="text-xs font-medium text-amber">{project.progress}%</span>
+                    <span className="text-[10px] sm:text-xs text-muted-foreground">Progress</span>
+                    <span className="text-[10px] sm:text-xs font-medium text-amber">{project.progress}%</span>
                   </div>
-                  <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className="w-full h-1 sm:h-1.5 bg-muted rounded-full overflow-hidden">
                     <div
                       className="h-full bg-amber rounded-full transition-all duration-500"
                       style={{ width: `${project.progress}%` }}
@@ -338,18 +338,18 @@ const CreativeFeed = () => {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <div className="flex gap-1.5 flex-wrap">
+                  <div className="flex gap-1 sm:gap-1.5 flex-wrap">
                     {project.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="text-xs px-1.5 py-0.5 bg-muted rounded font-mono text-muted-foreground"
+                        className="text-[10px] sm:text-xs px-1.5 py-0.5 bg-muted rounded font-mono text-muted-foreground"
                       >
                         {tag}
                       </span>
                     ))}
                   </div>
 
-                  <ArrowRight className="w-4 h-4 text-amber opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <ArrowRight className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-amber opacity-50 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200" />
                 </div>
               </Card>
             ))}
@@ -357,16 +357,16 @@ const CreativeFeed = () => {
         </>
       ) : (
         <>
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold mb-2">
+          <div className="mb-4 sm:mb-6">
+            <h2 className="text-xl sm:text-2xl font-bold mb-1.5 sm:mb-2">
               Bookmarks
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Useful links and resources
             </p>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {bookmarks.map((bookmark, index) => (
               <a
                 key={index}
@@ -375,30 +375,30 @@ const CreativeFeed = () => {
                 rel="noopener noreferrer"
                 className="block"
               >
-                <Card className="group p-4 bg-card border-border hover:border-sage/30 transition-all duration-300 hover:shadow-md hover:shadow-sage/10 cursor-pointer">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs px-2 py-0.5 bg-sage/10 border border-sage/20 rounded-full text-sage font-mono">
+                <Card className="group p-3 sm:p-4 bg-card border-border active:border-sage/30 sm:hover:border-sage/30 transition-all duration-200 sm:hover:shadow-md sm:hover:shadow-sage/10 cursor-pointer">
+                  <div className="flex items-start justify-between gap-2 sm:gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5 sm:mb-2">
+                        <span className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 bg-sage/10 border border-sage/20 rounded-full text-sage font-mono">
                           {bookmark.category}
                         </span>
                       </div>
 
-                      <h3 className="text-base font-semibold mb-2 group-hover:text-sage transition-colors duration-300 flex items-center gap-2">
+                      <h3 className="text-sm sm:text-base font-semibold mb-1.5 sm:mb-2 group-active:text-sage sm:group-hover:text-sage transition-colors duration-200 flex items-center gap-1.5 sm:gap-2">
                         {bookmark.title}
-                        <ExternalLink className="w-3.5 h-3.5 opacity-50" />
+                        <ExternalLink className="w-3 sm:w-3.5 h-3 sm:h-3.5 opacity-50 flex-shrink-0" />
                       </h3>
 
-                      <p className="text-sm text-muted-foreground leading-relaxed">
+                      <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                         {bookmark.description}
                       </p>
 
-                      <p className="text-xs text-muted-foreground/60 mt-2 font-mono truncate">
+                      <p className="text-[10px] sm:text-xs text-muted-foreground/60 mt-1.5 sm:mt-2 font-mono truncate">
                         {bookmark.url}
                       </p>
                     </div>
 
-                    <ArrowRight className="w-4 h-4 text-sage opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex-shrink-0 mt-1" />
+                    <ArrowRight className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-sage opacity-50 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0 mt-1" />
                   </div>
                 </Card>
               </a>

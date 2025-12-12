@@ -110,6 +110,15 @@ All colors MUST be HSL.
 }
 
 @layer utilities {
+  /* Hide scrollbar utility for horizontal scroll areas */
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
   .glow-sage {
     box-shadow: 0 0 20px hsl(var(--glow-sage) / 0.3);
   }

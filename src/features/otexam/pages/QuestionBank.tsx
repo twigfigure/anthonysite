@@ -4,12 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search,
   Plus,
-  Brain,
   GraduationCap,
-  BarChart3,
-  BookOpen,
-  Users,
-  Settings,
   Bell,
   User,
   Edit,
@@ -21,8 +16,16 @@ import {
   CheckCircle,
   Filter,
   Copy,
-  LineChart,
+  Brain,
+  BarChart3,
+  BookOpen,
+  Image as ImageIcon,
+  ExternalLink,
+  BookMarked,
+  Lightbulb,
 } from 'lucide-react'
+import { Sidebar } from '../components/Sidebar'
+import { useSidebarWidth } from '../hooks/useSidebarWidth'
 import { sampleQuestions, settingDescriptions, bloomsDescriptions, domainDescriptions } from '../data/questions'
 import type { ExamQuestion, BloomLevel, NBCOTDomain, OTSetting } from '../types'
 
@@ -31,6 +34,7 @@ const difficultyLabels = ['', 'Very Easy', 'Easy', 'Moderate', 'Hard', 'Very Har
 export default function QuestionBank() {
   const [questions, setQuestions] = useState<ExamQuestion[]>(sampleQuestions)
   const [searchQuery, setSearchQuery] = useState('')
+  const sidebarMargin = useSidebarWidth()
   const [filterSetting, setFilterSetting] = useState<string>('all')
   const [filterBloom, setFilterBloom] = useState<string>('all')
   const [filterDomain, setFilterDomain] = useState<string>('all')
@@ -61,9 +65,12 @@ export default function QuestionBank() {
     difficulty: 3,
     concepts: [],
     clinicalReasoning: '',
+    image: '',
+    suggestedReading: [],
   }
   const [questionForm, setQuestionForm] = useState<ExamQuestion>(emptyForm)
   const [conceptInput, setConceptInput] = useState('')
+  const [suggestedReadingInput, setSuggestedReadingInput] = useState({ title: '', source: '', url: '' })
 
   // Filter questions
   const filteredQuestions = questions.filter(q => {
@@ -152,6 +159,29 @@ export default function QuestionBank() {
     setQuestionForm({
       ...questionForm,
       concepts: questionForm.concepts.filter((_, i) => i !== index)
+    })
+  }
+
+  const addSuggestedReading = () => {
+    if (!suggestedReadingInput.title.trim() || !suggestedReadingInput.source.trim()) return
+    setQuestionForm({
+      ...questionForm,
+      suggestedReading: [
+        ...(questionForm.suggestedReading || []),
+        {
+          title: suggestedReadingInput.title.trim(),
+          source: suggestedReadingInput.source.trim(),
+          url: suggestedReadingInput.url.trim() || undefined
+        }
+      ]
+    })
+    setSuggestedReadingInput({ title: '', source: '', url: '' })
+  }
+
+  const removeSuggestedReading = (index: number) => {
+    setQuestionForm({
+      ...questionForm,
+      suggestedReading: (questionForm.suggestedReading || []).filter((_, i) => i !== index)
     })
   }
 
@@ -249,10 +279,10 @@ export default function QuestionBank() {
           <select
             value={questionForm.bloomLevel}
             onChange={(e) => setQuestionForm({ ...questionForm, bloomLevel: e.target.value as BloomLevel })}
-            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg ot-font-body text-white focus:outline-none focus:border-[#d4a574]/50"
+            className="w-full px-4 py-3 bg-[#1a2332] border border-white/10 rounded-lg ot-font-body text-white focus:outline-none focus:border-[#d4a574]/50"
           >
             {Object.entries(bloomsDescriptions).map(([key, val]) => (
-              <option key={key} value={key}>{val.name}</option>
+              <option key={key} value={key} style={{ background: '#1a2332', color: 'white' }}>{val.name}</option>
             ))}
           </select>
         </div>
@@ -261,10 +291,10 @@ export default function QuestionBank() {
           <select
             value={questionForm.difficulty}
             onChange={(e) => setQuestionForm({ ...questionForm, difficulty: parseInt(e.target.value) as 1 | 2 | 3 | 4 | 5 })}
-            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg ot-font-body text-white focus:outline-none focus:border-[#d4a574]/50"
+            className="w-full px-4 py-3 bg-[#1a2332] border border-white/10 rounded-lg ot-font-body text-white focus:outline-none focus:border-[#d4a574]/50"
           >
             {[1, 2, 3, 4, 5].map(d => (
-              <option key={d} value={d}>{d} - {difficultyLabels[d]}</option>
+              <option key={d} value={d} style={{ background: '#1a2332', color: 'white' }}>{d} - {difficultyLabels[d]}</option>
             ))}
           </select>
         </div>
@@ -358,6 +388,112 @@ export default function QuestionBank() {
           className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg ot-font-body text-white placeholder:text-gray-500 focus:outline-none focus:border-[#d4a574]/50 resize-none"
         />
       </div>
+
+      {/* Reference Image */}
+      <div>
+        <label className="block ot-font-body text-sm text-gray-400 mb-2 flex items-center gap-2">
+          <ImageIcon className="w-4 h-4" />
+          Reference Image URL (optional)
+        </label>
+        <input
+          type="text"
+          value={questionForm.image || ''}
+          onChange={(e) => setQuestionForm({ ...questionForm, image: e.target.value })}
+          placeholder="https://example.com/image.jpg"
+          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg ot-font-body text-white placeholder:text-gray-500 focus:outline-none focus:border-[#d4a574]/50"
+        />
+        {questionForm.image && (
+          <div className="mt-2">
+            <img
+              src={questionForm.image}
+              alt="Preview"
+              className="max-w-xs h-auto rounded-lg border border-white/10"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Suggested Reading */}
+      <div>
+        <label className="block ot-font-body text-sm text-gray-400 mb-2 flex items-center gap-2">
+          <BookMarked className="w-4 h-4" />
+          Suggested Reading Resources
+        </label>
+        <div className="space-y-2 mb-3">
+          <input
+            type="text"
+            value={suggestedReadingInput.title}
+            onChange={(e) => setSuggestedReadingInput({ ...suggestedReadingInput, title: e.target.value })}
+            placeholder="Resource title"
+            className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg ot-font-body text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-[#d4a574]/50"
+          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={suggestedReadingInput.source}
+              onChange={(e) => setSuggestedReadingInput({ ...suggestedReadingInput, source: e.target.value })}
+              placeholder="Source (e.g., AOTA, Journal name)"
+              className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg ot-font-body text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-[#d4a574]/50"
+            />
+            <input
+              type="text"
+              value={suggestedReadingInput.url}
+              onChange={(e) => setSuggestedReadingInput({ ...suggestedReadingInput, url: e.target.value })}
+              placeholder="URL (optional)"
+              className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg ot-font-body text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-[#d4a574]/50"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={addSuggestedReading}
+            disabled={!suggestedReadingInput.title || !suggestedReadingInput.source}
+            className="w-full py-2 bg-white/5 border border-white/10 rounded-lg ot-font-body text-sm hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Resource
+          </button>
+        </div>
+
+        {/* Existing resources list */}
+        {questionForm.suggestedReading && questionForm.suggestedReading.length > 0 && (
+          <div className="space-y-2">
+            {questionForm.suggestedReading.map((resource, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="ot-font-body text-sm text-gray-200 truncate">{resource.title}</p>
+                  <p className="ot-font-body text-xs text-gray-500 truncate">
+                    {resource.source}
+                    {resource.url && <span className="ml-2 text-[#d4a574]">• Has link</span>}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  {resource.url && (
+                    <a
+                      href={resource.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 hover:bg-white/10 rounded-lg text-[#d4a574]"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeSuggestedReading(i)}
+                    className="p-2 hover:bg-red-500/10 rounded-lg text-red-400"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 
@@ -370,72 +506,10 @@ export default function QuestionBank() {
         .ot-glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); }
       `}</style>
 
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 bottom-0 w-64 bg-[#0d1420] border-r border-white/5 p-6 hidden lg:block">
-        <Link to="/otexam" className="flex items-center gap-3 mb-10">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#d4a574] to-[#c49a6c] flex items-center justify-center">
-            <GraduationCap className="w-5 h-5 text-[#0a0f1a]" />
-          </div>
-          <span className="ot-font-display text-xl font-semibold">OTexam</span>
-        </Link>
-
-        <nav className="space-y-2">
-          <Link
-            to="/otexam/dashboard"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <BarChart3 className="w-5 h-5" />
-            Dashboard
-          </Link>
-          <Link
-            to="/otexam/analysis"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <LineChart className="w-5 h-5" />
-            Analysis
-          </Link>
-          <Link
-            to="/otexam/students"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <Users className="w-5 h-5" />
-            Students
-          </Link>
-          <Link
-            to="/otexam/exam"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <BookOpen className="w-5 h-5" />
-            Practice Exams
-          </Link>
-          <Link
-            to="/otexam/questions"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg bg-[#d4a574]/10 text-[#d4a574] ot-font-body"
-          >
-            <Brain className="w-5 h-5" />
-            Question Bank
-          </Link>
-          <Link
-            to="/otexam"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <Settings className="w-5 h-5" />
-            Settings
-          </Link>
-        </nav>
-
-        <div className="absolute bottom-6 left-6 right-6">
-          <Link
-            to="/"
-            className="flex items-center gap-2 text-gray-500 hover:text-gray-400 ot-font-body text-sm transition-colors"
-          >
-            ← Back to Home
-          </Link>
-        </div>
-      </aside>
+      <Sidebar activePage="questions" />
 
       {/* Main content */}
-      <main className="lg:ml-64">
+      <main className={`${sidebarMargin} transition-all duration-300`}>
         {/* Top header */}
         <header className="sticky top-0 z-40 ot-glass border-b border-white/5">
           <div className="px-6 py-4">
@@ -504,44 +578,44 @@ export default function QuestionBank() {
               <select
                 value={filterSetting}
                 onChange={(e) => setFilterSetting(e.target.value)}
-                className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg ot-font-body text-sm focus:outline-none focus:border-[#d4a574]/50"
+                className="px-3 py-2 bg-[#1a2332] border border-white/10 rounded-lg ot-font-body text-sm text-white focus:outline-none focus:border-[#d4a574]/50"
               >
-                <option value="all">All Settings</option>
+                <option value="all" style={{ background: '#1a2332', color: 'white' }}>All Settings</option>
                 {Object.entries(settingDescriptions).map(([key, val]) => (
-                  <option key={key} value={key}>{val.name}</option>
+                  <option key={key} value={key} style={{ background: '#1a2332', color: 'white' }}>{val.name}</option>
                 ))}
               </select>
 
               <select
                 value={filterBloom}
                 onChange={(e) => setFilterBloom(e.target.value)}
-                className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg ot-font-body text-sm focus:outline-none focus:border-[#d4a574]/50"
+                className="px-3 py-2 bg-[#1a2332] border border-white/10 rounded-lg ot-font-body text-sm text-white focus:outline-none focus:border-[#d4a574]/50"
               >
-                <option value="all">All Bloom's</option>
+                <option value="all" style={{ background: '#1a2332', color: 'white' }}>All Bloom's</option>
                 {Object.entries(bloomsDescriptions).map(([key, val]) => (
-                  <option key={key} value={key}>{val.name}</option>
+                  <option key={key} value={key} style={{ background: '#1a2332', color: 'white' }}>{val.name}</option>
                 ))}
               </select>
 
               <select
                 value={filterDomain}
                 onChange={(e) => setFilterDomain(e.target.value)}
-                className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg ot-font-body text-sm focus:outline-none focus:border-[#d4a574]/50"
+                className="px-3 py-2 bg-[#1a2332] border border-white/10 rounded-lg ot-font-body text-sm text-white focus:outline-none focus:border-[#d4a574]/50"
               >
-                <option value="all">All Domains</option>
+                <option value="all" style={{ background: '#1a2332', color: 'white' }}>All Domains</option>
                 {Object.entries(domainDescriptions).map(([key, val]) => (
-                  <option key={key} value={key}>{val.name}</option>
+                  <option key={key} value={key} style={{ background: '#1a2332', color: 'white' }}>{val.name}</option>
                 ))}
               </select>
 
               <select
                 value={filterDifficulty}
                 onChange={(e) => setFilterDifficulty(e.target.value)}
-                className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg ot-font-body text-sm focus:outline-none focus:border-[#d4a574]/50"
+                className="px-3 py-2 bg-[#1a2332] border border-white/10 rounded-lg ot-font-body text-sm text-white focus:outline-none focus:border-[#d4a574]/50"
               >
-                <option value="all">All Difficulty</option>
+                <option value="all" style={{ background: '#1a2332', color: 'white' }}>All Difficulty</option>
                 {[1, 2, 3, 4, 5].map(d => (
-                  <option key={d} value={d}>{d} - {difficultyLabels[d]}</option>
+                  <option key={d} value={d} style={{ background: '#1a2332', color: 'white' }}>{d} - {difficultyLabels[d]}</option>
                 ))}
               </select>
             </div>
@@ -670,34 +744,63 @@ export default function QuestionBank() {
                         className="border-t border-white/5"
                       >
                         <div className="p-4 space-y-4">
+                          {/* Reference Image */}
+                          {question.image && (
+                            <div>
+                              <div className="ot-font-body text-xs text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                <ImageIcon className="w-3 h-3" />
+                                Reference Image
+                              </div>
+                              <img
+                                src={question.image}
+                                alt="Question reference"
+                                className="max-w-md h-auto rounded-lg border border-white/10"
+                              />
+                            </div>
+                          )}
+
                           {/* Options */}
-                          <div className="grid gap-2">
-                            {question.options.map((option) => (
-                              <div
-                                key={option.id}
-                                className={`p-3 rounded-lg ${
-                                  option.isCorrect
-                                    ? 'bg-emerald-500/10 border border-emerald-500/30'
-                                    : 'bg-white/5 border border-white/5'
-                                }`}
-                              >
-                                <div className="flex items-start gap-3">
-                                  <span className={`ot-font-body text-sm font-medium uppercase ${
-                                    option.isCorrect ? 'text-emerald-400' : 'text-gray-500'
-                                  }`}>
-                                    {option.id}.
-                                  </span>
-                                  <div>
-                                    <p className={`ot-font-body text-sm ${option.isCorrect ? 'text-emerald-300' : 'text-gray-300'}`}>
-                                      {option.text}
-                                    </p>
-                                    <p className="ot-font-body text-xs text-gray-500 mt-1">
-                                      {option.rationale}
-                                    </p>
+                          <div>
+                            <div className="ot-font-body text-xs text-gray-500 uppercase tracking-wider mb-2">Answer Choices & Rationales</div>
+                            <div className="grid gap-2">
+                              {question.options.map((option) => (
+                                <div
+                                  key={option.id}
+                                  className={`p-3 rounded-lg ${
+                                    option.isCorrect
+                                      ? 'bg-emerald-500/10 border border-emerald-500/30'
+                                      : 'bg-white/5 border border-white/5'
+                                  }`}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <div className={`w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center ${
+                                      option.isCorrect ? 'bg-emerald-500/20' : 'bg-white/10'
+                                    }`}>
+                                      {option.isCorrect && <CheckCircle className="w-3 h-3 text-emerald-400" />}
+                                    </div>
+                                    <div className="flex-1">
+                                      <p className={`ot-font-body text-sm ${option.isCorrect ? 'text-emerald-300' : 'text-gray-300'}`}>
+                                        <span className="text-gray-500 uppercase mr-2">{option.id}.</span>
+                                        {option.text}
+                                        {option.isCorrect && <span className="ml-2 text-xs text-emerald-400">(Correct)</span>}
+                                      </p>
+                                      <p className={`ot-font-body text-xs mt-1 ${option.isCorrect ? 'text-emerald-400/70' : 'text-gray-500'}`}>
+                                        <span className="font-medium">Rationale: </span>{option.rationale}
+                                      </p>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Clinical Reasoning */}
+                          <div className="p-4 rounded-lg bg-[#d4a574]/5 border border-[#d4a574]/20">
+                            <div className="ot-font-body text-xs text-[#d4a574] uppercase tracking-wider mb-2 flex items-center gap-2">
+                              <Lightbulb className="w-3 h-3" />
+                              Clinical Reasoning Summary
+                            </div>
+                            <p className="ot-font-body text-sm text-gray-300">{question.clinicalReasoning}</p>
                           </div>
 
                           {/* Metadata */}
@@ -724,11 +827,35 @@ export default function QuestionBank() {
                             </div>
                           </div>
 
-                          {/* Clinical Reasoning */}
-                          <div className="pt-4 border-t border-white/5">
-                            <div className="ot-font-body text-xs text-gray-500 uppercase tracking-wider mb-2">Clinical Reasoning</div>
-                            <p className="ot-font-body text-sm text-gray-400">{question.clinicalReasoning}</p>
-                          </div>
+                          {/* Suggested Reading */}
+                          {question.suggestedReading && question.suggestedReading.length > 0 && (
+                            <div className="pt-4 border-t border-white/5">
+                              <div className="ot-font-body text-xs text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                <BookMarked className="w-3 h-3" />
+                                Suggested Reading
+                              </div>
+                              <div className="space-y-2">
+                                {question.suggestedReading.map((resource, idx) => (
+                                  <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-white/5">
+                                    <div>
+                                      <p className="ot-font-body text-sm text-gray-200">{resource.title}</p>
+                                      <p className="ot-font-body text-xs text-gray-500">{resource.source}</p>
+                                    </div>
+                                    {resource.url && (
+                                      <a
+                                        href={resource.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-2 rounded-lg hover:bg-white/10 text-[#d4a574]"
+                                      >
+                                        <ExternalLink className="w-4 h-4" />
+                                      </a>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </motion.div>
                     )}

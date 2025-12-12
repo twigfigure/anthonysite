@@ -1,13 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   GraduationCap,
-  BarChart3,
-  Users,
-  BookOpen,
-  Brain,
-  Settings,
   Bell,
   User,
   ArrowLeft,
@@ -21,8 +16,16 @@ import {
   Calendar,
   FileText,
   Play,
-  LineChart,
+  BarChart3,
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
+  XCircle,
+  Award,
+  Layers,
 } from 'lucide-react'
+import { Sidebar } from '../components/Sidebar'
+import { useSidebarWidth } from '../hooks/useSidebarWidth'
 import {
   programMilestones,
   getDomainScores,
@@ -57,6 +60,183 @@ const tierColors: Record<RemediationTier, { bg: string; text: string; border: st
   1: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/30', label: 'Tier 1 - Automated' },
   2: { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/30', label: 'Tier 2 - Advisor-Assisted' },
   3: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/30', label: 'Tier 3 - Formal' },
+}
+
+// Mock course data
+interface Course {
+  id: string
+  name: string
+  code: string
+  progress: number
+  status: 'active' | 'completed' | 'upcoming'
+  instructor: string
+  dueDate?: Date
+}
+
+const studentCourses: Record<string, Course[]> = {
+  's1': [
+    { id: 'c1', name: 'Foundations of OT Practice', code: 'OT 501', progress: 100, status: 'completed', instructor: 'Dr. Sarah Mitchell' },
+    { id: 'c2', name: 'Clinical Reasoning & Assessment', code: 'OT 502', progress: 85, status: 'active', instructor: 'Dr. James Chen', dueDate: new Date('2025-01-15') },
+    { id: 'c3', name: 'Physical Rehabilitation', code: 'OT 510', progress: 72, status: 'active', instructor: 'Dr. Maria Garcia', dueDate: new Date('2025-01-20') },
+    { id: 'c4', name: 'Pediatric OT Interventions', code: 'OT 520', progress: 0, status: 'upcoming', instructor: 'Dr. Emily Wong' },
+  ],
+  's2': [
+    { id: 'c1', name: 'Foundations of OT Practice', code: 'OT 501', progress: 100, status: 'completed', instructor: 'Dr. Sarah Mitchell' },
+    { id: 'c2', name: 'Clinical Reasoning & Assessment', code: 'OT 502', progress: 60, status: 'active', instructor: 'Dr. James Chen', dueDate: new Date('2025-01-15') },
+    { id: 'c3', name: 'Mental Health OT', code: 'OT 515', progress: 45, status: 'active', instructor: 'Dr. Lisa Park', dueDate: new Date('2025-02-01') },
+  ],
+  's3': [
+    { id: 'c1', name: 'Foundations of OT Practice', code: 'OT 501', progress: 100, status: 'completed', instructor: 'Dr. Sarah Mitchell' },
+    { id: 'c2', name: 'Clinical Reasoning & Assessment', code: 'OT 502', progress: 92, status: 'active', instructor: 'Dr. James Chen', dueDate: new Date('2025-01-15') },
+    { id: 'c3', name: 'Physical Rehabilitation', code: 'OT 510', progress: 88, status: 'active', instructor: 'Dr. Maria Garcia', dueDate: new Date('2025-01-20') },
+    { id: 'c4', name: 'Hand Therapy Fundamentals', code: 'OT 525', progress: 65, status: 'active', instructor: 'Dr. Robert Kim', dueDate: new Date('2025-02-10') },
+  ],
+}
+
+// Mock exam history with question-level results
+interface ExamAttempt {
+  id: string
+  examName: string
+  date: Date
+  score: number
+  totalQuestions: number
+  correctAnswers: number
+  timeSpent: number // minutes
+  questionResults: {
+    questionId: string
+    questionText: string
+    correct: boolean
+    selectedAnswer: string
+    correctAnswer: string
+    domain: NBCOTDomain
+    difficulty: number
+  }[]
+}
+
+const studentExamHistory: Record<string, ExamAttempt[]> = {
+  's1': [
+    {
+      id: 'e1',
+      examName: 'Mock Exam 1 - Comprehensive',
+      date: new Date('2024-12-01'),
+      score: 78,
+      totalQuestions: 20,
+      correctAnswers: 16,
+      timeSpent: 45,
+      questionResults: [
+        { questionId: 'q1', questionText: 'Sensory Profile assessment approach for 7-year-old with ASD', correct: true, selectedAnswer: 'C', correctAnswer: 'C', domain: 'evaluation', difficulty: 3 },
+        { questionId: 'q2', questionText: 'Person-centered dementia care for meal refusal', correct: true, selectedAnswer: 'B', correctAnswer: 'B', domain: 'intervention', difficulty: 4 },
+        { questionId: 'q3', questionText: 'Complex proximal phalanx fracture intervention timing', correct: false, selectedAnswer: 'A', correctAnswer: 'D', domain: 'intervention', difficulty: 4 },
+        { questionId: 'q5', questionText: 'PTSD intervention in acute mental health setting', correct: true, selectedAnswer: 'C', correctAnswer: 'C', domain: 'intervention', difficulty: 4 },
+        { questionId: 'q7', questionText: 'Stroke patient bilateral integration activities', correct: false, selectedAnswer: 'B', correctAnswer: 'D', domain: 'intervention', difficulty: 3 },
+        { questionId: 'q10', questionText: 'Spinal cord injury community reintegration', correct: true, selectedAnswer: 'C', correctAnswer: 'C', domain: 'intervention', difficulty: 4 },
+        { questionId: 'q16', questionText: 'Burn scar management hypertrophic scarring', correct: false, selectedAnswer: 'C', correctAnswer: 'B', domain: 'intervention', difficulty: 4 },
+        { questionId: 'q24', questionText: 'Total hip replacement ADL training', correct: true, selectedAnswer: 'B', correctAnswer: 'B', domain: 'intervention', difficulty: 3 },
+        { questionId: 'q36', questionText: 'OTPF-4 Areas of Occupation classification', correct: true, selectedAnswer: 'B', correctAnswer: 'B', domain: 'competency', difficulty: 1 },
+        { questionId: 'q40', questionText: 'Posterolateral THA hip precautions', correct: false, selectedAnswer: 'C', correctAnswer: 'A', domain: 'intervention', difficulty: 2 },
+      ],
+    },
+    {
+      id: 'e2',
+      examName: 'Domain Focus: Evaluation',
+      date: new Date('2024-12-08'),
+      score: 85,
+      totalQuestions: 15,
+      correctAnswers: 13,
+      timeSpent: 32,
+      questionResults: [
+        { questionId: 'q1', questionText: 'Sensory Profile assessment approach for 7-year-old with ASD', correct: true, selectedAnswer: 'C', correctAnswer: 'C', domain: 'evaluation', difficulty: 3 },
+        { questionId: 'q37', questionText: 'Median nerve sensory innervation distribution', correct: true, selectedAnswer: 'C', correctAnswer: 'C', domain: 'evaluation', difficulty: 2 },
+        { questionId: 'q38', questionText: 'Sensory Profile 2 interpretation - low thresholds', correct: false, selectedAnswer: 'B', correctAnswer: 'A', domain: 'evaluation', difficulty: 3 },
+        { questionId: 'q6', questionText: 'Client-centered goal setting in inpatient rehab', correct: true, selectedAnswer: 'D', correctAnswer: 'D', domain: 'evaluation', difficulty: 3 },
+        { questionId: 'q21', questionText: 'TBI Rancho levels errorless learning', correct: false, selectedAnswer: 'A', correctAnswer: 'C', domain: 'evaluation', difficulty: 4 },
+      ],
+    },
+    {
+      id: 'e3',
+      examName: 'Quick Practice - 10 Questions',
+      date: new Date('2024-12-10'),
+      score: 90,
+      totalQuestions: 10,
+      correctAnswers: 9,
+      timeSpent: 18,
+      questionResults: [
+        { questionId: 'q39', questionText: 'Model of Human Occupation (MOHO) primary focus', correct: true, selectedAnswer: 'B', correctAnswer: 'B', domain: 'competency', difficulty: 2 },
+        { questionId: 'q41', questionText: 'Procedural vs episodic memory in dementia', correct: true, selectedAnswer: 'B', correctAnswer: 'B', domain: 'competency', difficulty: 2 },
+        { questionId: 'q28', questionText: 'Substance use disorder recovery occupations', correct: false, selectedAnswer: 'A', correctAnswer: 'C', domain: 'intervention', difficulty: 3 },
+        { questionId: 'q30', questionText: 'Zone II flexor tendon repair protocol', correct: true, selectedAnswer: 'B', correctAnswer: 'B', domain: 'intervention', difficulty: 4 },
+        { questionId: 'q25', questionText: 'Hemianopia driving evaluation referral', correct: true, selectedAnswer: 'D', correctAnswer: 'D', domain: 'evaluation', difficulty: 4 },
+      ],
+    },
+  ],
+  's2': [
+    {
+      id: 'e1',
+      examName: 'Mock Exam 1 - Comprehensive',
+      date: new Date('2024-12-05'),
+      score: 62,
+      totalQuestions: 20,
+      correctAnswers: 12,
+      timeSpent: 55,
+      questionResults: [
+        { questionId: 'q1', questionText: 'Sensory Profile assessment approach for 7-year-old with ASD', correct: false, selectedAnswer: 'A', correctAnswer: 'C', domain: 'evaluation', difficulty: 3 },
+        { questionId: 'q2', questionText: 'Person-centered dementia care for meal refusal', correct: false, selectedAnswer: 'C', correctAnswer: 'B', domain: 'intervention', difficulty: 4 },
+        { questionId: 'q3', questionText: 'Complex proximal phalanx fracture intervention timing', correct: false, selectedAnswer: 'B', correctAnswer: 'D', domain: 'intervention', difficulty: 4 },
+        { questionId: 'q36', questionText: 'OTPF-4 Areas of Occupation classification', correct: true, selectedAnswer: 'B', correctAnswer: 'B', domain: 'competency', difficulty: 1 },
+        { questionId: 'q37', questionText: 'Median nerve sensory innervation distribution', correct: false, selectedAnswer: 'A', correctAnswer: 'C', domain: 'evaluation', difficulty: 2 },
+        { questionId: 'q40', questionText: 'Posterolateral THA hip precautions', correct: false, selectedAnswer: 'B', correctAnswer: 'A', domain: 'intervention', difficulty: 2 },
+        { questionId: 'q24', questionText: 'Total hip replacement ADL training', correct: true, selectedAnswer: 'B', correctAnswer: 'B', domain: 'intervention', difficulty: 3 },
+        { questionId: 'q28', questionText: 'Substance use disorder recovery occupations', correct: false, selectedAnswer: 'D', correctAnswer: 'C', domain: 'intervention', difficulty: 3 },
+      ],
+    },
+  ],
+  's3': [
+    {
+      id: 'e1',
+      examName: 'Mock Exam 1 - Comprehensive',
+      date: new Date('2024-12-02'),
+      score: 92,
+      totalQuestions: 20,
+      correctAnswers: 18,
+      timeSpent: 38,
+      questionResults: [
+        { questionId: 'q1', questionText: 'Sensory Profile assessment approach for 7-year-old with ASD', correct: true, selectedAnswer: 'C', correctAnswer: 'C', domain: 'evaluation', difficulty: 3 },
+        { questionId: 'q2', questionText: 'Person-centered dementia care for meal refusal', correct: true, selectedAnswer: 'B', correctAnswer: 'B', domain: 'intervention', difficulty: 4 },
+        { questionId: 'q3', questionText: 'Complex proximal phalanx fracture intervention timing', correct: true, selectedAnswer: 'D', correctAnswer: 'D', domain: 'intervention', difficulty: 4 },
+        { questionId: 'q16', questionText: 'Burn scar management hypertrophic scarring', correct: false, selectedAnswer: 'A', correctAnswer: 'B', domain: 'intervention', difficulty: 4 },
+        { questionId: 'q30', questionText: 'Zone II flexor tendon repair protocol', correct: false, selectedAnswer: 'C', correctAnswer: 'B', domain: 'intervention', difficulty: 4 },
+      ],
+    },
+    {
+      id: 'e2',
+      examName: 'Mock Exam 2 - Advanced',
+      date: new Date('2024-12-09'),
+      score: 88,
+      totalQuestions: 25,
+      correctAnswers: 22,
+      timeSpent: 52,
+      questionResults: [
+        { questionId: 'q5', questionText: 'PTSD intervention in acute mental health setting', correct: true, selectedAnswer: 'C', correctAnswer: 'C', domain: 'intervention', difficulty: 4 },
+        { questionId: 'q10', questionText: 'Spinal cord injury community reintegration', correct: true, selectedAnswer: 'C', correctAnswer: 'C', domain: 'intervention', difficulty: 4 },
+        { questionId: 'q21', questionText: 'TBI Rancho levels errorless learning', correct: false, selectedAnswer: 'B', correctAnswer: 'C', domain: 'evaluation', difficulty: 4 },
+        { questionId: 'q35', questionText: 'Upper extremity amputation prosthetic training', correct: false, selectedAnswer: 'D', correctAnswer: 'B', domain: 'intervention', difficulty: 5 },
+        { questionId: 'q34', questionText: 'Eating disorders occupational identity', correct: false, selectedAnswer: 'A', correctAnswer: 'D', domain: 'intervention', difficulty: 4 },
+      ],
+    },
+  ],
+}
+
+// Get courses for a student (fallback to default)
+function getStudentCourses(studentId: string): Course[] {
+  return studentCourses[studentId] || [
+    { id: 'c1', name: 'Foundations of OT Practice', code: 'OT 501', progress: 100, status: 'completed', instructor: 'Dr. Sarah Mitchell' },
+    { id: 'c2', name: 'Clinical Reasoning & Assessment', code: 'OT 502', progress: 50, status: 'active', instructor: 'Dr. James Chen', dueDate: new Date('2025-01-15') },
+  ]
+}
+
+// Get exam history for a student (fallback to empty)
+function getStudentExamHistory(studentId: string): ExamAttempt[] {
+  return studentExamHistory[studentId] || []
 }
 
 // Domain color mapping
@@ -345,9 +525,299 @@ function RemediationPanel({ remediation }: { remediation: RemediationPlan }) {
   )
 }
 
+// Enrolled Courses Section
+function CoursesSection({ courses }: { courses: Course[] }) {
+  const activeCourses = courses.filter(c => c.status === 'active')
+  const completedCourses = courses.filter(c => c.status === 'completed')
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="ot-glass rounded-xl p-6 mb-6"
+    >
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-lg bg-violet-500/10 flex items-center justify-center">
+          <BookOpen className="w-5 h-5 text-violet-400" />
+        </div>
+        <div>
+          <h2 className="ot-font-display text-lg">Enrolled Courses</h2>
+          <p className="ot-font-body text-sm text-gray-500">
+            {activeCourses.length} active, {completedCourses.length} completed
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {courses.map((course) => {
+          const statusColors = {
+            active: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30' },
+            completed: { bg: 'bg-blue-500/10', text: 'text-blue-400', border: 'border-blue-500/30' },
+            upcoming: { bg: 'bg-gray-500/10', text: 'text-gray-400', border: 'border-gray-500/30' },
+          }
+          const colors = statusColors[course.status]
+
+          return (
+            <div
+              key={course.id}
+              className={`p-4 rounded-lg border ${colors.border} ${colors.bg}`}
+            >
+              <div className="flex items-start justify-between mb-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="ot-font-body text-xs text-gray-500">{course.code}</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-medium ${colors.bg} ${colors.text} border ${colors.border}`}>
+                      {course.status}
+                    </span>
+                  </div>
+                  <h4 className="ot-font-display text-sm font-medium mt-1">{course.name}</h4>
+                  <p className="ot-font-body text-xs text-gray-500">{course.instructor}</p>
+                </div>
+                {course.status === 'completed' && (
+                  <div className="flex items-center gap-1 text-emerald-400">
+                    <Award className="w-4 h-4" />
+                  </div>
+                )}
+              </div>
+
+              {course.status !== 'upcoming' && (
+                <div className="mt-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="ot-font-body text-xs text-gray-500">Progress</span>
+                    <span className="ot-font-body text-xs">{course.progress}%</span>
+                  </div>
+                  <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${course.progress}%` }}
+                      transition={{ duration: 0.8 }}
+                      className={`h-full rounded-full ${course.status === 'completed' ? 'bg-blue-400' : 'bg-emerald-400'}`}
+                    />
+                  </div>
+                  {course.dueDate && course.status === 'active' && (
+                    <div className="flex items-center gap-1 mt-2 text-gray-500">
+                      <Calendar className="w-3 h-3" />
+                      <span className="ot-font-body text-[10px]">Due: {course.dueDate.toLocaleDateString()}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {course.status === 'upcoming' && (
+                <p className="ot-font-body text-xs text-gray-500 mt-2">Starts next semester</p>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </motion.div>
+  )
+}
+
+// Exam History Section with Question Breakdown
+function ExamHistorySection({ examHistory }: { examHistory: ExamAttempt[] }) {
+  const [expandedExam, setExpandedExam] = useState<string | null>(null)
+
+  if (examHistory.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="ot-glass rounded-xl p-6 text-center"
+      >
+        <Layers className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+        <h3 className="ot-font-display text-lg mb-2">No Practice Exams Yet</h3>
+        <p className="ot-font-body text-gray-400 mb-4">
+          This student hasn't taken any practice exams.
+        </p>
+        <Link
+          to="/otexam/exam"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#d4a574] to-[#c49a6c] text-[#0a0f1a] rounded-lg ot-font-body text-sm font-medium"
+        >
+          <Play className="w-4 h-4" />
+          Start Practice Exam
+        </Link>
+      </motion.div>
+    )
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="ot-glass rounded-xl p-6"
+    >
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+          <FileText className="w-5 h-5 text-amber-400" />
+        </div>
+        <div>
+          <h2 className="ot-font-display text-lg">Recent Practice Exams</h2>
+          <p className="ot-font-body text-sm text-gray-500">
+            {examHistory.length} exam{examHistory.length > 1 ? 's' : ''} taken
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {examHistory.map((exam) => {
+          const isExpanded = expandedExam === exam.id
+          const incorrectQuestions = exam.questionResults.filter(q => !q.correct)
+          const scoreColor = exam.score >= 80 ? 'text-emerald-400' : exam.score >= 70 ? 'text-amber-400' : 'text-red-400'
+
+          return (
+            <div key={exam.id} className="border border-white/10 rounded-lg overflow-hidden">
+              {/* Exam Header */}
+              <div
+                onClick={() => setExpandedExam(isExpanded ? null : exam.id)}
+                className="p-4 cursor-pointer hover:bg-white/5 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-1">
+                      <h4 className="ot-font-display text-sm font-medium">{exam.examName}</h4>
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${scoreColor} bg-white/5`}>
+                        {exam.score}%
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-gray-500">
+                      <span className="ot-font-body text-xs flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        {exam.date.toLocaleDateString()}
+                      </span>
+                      <span className="ot-font-body text-xs flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {exam.timeSpent} min
+                      </span>
+                      <span className="ot-font-body text-xs">
+                        {exam.correctAnswers}/{exam.totalQuestions} correct
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {incorrectQuestions.length > 0 && (
+                      <span className="px-2 py-1 rounded bg-red-500/10 text-red-400 text-xs ot-font-body">
+                        {incorrectQuestions.length} missed
+                      </span>
+                    )}
+                    {isExpanded ? (
+                      <ChevronUp className="w-5 h-5 text-gray-400" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-gray-400" />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Expanded Content - Question Breakdown */}
+              <AnimatePresence>
+                {isExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="border-t border-white/10"
+                  >
+                    <div className="p-4">
+                      {/* Incorrect Questions */}
+                      {incorrectQuestions.length > 0 && (
+                        <div className="mb-4">
+                          <div className="ot-font-body text-xs text-red-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <XCircle className="w-3 h-3" />
+                            Questions Missed ({incorrectQuestions.length})
+                          </div>
+                          <div className="space-y-2">
+                            {incorrectQuestions.map((q) => (
+                              <div
+                                key={q.questionId}
+                                className="p-3 rounded-lg bg-red-500/5 border border-red-500/20"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex-1">
+                                    <p className="ot-font-body text-sm text-gray-200">{q.questionText}</p>
+                                    <div className="flex items-center gap-4 mt-2">
+                                      <span className={`px-2 py-0.5 rounded text-[10px] capitalize ${domainColors[q.domain].bg} ${domainColors[q.domain].text}`}>
+                                        {q.domain}
+                                      </span>
+                                      <span className="ot-font-body text-xs text-gray-500">
+                                        Difficulty: {q.difficulty}/5
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="ot-font-body text-xs text-red-400">
+                                      Selected: {q.selectedAnswer}
+                                    </div>
+                                    <div className="ot-font-body text-xs text-emerald-400">
+                                      Correct: {q.correctAnswer}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Correct Questions Summary */}
+                      {exam.questionResults.filter(q => q.correct).length > 0 && (
+                        <div>
+                          <div className="ot-font-body text-xs text-emerald-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <CheckCircle className="w-3 h-3" />
+                            Questions Correct ({exam.questionResults.filter(q => q.correct).length})
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {exam.questionResults.filter(q => q.correct).map((q) => (
+                              <div
+                                key={q.questionId}
+                                className="p-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20"
+                              >
+                                <p className="ot-font-body text-xs text-gray-300 line-clamp-1">{q.questionText}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className={`px-1.5 py-0.5 rounded text-[9px] capitalize ${domainColors[q.domain].bg} ${domainColors[q.domain].text}`}>
+                                    {q.domain}
+                                  </span>
+                                  <span className="ot-font-body text-[10px] text-emerald-400">
+                                    Answer: {q.correctAnswer}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Action to review */}
+                      <div className="mt-4 pt-4 border-t border-white/10 flex gap-3">
+                        <Link
+                          to="/otexam/exam"
+                          className="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 ot-font-body text-sm text-center hover:bg-white/10 transition-colors"
+                        >
+                          Retake Similar Exam
+                        </Link>
+                        <Link
+                          to="/otexam/questions"
+                          className="flex-1 py-2 rounded-lg bg-gradient-to-r from-[#d4a574] to-[#c49a6c] text-[#0a0f1a] ot-font-body text-sm font-medium text-center"
+                        >
+                          Review Questions
+                        </Link>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )
+        })}
+      </div>
+    </motion.div>
+  )
+}
+
 export default function StudentPathway() {
   const { studentId } = useParams<{ studentId: string }>()
   const navigate = useNavigate()
+  const sidebarMargin = useSidebarWidth()
 
   // Get student data - memoize to prevent recalculation on every render
   const student = studentId ? studentsData[studentId] : null
@@ -364,6 +834,16 @@ export default function StudentPathway() {
 
   const remediation = useMemo(
     () => studentId ? getStudentRemediation(studentId) : undefined,
+    [studentId]
+  )
+
+  const courses = useMemo(
+    () => studentId ? getStudentCourses(studentId) : [],
+    [studentId]
+  )
+
+  const examHistory = useMemo(
+    () => studentId ? getStudentExamHistory(studentId) : [],
     [studentId]
   )
 
@@ -417,72 +897,10 @@ export default function StudentPathway() {
         .ot-glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); }
       `}</style>
 
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 bottom-0 w-64 bg-[#0d1420] border-r border-white/5 p-6 hidden lg:block">
-        <Link to="/otexam" className="flex items-center gap-3 mb-10">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#d4a574] to-[#c49a6c] flex items-center justify-center">
-            <GraduationCap className="w-5 h-5 text-[#0a0f1a]" />
-          </div>
-          <span className="ot-font-display text-xl font-semibold">OTexam</span>
-        </Link>
-
-        <nav className="space-y-2">
-          <Link
-            to="/otexam/dashboard"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <BarChart3 className="w-5 h-5" />
-            Dashboard
-          </Link>
-          <Link
-            to="/otexam/analysis"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <LineChart className="w-5 h-5" />
-            Analysis
-          </Link>
-          <Link
-            to="/otexam/students"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg bg-[#d4a574]/10 text-[#d4a574] ot-font-body"
-          >
-            <Users className="w-5 h-5" />
-            Students
-          </Link>
-          <Link
-            to="/otexam/exam"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <BookOpen className="w-5 h-5" />
-            Practice Exams
-          </Link>
-          <Link
-            to="/otexam/questions"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <Brain className="w-5 h-5" />
-            Question Bank
-          </Link>
-          <Link
-            to="/otexam"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
-          >
-            <Settings className="w-5 h-5" />
-            Settings
-          </Link>
-        </nav>
-
-        <div className="absolute bottom-6 left-6 right-6">
-          <Link
-            to="/"
-            className="flex items-center gap-2 text-gray-500 hover:text-gray-400 ot-font-body text-sm transition-colors"
-          >
-            ← Back to Home
-          </Link>
-        </div>
-      </aside>
+      <Sidebar activePage="students" />
 
       {/* Main content */}
-      <main className="lg:ml-64">
+      <main className={`${sidebarMargin} transition-all duration-300`}>
         {/* Top header */}
         <header className="sticky top-0 z-50 ot-glass border-b border-white/5">
           <div className="px-6 py-4">
@@ -645,7 +1063,7 @@ export default function StudentPathway() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="ot-glass rounded-xl p-6 text-center"
+              className="ot-glass rounded-xl p-6 text-center mb-6"
             >
               <CheckCircle className="w-12 h-12 text-emerald-400 mx-auto mb-3" />
               <h3 className="ot-font-display text-lg mb-2">Great Progress!</h3>
@@ -661,6 +1079,15 @@ export default function StudentPathway() {
               </Link>
             </motion.div>
           )}
+
+          {/* Two Column Layout for Courses and Exam History */}
+          <div className="grid lg:grid-cols-2 gap-6">
+            {/* Enrolled Courses */}
+            <CoursesSection courses={courses} />
+
+            {/* Recent Practice Exams */}
+            <ExamHistorySection examHistory={examHistory} />
+          </div>
         </div>
       </main>
     </div>
