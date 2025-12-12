@@ -20,6 +20,18 @@ import { sampleQuestions, settingDescriptions } from '../data/questions'
 
 type ExamState = 'intro' | 'exam' | 'review' | 'results'
 
+// Fisher-Yates shuffle
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
+}
+
+type QuestionCountOption = 5 | 10 | 15 | 'all'
+
 export default function Exam() {
   const [examState, setExamState] = useState<ExamState>('intro')
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -27,8 +39,10 @@ export default function Exam() {
   const [flagged, setFlagged] = useState<Set<string>>(new Set())
   const [timeElapsed, setTimeElapsed] = useState(0)
   const [showRationale, setShowRationale] = useState(false)
+  const [questionCount, setQuestionCount] = useState<QuestionCountOption>('all')
+  const [selectedQuestions, setSelectedQuestions] = useState(sampleQuestions)
 
-  const questions = sampleQuestions
+  const questions = selectedQuestions
   const currentQuestion = questions[currentIndex]
 
   // Timer
@@ -59,6 +73,18 @@ export default function Exam() {
       }
       return newSet
     })
+  }
+
+  const startExam = () => {
+    const shuffled = shuffleArray(sampleQuestions)
+    const count = questionCount === 'all' ? shuffled.length : questionCount
+    setSelectedQuestions(shuffled.slice(0, count))
+    setExamState('exam')
+  }
+
+  const getEstimatedTime = () => {
+    const count = questionCount === 'all' ? sampleQuestions.length : questionCount
+    return Math.ceil(count * 2) // ~2 minutes per question
   }
 
   const goToQuestion = (index: number) => {
@@ -144,13 +170,46 @@ export default function Exam() {
               </p>
             </div>
 
+            {/* Question count selector */}
+            <div className="mb-8">
+              <h3 className="ot-font-display text-lg mb-4">Number of Questions</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {([5, 10, 15, 'all'] as QuestionCountOption[]).map((option) => {
+                  const isSelected = questionCount === option
+                  const displayCount = option === 'all' ? sampleQuestions.length : option
+                  const displayLabel = option === 'all' ? `All (${sampleQuestions.length})` : option.toString()
+
+                  return (
+                    <button
+                      key={option}
+                      onClick={() => setQuestionCount(option)}
+                      className={`p-4 rounded-xl border transition-all ${
+                        isSelected
+                          ? 'border-[#d4a574] bg-[#d4a574]/10'
+                          : 'border-white/10 bg-white/5 hover:border-white/20'
+                      }`}
+                    >
+                      <div className={`ot-font-display text-2xl ${isSelected ? 'text-[#d4a574]' : 'text-gray-300'}`}>
+                        {displayLabel}
+                      </div>
+                      <div className="ot-font-body text-xs text-gray-500">
+                        ~{Math.ceil((typeof displayCount === 'number' ? displayCount : sampleQuestions.length) * 2)} min
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
             <div className="grid sm:grid-cols-3 gap-4 mb-8">
               <div className="bg-white/5 rounded-xl p-4 text-center">
-                <div className="ot-font-display text-2xl text-[#d4a574]">{questions.length}</div>
+                <div className="ot-font-display text-2xl text-[#d4a574]">
+                  {questionCount === 'all' ? sampleQuestions.length : questionCount}
+                </div>
                 <div className="ot-font-body text-sm text-gray-400">Questions</div>
               </div>
               <div className="bg-white/5 rounded-xl p-4 text-center">
-                <div className="ot-font-display text-2xl text-[#d4a574]">~30</div>
+                <div className="ot-font-display text-2xl text-[#d4a574]">~{getEstimatedTime()}</div>
                 <div className="ot-font-body text-sm text-gray-400">Minutes</div>
               </div>
               <div className="bg-white/5 rounded-xl p-4 text-center">
@@ -182,7 +241,7 @@ export default function Exam() {
             </div>
 
             <button
-              onClick={() => setExamState('exam')}
+              onClick={startExam}
               className="w-full py-4 rounded-xl bg-gradient-to-r from-[#d4a574] to-[#c49a6c] text-[#0a0f1a] ot-font-body font-semibold text-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
             >
               Begin Exam
@@ -324,6 +383,7 @@ export default function Exam() {
                   setFlagged(new Set())
                   setTimeElapsed(0)
                   setCurrentIndex(0)
+                  setSelectedQuestions(sampleQuestions)
                   setExamState('intro')
                 }}
                 className="px-6 py-3 rounded-xl border border-white/10 ot-font-body flex items-center gap-2 hover:bg-white/5"

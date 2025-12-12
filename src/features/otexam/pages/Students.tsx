@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Users,
   Search,
@@ -22,10 +22,36 @@ import {
   Bell,
   User,
   Eye,
+  X,
+  Edit,
+  Trash2,
+  FolderPlus,
 } from 'lucide-react'
 
-// Mock student data
-const students = [
+interface Student {
+  id: string
+  name: string
+  email: string
+  cohort: string
+  enrollmentDate: string
+  examsCompleted: number
+  avgScore: number
+  lastActive: string
+  trend: 'up' | 'down' | 'stable'
+  status: 'excellent' | 'on-track' | 'improving' | 'at-risk' | 'critical'
+  weakAreas: string[]
+  strongAreas: string[]
+}
+
+interface Cohort {
+  id: string
+  name: string
+  startDate: string
+  studentCount: number
+}
+
+// Initial mock data
+const initialStudents: Student[] = [
   {
     id: '1',
     name: 'Alex Chen',
@@ -140,6 +166,12 @@ const students = [
   },
 ]
 
+const initialCohorts: Cohort[] = [
+  { id: 'c1', name: 'Fall 2024', startDate: '2024-08-15', studentCount: 6 },
+  { id: 'c2', name: 'Spring 2024', startDate: '2024-01-10', studentCount: 2 },
+  { id: 'c3', name: 'Fall 2023', startDate: '2023-08-15', studentCount: 0 },
+]
+
 const statusColors: Record<string, { bg: string; text: string; label: string }> = {
   'excellent': { bg: 'bg-emerald-500/10', text: 'text-emerald-400', label: 'Excellent' },
   'on-track': { bg: 'bg-blue-500/10', text: 'text-blue-400', label: 'On Track' },
@@ -149,10 +181,103 @@ const statusColors: Record<string, { bg: string; text: string; label: string }> 
 }
 
 export default function Students() {
+  const [students, setStudents] = useState<Student[]>(initialStudents)
+  const [cohorts, setCohorts] = useState<Cohort[]>(initialCohorts)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterCohort, setFilterCohort] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null)
+
+  // Modal states
+  const [showAddStudent, setShowAddStudent] = useState(false)
+  const [showEditStudent, setShowEditStudent] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showCohortManager, setShowCohortManager] = useState(false)
+  const [showAddCohort, setShowAddCohort] = useState(false)
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null)
+  const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null)
+
+  // Form state
+  const [studentForm, setStudentForm] = useState({
+    name: '',
+    email: '',
+    cohort: 'Fall 2024',
+  })
+  const [cohortForm, setCohortForm] = useState({
+    name: '',
+    startDate: '',
+  })
+
+  // CRUD handlers
+  const handleAddStudent = () => {
+    if (!studentForm.name || !studentForm.email) return
+    const newStudent: Student = {
+      id: `s${Date.now()}`,
+      name: studentForm.name,
+      email: studentForm.email,
+      cohort: studentForm.cohort,
+      enrollmentDate: new Date().toISOString().split('T')[0],
+      examsCompleted: 0,
+      avgScore: 0,
+      lastActive: 'Just now',
+      trend: 'stable',
+      status: 'on-track',
+      weakAreas: [],
+      strongAreas: [],
+    }
+    setStudents([...students, newStudent])
+    setStudentForm({ name: '', email: '', cohort: 'Fall 2024' })
+    setShowAddStudent(false)
+  }
+
+  const handleEditStudent = () => {
+    if (!editingStudent) return
+    setStudents(students.map(s =>
+      s.id === editingStudent.id ? { ...editingStudent, ...studentForm } : s
+    ))
+    setShowEditStudent(false)
+    setEditingStudent(null)
+  }
+
+  const handleDeleteStudent = () => {
+    if (!deletingStudentId) return
+    setStudents(students.filter(s => s.id !== deletingStudentId))
+    setShowDeleteConfirm(false)
+    setDeletingStudentId(null)
+    if (selectedStudent === deletingStudentId) setSelectedStudent(null)
+  }
+
+  const handleAddCohort = () => {
+    if (!cohortForm.name || !cohortForm.startDate) return
+    const newCohort: Cohort = {
+      id: `c${Date.now()}`,
+      name: cohortForm.name,
+      startDate: cohortForm.startDate,
+      studentCount: 0,
+    }
+    setCohorts([...cohorts, newCohort])
+    setCohortForm({ name: '', startDate: '' })
+    setShowAddCohort(false)
+  }
+
+  const handleDeleteCohort = (cohortId: string) => {
+    const cohort = cohorts.find(c => c.id === cohortId)
+    if (!cohort) return
+    // Move students to 'Unassigned' or delete cohort
+    setStudents(students.map(s => s.cohort === cohort.name ? { ...s, cohort: 'Unassigned' } : s))
+    setCohorts(cohorts.filter(c => c.id !== cohortId))
+  }
+
+  const openEditModal = (student: Student) => {
+    setEditingStudent(student)
+    setStudentForm({ name: student.name, email: student.email, cohort: student.cohort })
+    setShowEditStudent(true)
+  }
+
+  const openDeleteConfirm = (studentId: string) => {
+    setDeletingStudentId(studentId)
+    setShowDeleteConfirm(true)
+  }
 
   const filteredStudents = students.filter(student => {
     const matchesSearch = student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -273,9 +398,19 @@ export default function Students() {
             </div>
 
             <div className="flex items-center gap-3">
-              <button className="px-4 py-2 bg-gradient-to-r from-[#d4a574] to-[#c49a6c] text-[#0a0f1a] rounded-lg ot-font-body text-sm font-medium flex items-center gap-2">
+              <button
+                onClick={() => setShowAddStudent(true)}
+                className="px-4 py-2 bg-gradient-to-r from-[#d4a574] to-[#c49a6c] text-[#0a0f1a] rounded-lg ot-font-body text-sm font-medium flex items-center gap-2"
+              >
                 <Plus className="w-4 h-4" />
                 Add Student
+              </button>
+              <button
+                onClick={() => setShowCohortManager(true)}
+                className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg ot-font-body text-sm flex items-center gap-2 hover:bg-white/10 transition-colors"
+              >
+                <FolderPlus className="w-4 h-4" />
+                Cohorts
               </button>
               <button className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg ot-font-body text-sm flex items-center gap-2 hover:bg-white/10 transition-colors">
                 <Download className="w-4 h-4" />
@@ -303,9 +438,9 @@ export default function Students() {
               className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg ot-font-body text-sm focus:outline-none focus:border-[#d4a574]/50"
             >
               <option value="all">All Cohorts</option>
-              <option value="Fall 2024">Fall 2024</option>
-              <option value="Spring 2024">Spring 2024</option>
-              <option value="Fall 2023">Fall 2023</option>
+              {cohorts.map(c => (
+                <option key={c.id} value={c.name}>{c.name}</option>
+              ))}
             </select>
 
             <select
@@ -437,11 +572,26 @@ export default function Students() {
                         <td className="py-4 px-6 ot-font-body text-sm text-gray-500">{student.lastActive}</td>
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-2">
-                            <button className="p-2 rounded-lg hover:bg-white/10 transition-colors" title="View Details">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setSelectedStudent(student.id); }}
+                              className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                              title="View Details"
+                            >
                               <Eye className="w-4 h-4 text-gray-400" />
                             </button>
-                            <button className="p-2 rounded-lg hover:bg-white/10 transition-colors" title="Send Email">
-                              <Mail className="w-4 h-4 text-gray-400" />
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openEditModal(student); }}
+                              className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                              title="Edit Student"
+                            >
+                              <Edit className="w-4 h-4 text-gray-400" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openDeleteConfirm(student.id); }}
+                              className="p-2 rounded-lg hover:bg-red-500/10 transition-colors"
+                              title="Delete Student"
+                            >
+                              <Trash2 className="w-4 h-4 text-red-400" />
                             </button>
                           </div>
                         </td>
@@ -552,6 +702,326 @@ export default function Students() {
           </div>
         </div>
       </main>
+
+      {/* Add Student Modal */}
+      <AnimatePresence>
+        {showAddStudent && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowAddStudent(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#0d1420] border border-white/10 rounded-2xl w-full max-w-md p-6"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="ot-font-display text-xl">Add New Student</h3>
+                <button onClick={() => setShowAddStudent(false)} className="p-2 hover:bg-white/5 rounded-lg">
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block ot-font-body text-sm text-gray-400 mb-2">Full Name</label>
+                  <input
+                    type="text"
+                    value={studentForm.name}
+                    onChange={(e) => setStudentForm({ ...studentForm, name: e.target.value })}
+                    placeholder="Enter student name"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg ot-font-body text-white placeholder:text-gray-500 focus:outline-none focus:border-[#d4a574]/50"
+                  />
+                </div>
+                <div>
+                  <label className="block ot-font-body text-sm text-gray-400 mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={studentForm.email}
+                    onChange={(e) => setStudentForm({ ...studentForm, email: e.target.value })}
+                    placeholder="student@university.edu"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg ot-font-body text-white placeholder:text-gray-500 focus:outline-none focus:border-[#d4a574]/50"
+                  />
+                </div>
+                <div>
+                  <label className="block ot-font-body text-sm text-gray-400 mb-2">Cohort</label>
+                  <select
+                    value={studentForm.cohort}
+                    onChange={(e) => setStudentForm({ ...studentForm, cohort: e.target.value })}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg ot-font-body text-white focus:outline-none focus:border-[#d4a574]/50"
+                  >
+                    {cohorts.map(c => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowAddStudent(false)}
+                  className="flex-1 py-3 border border-white/10 rounded-lg ot-font-body hover:bg-white/5 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddStudent}
+                  className="flex-1 py-3 bg-gradient-to-r from-[#d4a574] to-[#c49a6c] text-[#0a0f1a] rounded-lg ot-font-body font-semibold"
+                >
+                  Add Student
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Student Modal */}
+      <AnimatePresence>
+        {showEditStudent && editingStudent && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowEditStudent(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#0d1420] border border-white/10 rounded-2xl w-full max-w-md p-6"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="ot-font-display text-xl">Edit Student</h3>
+                <button onClick={() => setShowEditStudent(false)} className="p-2 hover:bg-white/5 rounded-lg">
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block ot-font-body text-sm text-gray-400 mb-2">Full Name</label>
+                  <input
+                    type="text"
+                    value={studentForm.name}
+                    onChange={(e) => setStudentForm({ ...studentForm, name: e.target.value })}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg ot-font-body text-white focus:outline-none focus:border-[#d4a574]/50"
+                  />
+                </div>
+                <div>
+                  <label className="block ot-font-body text-sm text-gray-400 mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={studentForm.email}
+                    onChange={(e) => setStudentForm({ ...studentForm, email: e.target.value })}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg ot-font-body text-white focus:outline-none focus:border-[#d4a574]/50"
+                  />
+                </div>
+                <div>
+                  <label className="block ot-font-body text-sm text-gray-400 mb-2">Cohort</label>
+                  <select
+                    value={studentForm.cohort}
+                    onChange={(e) => setStudentForm({ ...studentForm, cohort: e.target.value })}
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg ot-font-body text-white focus:outline-none focus:border-[#d4a574]/50"
+                  >
+                    {cohorts.map(c => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowEditStudent(false)}
+                  className="flex-1 py-3 border border-white/10 rounded-lg ot-font-body hover:bg-white/5 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleEditStudent}
+                  className="flex-1 py-3 bg-gradient-to-r from-[#d4a574] to-[#c49a6c] text-[#0a0f1a] rounded-lg ot-font-body font-semibold"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteConfirm && deletingStudentId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowDeleteConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#0d1420] border border-white/10 rounded-2xl w-full max-w-md p-6"
+            >
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-red-400" />
+                </div>
+                <div>
+                  <h3 className="ot-font-display text-xl">Delete Student</h3>
+                  <p className="ot-font-body text-gray-400 text-sm">
+                    This action cannot be undone.
+                  </p>
+                </div>
+              </div>
+
+              <p className="ot-font-body text-gray-300 mb-6">
+                Are you sure you want to delete{' '}
+                <span className="font-semibold text-white">
+                  {students.find(s => s.id === deletingStudentId)?.name}
+                </span>
+                ? All their exam history and progress will be permanently removed.
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1 py-3 border border-white/10 rounded-lg ot-font-body hover:bg-white/5 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteStudent}
+                  className="flex-1 py-3 bg-red-500 text-white rounded-lg ot-font-body font-semibold hover:bg-red-600 transition-colors"
+                >
+                  Delete Student
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Cohort Manager Modal */}
+      <AnimatePresence>
+        {showCohortManager && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowCohortManager(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#0d1420] border border-white/10 rounded-2xl w-full max-w-lg p-6"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="ot-font-display text-xl">Manage Cohorts</h3>
+                <button onClick={() => setShowCohortManager(false)} className="p-2 hover:bg-white/5 rounded-lg">
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+
+              <div className="space-y-3 mb-6">
+                {cohorts.map(cohort => {
+                  const studentCount = students.filter(s => s.cohort === cohort.name).length
+                  return (
+                    <div
+                      key={cohort.id}
+                      className="flex items-center justify-between p-4 bg-white/5 rounded-xl"
+                    >
+                      <div>
+                        <div className="ot-font-body font-medium">{cohort.name}</div>
+                        <div className="ot-font-body text-sm text-gray-500">
+                          Started {cohort.startDate} • {studentCount} students
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteCohort(cohort.id)}
+                        className="p-2 hover:bg-red-500/10 rounded-lg transition-colors"
+                        title="Delete Cohort"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-400" />
+                      </button>
+                    </div>
+                  )
+                })}
+
+                {cohorts.length === 0 && (
+                  <div className="text-center py-8">
+                    <Users className="w-12 h-12 text-gray-600 mx-auto mb-2" />
+                    <p className="ot-font-body text-gray-500">No cohorts yet</p>
+                  </div>
+                )}
+              </div>
+
+              {!showAddCohort ? (
+                <button
+                  onClick={() => setShowAddCohort(true)}
+                  className="w-full py-3 border border-dashed border-white/20 rounded-xl ot-font-body text-gray-400 hover:border-[#d4a574]/50 hover:text-[#d4a574] transition-colors flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add New Cohort
+                </button>
+              ) : (
+                <div className="p-4 bg-white/5 rounded-xl space-y-4">
+                  <div>
+                    <label className="block ot-font-body text-sm text-gray-400 mb-2">Cohort Name</label>
+                    <input
+                      type="text"
+                      value={cohortForm.name}
+                      onChange={(e) => setCohortForm({ ...cohortForm, name: e.target.value })}
+                      placeholder="e.g., Spring 2025"
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg ot-font-body text-white placeholder:text-gray-500 focus:outline-none focus:border-[#d4a574]/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block ot-font-body text-sm text-gray-400 mb-2">Start Date</label>
+                    <input
+                      type="date"
+                      value={cohortForm.startDate}
+                      onChange={(e) => setCohortForm({ ...cohortForm, startDate: e.target.value })}
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg ot-font-body text-white focus:outline-none focus:border-[#d4a574]/50"
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setShowAddCohort(false)
+                        setCohortForm({ name: '', startDate: '' })
+                      }}
+                      className="flex-1 py-2 border border-white/10 rounded-lg ot-font-body text-sm hover:bg-white/5"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleAddCohort}
+                      className="flex-1 py-2 bg-gradient-to-r from-[#d4a574] to-[#c49a6c] text-[#0a0f1a] rounded-lg ot-font-body text-sm font-semibold"
+                    >
+                      Create Cohort
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
