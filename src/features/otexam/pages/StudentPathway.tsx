@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  GraduationCap,
   Bell,
   User,
   ArrowLeft,
@@ -902,8 +901,8 @@ export default function StudentPathway() {
       {/* Main content */}
       <main className={`${sidebarMargin} transition-all duration-300`}>
         {/* Top header */}
-        <header className="sticky top-0 z-50 ot-glass border-b border-white/5">
-          <div className="px-6 py-4">
+        <header className="sticky top-0 z-40 ot-glass border-b border-white/5">
+          <div className="pl-16 lg:pl-6 pr-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <button
@@ -912,13 +911,6 @@ export default function StudentPathway() {
                 >
                   <ArrowLeft className="w-5 h-5 text-gray-400" />
                 </button>
-                <div className="lg:hidden">
-                  <Link to="/otexam" className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#d4a574] to-[#c49a6c] flex items-center justify-center">
-                      <GraduationCap className="w-4 h-4 text-[#0a0f1a]" />
-                    </div>
-                  </Link>
-                </div>
                 <span className="ot-font-body text-sm text-gray-400">
                   Student Pathway
                 </span>

@@ -1,10 +1,8 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search,
   Plus,
-  GraduationCap,
   Bell,
   User,
   Edit,
@@ -512,15 +510,10 @@ export default function QuestionBank() {
       <main className={`${sidebarMargin} transition-all duration-300`}>
         {/* Top header */}
         <header className="sticky top-0 z-40 ot-glass border-b border-white/5">
-          <div className="px-6 py-4">
+          <div className="pl-16 lg:pl-6 pr-6 py-4">
             <div className="flex items-center justify-between">
               <div className="lg:hidden">
-                <Link to="/otexam" className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#d4a574] to-[#c49a6c] flex items-center justify-center">
-                    <GraduationCap className="w-4 h-4 text-[#0a0f1a]" />
-                  </div>
-                  <span className="ot-font-display">OTexam</span>
-                </Link>
+                <span className="ot-font-display text-lg">OTexam</span>
               </div>
 
               <div className="hidden lg:flex items-center gap-4 flex-1">
