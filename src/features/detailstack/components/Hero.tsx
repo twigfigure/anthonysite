@@ -138,7 +138,7 @@ export default function Hero() {
             <div className="relative aspect-[4/3] rounded-sm overflow-hidden group">
               {/* Main vehicle image - Porsche in dramatic lighting */}
               <img
-                src="https://images.unsplash.com/photo-1614162692292-7ac56d7f373e?w=1200&q=90"
+                src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=1200&q=80"
                 alt="Luxury sports car with pristine finish in dramatic studio lighting"
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
