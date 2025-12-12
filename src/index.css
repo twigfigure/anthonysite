@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -158,4 +160,103 @@ All colors MUST be HSL.
       hsl(var(--background)) 100%
     );
   }
+}
+
+/* ============================================
+   DetailStack Styles
+   ============================================ */
+
+/* DetailStack page wrapper */
+.ds-page {
+  font-family: 'Outfit', system-ui, sans-serif;
+  background-color: #0a0a0a;
+  color: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* DetailStack font utility */
+.ds-font-display {
+  font-family: 'Bebas Neue', Impact, sans-serif;
+}
+
+/* DetailStack glass morphism */
+.ds-glass {
+  background: rgba(26, 26, 26, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ds-glass-light {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* DetailStack golden glow */
+.ds-glow-gold {
+  box-shadow: 0 0 40px rgba(212, 168, 90, 0.15),
+              0 0 80px rgba(212, 168, 90, 0.1);
+}
+
+.ds-glow-gold-intense {
+  box-shadow: 0 0 20px rgba(212, 168, 90, 0.3),
+              0 0 40px rgba(212, 168, 90, 0.2),
+              0 0 60px rgba(212, 168, 90, 0.1);
+}
+
+/* DetailStack text gradients */
+.ds-text-gradient-gold {
+  background: linear-gradient(135deg, #f3e9d2 0%, #dcbb82 50%, #c7944a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* DetailStack button styles */
+.ds-btn-primary {
+  @apply relative overflow-hidden bg-gradient-to-r from-champagne-500 to-champagne-600
+         text-obsidian-950 font-semibold px-8 py-4 rounded-sm
+         transition-all duration-300 ease-out
+         hover:from-champagne-400 hover:to-champagne-500
+         hover:shadow-[0_0_30px_rgba(212,168,90,0.4)]
+         active:scale-[0.98];
+}
+
+.ds-btn-secondary {
+  @apply relative border border-champagne-500/30 text-champagne-400
+         px-8 py-4 rounded-sm transition-all duration-300
+         hover:bg-champagne-500/10 hover:border-champagne-500/60
+         hover:text-champagne-300;
+}
+
+/* DetailStack card hover effect */
+.ds-card-hover {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ds-card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4),
+              0 0 0 1px rgba(220, 187, 130, 0.1);
+}
+
+/* DetailStack custom scrollbar for ds-page */
+.ds-page::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ds-page::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+.ds-page::-webkit-scrollbar-thumb {
+  background: #383838;
+  border-radius: 4px;
+}
+
+.ds-page::-webkit-scrollbar-thumb:hover {
+  background: #c7944a;
 }

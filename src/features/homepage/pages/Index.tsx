@@ -179,6 +179,14 @@ const Index = () => {
               <div className="font-semibold mb-0.5">PeakScroll</div>
               <div className="text-xs opacity-75">Track your manhua collection</div>
             </Link>
+            <Link
+              to="/detailstack"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-champagne-500/10 transition-colors"
+            >
+              <div className="font-semibold mb-0.5">DetailStack</div>
+              <div className="text-xs opacity-75">Premium auto detailing studio</div>
+            </Link>
           </div>
 
           <a
@@ -277,10 +285,17 @@ const Index = () => {
                 </Link>
                 <Link
                   to="/manhua-tracker"
-                  className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-teal/10 transition-colors"
+                  className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-teal/10 transition-colors border-b border-border"
                 >
                   <div className="font-semibold mb-0.5">PeakScroll</div>
                   <div className="text-xs opacity-75">Track your manhua collection</div>
+                </Link>
+                <Link
+                  to="/detailstack"
+                  className="block px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-champagne-500/10 transition-colors"
+                >
+                  <div className="font-semibold mb-0.5">DetailStack</div>
+                  <div className="text-xs opacity-75">Premium auto detailing studio</div>
                 </Link>
               </div>
             )}
