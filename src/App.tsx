@@ -11,6 +11,15 @@ import GuildManager from "./features/guild-manager/pages/GuildManager";
 import AdminDashboard from "./features/guild-manager/pages/AdminDashboard";
 import ManhuaTracker from "./features/manhua-tracker/pages/ManhuaTracker";
 import DetailStack from "./features/detailstack/pages/DetailStack";
+import DetailStackBook from "./features/detailstack/pages/Book";
+import PortalLayout from "./features/detailstack/pages/portal/PortalLayout";
+import PortalDashboard from "./features/detailstack/pages/portal/Dashboard";
+import PortalAppointments from "./features/detailstack/pages/portal/Appointments";
+import PortalCustomers from "./features/detailstack/pages/portal/Customers";
+import PortalTeam from "./features/detailstack/pages/portal/Team";
+import PortalPayments from "./features/detailstack/pages/portal/Payments";
+import PortalServices from "./features/detailstack/pages/portal/Services";
+import PortalSettings from "./features/detailstack/pages/portal/Settings";
 import BankDetail from "./features/banks/pages/BankDetail";
 import MigrateImages from "./pages/MigrateImages";
 import NotFound from "./pages/NotFound";
@@ -32,6 +41,16 @@ const App = () => (
             <Route path="/guild-manager/admin" element={<AdminDashboard />} />
             <Route path="/manhua-tracker" element={<ManhuaTracker />} />
             <Route path="/detailstack" element={<DetailStack />} />
+            <Route path="/detailstack/book" element={<DetailStackBook />} />
+            <Route path="/detailstack/portal" element={<PortalLayout />}>
+              <Route index element={<PortalDashboard />} />
+              <Route path="appointments" element={<PortalAppointments />} />
+              <Route path="customers" element={<PortalCustomers />} />
+              <Route path="team" element={<PortalTeam />} />
+              <Route path="payments" element={<PortalPayments />} />
+              <Route path="services" element={<PortalServices />} />
+              <Route path="settings" element={<PortalSettings />} />
+            </Route>
             <Route path="/banks/:slug" element={<BankDetail />} />
             <Route path="/migrate-images" element={<MigrateImages />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
