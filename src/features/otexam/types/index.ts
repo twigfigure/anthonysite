@@ -88,3 +88,69 @@ export interface Student {
   examSessions: ExamSession[]
   overallAnalytics?: PerformanceAnalytics
 }
+
+// Program milestones that cohorts progress through
+export interface ProgramMilestone {
+  id: string
+  name: string                    // "Mock Exam 1", "Comprehensive Review"
+  shortName: string               // "Mock 1", "Comp"
+  order: number                   // Sequence position
+  passingScore: number            // 70, 75, etc.
+  domainThresholds?: Partial<Record<NBCOTDomain, number>>
+  description: string
+}
+
+// Student's progress through milestones
+export type CheckpointStatus = 'upcoming' | 'in-progress' | 'passed' | 'failed' | 'remediation'
+
+export interface StudentCheckpoint {
+  studentId: string
+  milestoneId: string
+  status: CheckpointStatus
+  score?: number
+  attemptCount: number
+  completedAt?: Date
+  remediationTier?: 1 | 2 | 3
+}
+
+// Remediation tier levels
+export type RemediationTier = 1 | 2 | 3
+
+// Remediation assignment
+export interface RemediationPlan {
+  id: string
+  studentId: string
+  tier: RemediationTier
+  reason: string                  // "Intervention domain < 70%"
+  weakDomains: NBCOTDomain[]
+  assignedQuestions: string[]     // Question IDs
+  questionsCompleted: number
+  createdAt: Date
+  dueDate: Date
+  escalatedAt?: Date
+  completedAt?: Date
+  advisorNotes?: string
+}
+
+// Cohort with milestone tracking
+export interface Cohort {
+  id: string
+  name: string                    // "Fall 2024"
+  startDate: Date
+  expectedEndDate: Date
+  currentMilestoneId: string
+  studentIds: string[]
+}
+
+// Alert notification for advisors
+export type AlertType = 'tier-change' | 'milestone-failed' | 'remediation-complete' | 'deadline-approaching'
+
+export interface AdvisorAlert {
+  id: string
+  type: AlertType
+  studentId: string
+  studentName: string
+  message: string
+  createdAt: Date
+  read: boolean
+}

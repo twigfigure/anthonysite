@@ -26,7 +26,16 @@ import {
   Edit,
   Trash2,
   FolderPlus,
+  Clock,
+  Target,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
+import {
+  getRemediationQueue,
+  advisorAlerts,
+} from '../data/analytics'
+import type { AdvisorAlert, RemediationTier } from '../types'
 
 interface Student {
   id: string
@@ -180,6 +189,194 @@ const statusColors: Record<string, { bg: string; text: string; label: string }> 
   'critical': { bg: 'bg-red-500/10', text: 'text-red-400', label: 'Critical' },
 }
 
+// Tier color mapping
+const tierColors: Record<RemediationTier, { bg: string; text: string; border: string; label: string }> = {
+  1: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/30', label: 'Tier 1' },
+  2: { bg: 'bg-orange-500/10', text: 'text-orange-400', border: 'border-orange-500/30', label: 'Tier 2' },
+  3: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/30', label: 'Tier 3' },
+}
+
+// Alert type mapping
+const alertTypeIcons: Record<string, { color: string; bg: string }> = {
+  'tier-change': { color: 'text-orange-400', bg: 'bg-orange-500/10' },
+  'milestone-failed': { color: 'text-red-400', bg: 'bg-red-500/10' },
+  'remediation-complete': { color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+  'deadline-approaching': { color: 'text-amber-400', bg: 'bg-amber-500/10' },
+}
+
+// Tier Badge Component
+function TierBadge({ tier }: { tier: RemediationTier }) {
+  const colors = tierColors[tier]
+  return (
+    <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${colors.bg} ${colors.text} border ${colors.border}`}>
+      T{tier}
+    </span>
+  )
+}
+
+// Remediation Queue Component
+function RemediationQueue({ onSelectStudent }: { onSelectStudent: (studentId: string) => void }) {
+  const queue = getRemediationQueue()
+  const [expanded, setExpanded] = useState(true)
+
+  return (
+    <div className="ot-glass rounded-xl overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full px-4 py-3 flex items-center justify-between border-b border-white/5 hover:bg-white/5 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+            <Target className="w-4 h-4 text-red-400" />
+          </div>
+          <div className="text-left">
+            <h3 className="ot-font-display text-sm font-medium">Remediation Queue</h3>
+            <p className="ot-font-body text-[10px] text-gray-500">{queue.length} students need attention</p>
+          </div>
+        </div>
+        {expanded ? (
+          <ChevronUp className="w-4 h-4 text-gray-400" />
+        ) : (
+          <ChevronDown className="w-4 h-4 text-gray-400" />
+        )}
+      </button>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="p-3 space-y-2 max-h-[400px] overflow-y-auto">
+              {queue.map((item) => {
+                const colors = tierColors[item.tier]
+                const daysUntilDue = Math.ceil((new Date(item.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                const isOverdue = daysUntilDue < 0
+
+                return (
+                  <motion.button
+                    key={item.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    onClick={() => onSelectStudent(item.studentId)}
+                    className={`w-full text-left p-3 rounded-lg border ${colors.border} ${colors.bg} hover:bg-white/10 transition-colors`}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-gray-600 to-gray-700 flex items-center justify-center text-[10px]">
+                          {item.studentName.split(' ').map(n => n[0]).join('')}
+                        </div>
+                        <div>
+                          <div className="ot-font-body text-sm font-medium">{item.studentName}</div>
+                          <div className="ot-font-body text-[10px] text-gray-500">{item.cohort}</div>
+                        </div>
+                      </div>
+                      <TierBadge tier={item.tier} />
+                    </div>
+
+                    <div className="flex items-center gap-2 mb-2">
+                      {item.weakDomains.map(domain => (
+                        <span key={domain} className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-gray-400 capitalize">
+                          {domain}
+                        </span>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-gray-500" />
+                        <span className={`ot-font-body text-[10px] ${isOverdue ? 'text-red-400' : 'text-gray-500'}`}>
+                          {isOverdue ? `${Math.abs(daysUntilDue)}d overdue` : `${daysUntilDue}d left`}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-12 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full ${colors.text.replace('text-', 'bg-')}`}
+                            style={{ width: `${(item.questionsCompleted / item.assignedQuestions.length) * 100}%` }}
+                          />
+                        </div>
+                        <span className="ot-font-body text-[10px] text-gray-500">
+                          {item.questionsCompleted}/{item.assignedQuestions.length}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.button>
+                )
+              })}
+
+              {queue.length === 0 && (
+                <div className="text-center py-6">
+                  <CheckCircle className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
+                  <p className="ot-font-body text-sm text-gray-500">No pending remediation</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// Alert Banner Component
+function AlertBanner({ alerts, onDismiss }: { alerts: AdvisorAlert[]; onDismiss: (id: string) => void }) {
+  const unreadAlerts = alerts.filter(a => !a.read)
+
+  if (unreadAlerts.length === 0) return null
+
+  return (
+    <div className="space-y-2 mb-6">
+      {unreadAlerts.slice(0, 3).map((alert) => {
+        const style = alertTypeIcons[alert.type] || alertTypeIcons['tier-change']
+
+        return (
+          <motion.div
+            key={alert.id}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className={`flex items-center justify-between p-3 rounded-lg ${style.bg} border border-white/5`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-lg ${style.bg} flex items-center justify-center`}>
+                <Bell className={`w-4 h-4 ${style.color}`} />
+              </div>
+              <div>
+                <p className="ot-font-body text-sm">{alert.message}</p>
+                <p className="ot-font-body text-[10px] text-gray-500">
+                  {new Date(alert.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => onDismiss(alert.id)}
+              className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+            >
+              <X className="w-4 h-4 text-gray-400" />
+            </button>
+          </motion.div>
+        )
+      })}
+
+      {unreadAlerts.length > 3 && (
+        <button className="w-full py-2 text-center ot-font-body text-xs text-[#d4a574] hover:underline">
+          View {unreadAlerts.length - 3} more alerts
+        </button>
+      )}
+    </div>
+  )
+}
+
+// Student-to-remediation mapping (mock - in real app, derive from data)
+const studentRemediationTiers: Record<string, RemediationTier> = {
+  '2': 2, // Jordan Williams
+  '3': 1, // Taylor Martinez
+  '5': 3, // Morgan Lee
+}
+
 export default function Students() {
   const [students, setStudents] = useState<Student[]>(initialStudents)
   const [cohorts, setCohorts] = useState<Cohort[]>(initialCohorts)
@@ -207,6 +404,12 @@ export default function Students() {
     name: '',
     startDate: '',
   })
+
+  // Alerts state
+  const [alerts, setAlerts] = useState<AdvisorAlert[]>(advisorAlerts)
+  const handleDismissAlert = (id: string) => {
+    setAlerts(alerts.map(a => a.id === id ? { ...a, read: true } : a))
+  }
 
   // CRUD handlers
   const handleAddStudent = () => {
@@ -419,6 +622,18 @@ export default function Students() {
             </div>
           </div>
 
+          {/* Alert Notifications */}
+          <AlertBanner alerts={alerts} onDismiss={handleDismissAlert} />
+
+          {/* Two-column layout: Remediation Queue + Main Content */}
+          <div className="flex gap-6">
+            {/* Left sidebar: Remediation Queue */}
+            <div className="hidden xl:block w-80 flex-shrink-0">
+              <RemediationQueue onSelectStudent={(studentId) => setSelectedStudent(studentId)} />
+            </div>
+
+            {/* Main content area */}
+            <div className="flex-1 min-w-0">
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="relative flex-1">
@@ -523,6 +738,7 @@ export default function Students() {
                     <th className="text-left py-4 px-6 ot-font-body text-xs text-gray-500 uppercase tracking-wider">Avg Score</th>
                     <th className="text-left py-4 px-6 ot-font-body text-xs text-gray-500 uppercase tracking-wider">Trend</th>
                     <th className="text-left py-4 px-6 ot-font-body text-xs text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="text-left py-4 px-6 ot-font-body text-xs text-gray-500 uppercase tracking-wider">Tier</th>
                     <th className="text-left py-4 px-6 ot-font-body text-xs text-gray-500 uppercase tracking-wider">Last Active</th>
                     <th className="text-left py-4 px-6 ot-font-body text-xs text-gray-500 uppercase tracking-wider"></th>
                   </tr>
@@ -568,6 +784,13 @@ export default function Students() {
                           <span className={`px-3 py-1 rounded-full text-xs ot-font-body ${status.bg} ${status.text}`}>
                             {status.label}
                           </span>
+                        </td>
+                        <td className="py-4 px-6">
+                          {studentRemediationTiers[student.id] ? (
+                            <TierBadge tier={studentRemediationTiers[student.id]} />
+                          ) : (
+                            <span className="ot-font-body text-xs text-gray-600">—</span>
+                          )}
                         </td>
                         <td className="py-4 px-6 ot-font-body text-sm text-gray-500">{student.lastActive}</td>
                         <td className="py-4 px-6">
@@ -633,9 +856,12 @@ export default function Students() {
                     <Mail className="w-4 h-4" />
                     Send Report
                   </button>
-                  <button className="px-4 py-2 bg-gradient-to-r from-[#d4a574] to-[#c49a6c] text-[#0a0f1a] rounded-lg ot-font-body text-sm font-medium">
+                  <Link
+                    to={`/otexam/pathway/${selectedStudentData.id}`}
+                    className="px-4 py-2 bg-gradient-to-r from-[#d4a574] to-[#c49a6c] text-[#0a0f1a] rounded-lg ot-font-body text-sm font-medium"
+                  >
                     View Full Profile
-                  </button>
+                  </Link>
                 </div>
               </div>
 
@@ -698,6 +924,8 @@ export default function Students() {
               <button className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors disabled:opacity-50" disabled>
                 <ChevronRight className="w-4 h-4" />
               </button>
+            </div>
+          </div>
             </div>
           </div>
         </div>
