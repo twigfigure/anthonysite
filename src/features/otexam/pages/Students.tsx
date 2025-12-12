@@ -30,6 +30,7 @@ import {
   Target,
   ChevronDown,
   ChevronUp,
+  LineChart,
 } from 'lucide-react'
 import {
   getRemediationQueue,
@@ -59,10 +60,10 @@ interface Cohort {
   studentCount: number
 }
 
-// Initial mock data
+// Initial mock data - IDs match analytics data (s1, s2, etc.)
 const initialStudents: Student[] = [
   {
-    id: '1',
+    id: 's1',
     name: 'Alex Chen',
     email: 'alex.chen@university.edu',
     cohort: 'Fall 2024',
@@ -76,7 +77,7 @@ const initialStudents: Student[] = [
     strongAreas: ['Evaluation', 'Intervention'],
   },
   {
-    id: '2',
+    id: 's4',
     name: 'Jordan Williams',
     email: 'j.williams@university.edu',
     cohort: 'Fall 2024',
@@ -90,7 +91,7 @@ const initialStudents: Student[] = [
     strongAreas: [],
   },
   {
-    id: '3',
+    id: 's3',
     name: 'Taylor Martinez',
     email: 't.martinez@university.edu',
     cohort: 'Fall 2024',
@@ -104,7 +105,7 @@ const initialStudents: Student[] = [
     strongAreas: ['Mental Health'],
   },
   {
-    id: '4',
+    id: 's5',
     name: 'Casey Johnson',
     email: 'casey.j@university.edu',
     cohort: 'Fall 2024',
@@ -118,7 +119,7 @@ const initialStudents: Student[] = [
     strongAreas: ['Pediatrics', 'Geriatrics'],
   },
   {
-    id: '5',
+    id: 's8',
     name: 'Morgan Lee',
     email: 'morgan.lee@university.edu',
     cohort: 'Spring 2024',
@@ -132,7 +133,7 @@ const initialStudents: Student[] = [
     strongAreas: [],
   },
   {
-    id: '6',
+    id: 's2',
     name: 'Jamie Rivera',
     email: 'j.rivera@university.edu',
     cohort: 'Fall 2024',
@@ -146,11 +147,11 @@ const initialStudents: Student[] = [
     strongAreas: ['Mental Health', 'Wellness'],
   },
   {
-    id: '7',
+    id: 's7',
     name: 'Sam Wilson',
     email: 's.wilson@university.edu',
-    cohort: 'Fall 2024',
-    enrollmentDate: '2024-08-15',
+    cohort: 'Spring 2024',
+    enrollmentDate: '2024-01-10',
     examsCompleted: 9,
     avgScore: 91,
     lastActive: '1 hour ago',
@@ -160,11 +161,11 @@ const initialStudents: Student[] = [
     strongAreas: ['Evaluation', 'Intervention', 'Management', 'Competency'],
   },
   {
-    id: '8',
+    id: 's9',
     name: 'Taylor Kim',
     email: 'taylor.kim@university.edu',
-    cohort: 'Spring 2024',
-    enrollmentDate: '2024-01-10',
+    cohort: 'Fall 2023',
+    enrollmentDate: '2023-08-15',
     examsCompleted: 18,
     avgScore: 75,
     lastActive: '2 days ago',
@@ -372,9 +373,9 @@ function AlertBanner({ alerts, onDismiss }: { alerts: AdvisorAlert[]; onDismiss:
 
 // Student-to-remediation mapping (mock - in real app, derive from data)
 const studentRemediationTiers: Record<string, RemediationTier> = {
-  '2': 2, // Jordan Williams
-  '3': 1, // Taylor Martinez
-  '5': 3, // Morgan Lee
+  's4': 2, // Jordan Williams
+  's5': 1, // Casey Johnson (was Taylor Martinez)
+  's8': 3, // Morgan Lee
 }
 
 export default function Students() {
@@ -518,6 +519,13 @@ export default function Students() {
           >
             <BarChart3 className="w-5 h-5" />
             Dashboard
+          </Link>
+          <Link
+            to="/otexam/analysis"
+            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
+          >
+            <LineChart className="w-5 h-5" />
+            Analysis
           </Link>
           <Link
             to="/otexam/students"

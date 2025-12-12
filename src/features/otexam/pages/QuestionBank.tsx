@@ -21,6 +21,7 @@ import {
   CheckCircle,
   Filter,
   Copy,
+  LineChart,
 } from 'lucide-react'
 import { sampleQuestions, settingDescriptions, bloomsDescriptions, domainDescriptions } from '../data/questions'
 import type { ExamQuestion, BloomLevel, NBCOTDomain, OTSetting } from '../types'
@@ -385,6 +386,13 @@ export default function QuestionBank() {
           >
             <BarChart3 className="w-5 h-5" />
             Dashboard
+          </Link>
+          <Link
+            to="/otexam/analysis"
+            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 ot-font-body transition-colors"
+          >
+            <LineChart className="w-5 h-5" />
+            Analysis
           </Link>
           <Link
             to="/otexam/students"
